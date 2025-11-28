@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWindowsForms>true</UseWindowsForms>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Platforms>AnyCPU;x64</Platforms>
+		<!-- 若使用 unsafe 可在此打开 -->
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+		<PackageReference Include="Vortice.DXGI" Version="3.6.2" />
+		<PackageReference Include="Vortice.D3DCompiler" Version="3.6.2" />
+	</ItemGroup>
+
+	<!-- 把 compute.hlsl 作为内容复制到输出目录 -->
+	<ItemGroup>
+		<None Include="compute.hlsl">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<!-- 排除 oldGood 目录 -->
+	<ItemGroup>
+		<Compile Remove="oldGood\**" />
+		<None Remove="oldGood\**" />
+	</ItemGroup>
+</Project>
