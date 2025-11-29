@@ -617,7 +617,7 @@ namespace TbEinkSuperFlushTurbo
                 }
                 else
                 {
-                    // 不清空位图，实现累积显示效果，避免闪烁
+                    // 不清空位图，实现累积显示效果，避免闪烁 （目前实测这个是否注释影响不大）
                     // using (Graphics g = Graphics.FromImage(_overlayBitmap))
                     // {
                     //     // 使用透明色清空位图
@@ -647,11 +647,11 @@ namespace TbEinkSuperFlushTurbo
                         // 亮度 > 0.5 显示黑色，亮度 <= 0.5 显示白色（反向）
                         if (brightness > 0.5f)
                         {
-                            overlayColor = Color.FromArgb(100, 0, 0, 0); // 半透明黑色
+                            overlayColor = Color.FromArgb(85, 0, 0, 0); // 半透明黑色
                         }
                         else
                         {
-                            overlayColor = Color.FromArgb(100, 255, 255, 255); // 半透明白色
+                            overlayColor = Color.FromArgb(85, 255, 255, 255); // 半透明白色
                         }
                         
                         // 在刷新区域绘制反向亮度颜色的半透明方块
