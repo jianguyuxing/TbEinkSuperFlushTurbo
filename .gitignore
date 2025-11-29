@@ -1,0 +1,67 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+# Visual Studio files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio 2015+ cache/options directory
+.vs/
+
+# Rider
+.idea/
+
+# Code snippets
+*.DotSettings.user
+
+# MSTest test Results
+[TestResults]/
+[BuildOutput]/
+
+# NUNIT
+*.VisualState.xml
+TestResult.xml
+
+# Directories
+_ReSharper*/
+*.[Cc]ache/
+*.logs
+
+# Thumbs.db
+Thumbs.db
+
+# Recycle Bin
+$RECYCLE.BIN/
+
+# Logs
+logs/
+*.log
+
+# Node modules
+node_modules/
+
+# NuGet
+packages/
+*.nuget.props
+*.nuget.targets
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs_vista.db
+Thumbs.db

@@ -16,9 +16,9 @@
 		<PackageReference Include="Vortice.D3DCompiler" Version="3.6.2" />
 	</ItemGroup>
 
-	<!-- 把 compute.hlsl 作为内容复制到输出目录 -->
+	<!-- 把 ComputeShader.hlsl 作为内容复制到输出目录 -->
 	<ItemGroup>
-		<None Include="compute.hlsl">
+		<None Include="ComputeShader.hlsl">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>

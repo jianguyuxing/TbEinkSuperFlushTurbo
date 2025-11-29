@@ -31,9 +31,13 @@ namespace TbEinkSuperFlushTurbo
         public int TileSize { get; set; }
         public int PixelDelta { get; set; } // Per-component threshold
         public uint AverageWindowSize { get; set; } // 平均窗口大小（帧数）
+        public uint StableFramesRequired { get; set; } // 稳定帧数，平衡响应速度和稳定性
+        public uint AdditionalCooldownFrames { get; set; } // 额外冷却帧数，避免过度刷新
+        public uint FirstRefreshExtraDelay { get; set; } // 首次刷新额外延迟帧数，用于-1状态区块
         public int CaretCheckInterval { get; set; } // 文本光标检查间隔（毫秒）
         public int ImeCheckInterval { get; set; } // 输入法窗口检查间隔（毫秒）
         public int MouseExclusionRadiusFactor { get; set; } // 鼠标排除区域半径因子
+        public uint ProtectionFrames { get; set; } // 从MainForm传入的保护期帧数
 
         public int ScreenWidth => _screenW;
         public int ScreenHeight => _screenH;
@@ -82,6 +86,12 @@ namespace TbEinkSuperFlushTurbo
         private ID3D11UnorderedAccessView? _tileBrightnessUAV;
         private ID3D11Buffer? _tileBrightnessReadback; // 用于从 GPU 读回亮度数据
 
+        // GPU端状态管理缓冲区
+        private ID3D11Buffer? _tileStableCountersBuffer; // u5
+        private ID3D11UnorderedAccessView? _tileStableCountersUAV;
+        private ID3D11Buffer? _tileProtectionExpiryBuffer; // u6
+        private ID3D11UnorderedAccessView? _tileProtectionExpiryUAV;
+
         private ID3D11ComputeShader? _computeShader;
         private ID3D11Buffer? _paramBuffer;
 
@@ -119,12 +129,15 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
         }
 
-        public D3DCaptureAndCompute(Action<string>? debugLogger, int tileSize, int pixelDelta, uint averageWindowSize, int caretCheckInterval, int imeCheckInterval, int mouseExclusionRadiusFactor, bool forceDirectXCapture) // Constructor with parameters
+        public D3DCaptureAndCompute(Action<string>? debugLogger, int tileSize, int pixelDelta, uint averageWindowSize, uint stableFramesRequired, uint additionalCooldownFrames, uint firstRefreshExtraDelay, int caretCheckInterval, int imeCheckInterval, int mouseExclusionRadiusFactor, bool forceDirectXCapture) // Constructor with parameters
         {
             _debugLogger = debugLogger;
             TileSize = tileSize;
             PixelDelta = pixelDelta;
             AverageWindowSize = averageWindowSize;
+            StableFramesRequired = stableFramesRequired;
+            AdditionalCooldownFrames = additionalCooldownFrames;
+            FirstRefreshExtraDelay = firstRefreshExtraDelay;
             CaretCheckInterval = caretCheckInterval;
             ImeCheckInterval = imeCheckInterval;
             MouseExclusionRadiusFactor = mouseExclusionRadiusFactor;
@@ -503,16 +516,67 @@ namespace TbEinkSuperFlushTurbo
             
             _tileBrightnessReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(sizeof(float) * tileCount) });
 
-            // --- 初始化状态缓冲区 ---
+            // --- 创建并初始化GPU端状态管理缓冲区 ---
+            var countersDesc = new BufferDescription
+            {
+                ByteWidth = (uint)(sizeof(int) * tileCount),
+                Usage = ResourceUsage.Default,
+                BindFlags = BindFlags.UnorderedAccess,
+                MiscFlags = ResourceOptionFlags.BufferStructured,
+                StructureByteStride = sizeof(int)
+            };
+            var initialCounters = new int[tileCount];
+            Array.Fill(initialCounters, -1);
+            var countersHandle = GCHandle.Alloc(initialCounters, GCHandleType.Pinned);
+            try
+            {
+                var countersSubresourceData = new SubresourceData(countersHandle.AddrOfPinnedObject());
+                _tileStableCountersBuffer = _device.CreateBuffer(countersDesc, countersSubresourceData);
+            }
+            finally
+            {
+                countersHandle.Free();
+            }
+
+            // 使用 uint2 (8字节) 替代 long (8字节)
+            var expiryDesc = new BufferDescription
+            {
+                ByteWidth = (uint)(8 * tileCount), // sizeof(uint2) = 8
+                Usage = ResourceUsage.Default,
+                BindFlags = BindFlags.UnorderedAccess,
+                MiscFlags = ResourceOptionFlags.BufferStructured,
+                StructureByteStride = 8 // sizeof(uint2)
+            };
+            var initialExpiry = new uint[tileCount * 2]; // 每个图块需要2个uint值
+            Array.Fill(initialExpiry, 0U);
+            var expiryHandle = GCHandle.Alloc(initialExpiry, GCHandleType.Pinned);
+            try
+            {
+                var expirySubresourceData = new SubresourceData(expiryHandle.AddrOfPinnedObject());
+                _tileProtectionExpiryBuffer = _device.CreateBuffer(expiryDesc, expirySubresourceData);
+            }
+            finally
+            {
+                expiryHandle.Free();
+            }
+
+            var countersUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)tileCount } };
+            _tileStableCountersUAV = _device.CreateUnorderedAccessView(_tileStableCountersBuffer, countersUavDesc);
+
+            var expiryUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)tileCount } };
+            _tileProtectionExpiryUAV = _device.CreateUnorderedAccessView(_tileProtectionExpiryBuffer, expiryUavDesc);
+
+            // --- 初始化历史差异状态缓冲区 ---
             _context!.ClearUnorderedAccessView(_tileStateInUAV!, new Vortice.Mathematics.Int4(0, 0, 0, 0));
 
-            var shaderPath = Path.Combine(AppContext.BaseDirectory, "compute.hlsl");
-            var csBlob = Compiler.CompileFromFile(shaderPath, "CSMain", "cs_5_0");
+            var shaderPath = Path.Combine(AppContext.BaseDirectory, "ComputeShader.hlsl");
+            var csBlob = Compiler.CompileFromFile(shaderPath, "CSMain", "cs_5_0", ShaderFlags.None, EffectFlags.None);
+            _debugLogger?.Invoke($"Shader compiled successfully, bytecode size: {csBlob.Span.Length} bytes");
             _computeShader = _device.CreateComputeShader(csBlob.Span);
 
-            // --- FIX: Constant buffer size must be a multiple of 16 ---
-            // 5 uints = 20 bytes. Next multiple of 16 is 32.
-            _paramBuffer = _device.CreateBuffer(new BufferDescription(32, BindFlags.ConstantBuffer));
+            // --- 常量缓冲区大小必须是16的倍数 ---
+            // 10个uint = 40字节。下一个16的倍数是48。
+            _paramBuffer = _device.CreateBuffer(new BufferDescription(48, BindFlags.ConstantBuffer));
             
             // 初始化 _gpuTexPrev 为零纹理，确保第一帧有有效的参考帧
             if (_device != null && _gpuTexPrev != null)
@@ -675,8 +739,14 @@ namespace TbEinkSuperFlushTurbo
 
             // 2. 绑定资源
             _context?.CSSetShader(_computeShader);
-            // Update constant buffer with new parameters
-            uint[] cbData = { (uint)_screenW, (uint)_screenH, (uint)TileSize, (uint)PixelDelta, AverageWindowSize };
+            // 更新常量缓冲区
+            uint[] cbData = { 
+                (uint)_screenW, (uint)_screenH, (uint)TileSize, (uint)PixelDelta, AverageWindowSize,
+                StableFramesRequired, AdditionalCooldownFrames, FirstRefreshExtraDelay,
+                (uint)Environment.TickCount, // currentFrameNumber
+                ProtectionFrames, // 新增：保护期帧数
+                0, 0 // 填充到48字节
+            };
             _context?.UpdateSubresource(cbData, _paramBuffer!);
             _context?.CSSetConstantBuffer(0, _paramBuffer);
             
@@ -689,6 +759,8 @@ namespace TbEinkSuperFlushTurbo
             _context?.CSSetUnorderedAccessView(2, _refreshListUAV);
             _context?.CSSetUnorderedAccessView(3, _refreshCounterUAV);
             _context?.CSSetUnorderedAccessView(4, _tileBrightnessUAV);
+            _context?.CSSetUnorderedAccessView(5, _tileStableCountersUAV);
+            _context?.CSSetUnorderedAccessView(6, _tileProtectionExpiryUAV);
             
             // 3. 执行计算
             uint groupX = (uint)_tilesX;
@@ -705,6 +777,8 @@ namespace TbEinkSuperFlushTurbo
             _context?.CSSetUnorderedAccessView(2, null);
             _context?.CSSetUnorderedAccessView(3, null);
             _context?.CSSetUnorderedAccessView(4, null);
+            _context?.CSSetUnorderedAccessView(5, null);
+            _context?.CSSetUnorderedAccessView(6, null);
 
             // 5. 读回结果
             _context?.CopyResource(_refreshCounterReadback!, _refreshCounter!);
@@ -716,14 +790,17 @@ namespace TbEinkSuperFlushTurbo
             {
                 _context?.CopyResource(_refreshListReadback!, _refreshList!);
                 var listMap = _context?.Map(_refreshListReadback!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
-                for (int i = 0; i < refreshCount; i++)
+                if (listMap.HasValue)
                 {
-                    uint tileIndex = (uint)Marshal.ReadInt32(listMap.HasValue ? listMap.Value.DataPointer : IntPtr.Zero, i * 4); // Read uint (4 bytes)
-                    int bx = (int)(tileIndex % _tilesX);
-                    int by = (int)(tileIndex / _tilesX);
-                    result.Add((bx, by));
+                    for (int i = 0; i < refreshCount; i++)
+                    {
+                        uint tileIndex = (uint)Marshal.ReadInt32(listMap.Value.DataPointer, i * 4); // Read uint (4 bytes)
+                        int bx = (int)(tileIndex % _tilesX);
+                        int by = (int)(tileIndex / _tilesX);
+                        result.Add((bx, by));
+                    }
+                    _context?.Unmap(_refreshListReadback!, 0);
                 }
-                _context?.Unmap(_refreshListReadback!, 0);
             }
 
             // 6. 状态迭代：将当前帧的输出状态复制到下一帧的输入状态
@@ -736,15 +813,18 @@ namespace TbEinkSuperFlushTurbo
             float[] brightnessData = new float[_tilesX * _tilesY];
             _context?.CopyResource(_tileBrightnessReadback!, _tileBrightness!);
             var brightnessMap = _context?.Map(_tileBrightnessReadback!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
-            unsafe
+            if (brightnessMap.HasValue)
             {
-                float* brightnessPtr = (float*)(brightnessMap.HasValue ? brightnessMap.Value.DataPointer : IntPtr.Zero).ToPointer();
-                for (int i = 0; i < _tilesX * _tilesY; i++)
+                unsafe
                 {
-                    brightnessData[i] = brightnessPtr[i];
+                    float* brightnessPtr = (float*)brightnessMap.Value.DataPointer.ToPointer();
+                    for (int i = 0; i < _tilesX * _tilesY; i++)
+                    {
+                        brightnessData[i] = brightnessPtr[i];
+                    }
                 }
+                _context?.Unmap(_tileBrightnessReadback!, 0);
             }
-            _context?.Unmap(_tileBrightnessReadback!, 0);
             
             // 添加最终同步点，确保所有GPU操作完成
             _context?.Flush();
@@ -756,20 +836,23 @@ namespace TbEinkSuperFlushTurbo
                 _context?.CopyResource(_tileStateInReadback!, _tileStateIn!);
                 var stateMap = _context?.Map(_tileStateInReadback!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
                 
-                const int historyElementSize = 16; // sizeof(uint4)
-
-                _debugLogger.Invoke($"DEBUG: Tile states (first 10 tiles):");
-                for (int i = 0; i < Math.Min(10, _tilesX * _tilesY); i++) // 只检查前10个图块
+                if (stateMap.HasValue)
                 {
-                    // Read the uint4 for each tile
-                    IntPtr dataPtr = stateMap.HasValue ? stateMap.Value.DataPointer : IntPtr.Zero;
-                    uint hx = (uint)Marshal.ReadInt32(dataPtr, i * historyElementSize + 0 * sizeof(uint));
-                    uint hy = (uint)Marshal.ReadInt32(dataPtr, i * historyElementSize + 1 * sizeof(uint));
-                    uint hz = (uint)Marshal.ReadInt32(dataPtr, i * historyElementSize + 2 * sizeof(uint));
-                    uint hw = (uint)Marshal.ReadInt32(dataPtr, i * historyElementSize + 3 * sizeof(uint));
-                    _debugLogger.Invoke($"  Tile {i}: History = ({hx}, {hy}, {hz}, {hw})");
+                    const int historyElementSize = 16; // sizeof(uint4)
+
+                    _debugLogger.Invoke($"DEBUG: Tile states (first 10 tiles):");
+                    for (int i = 0; i < Math.Min(10, _tilesX * _tilesY); i++) // 只检查前10个图块
+                    {
+                        // Read the uint4 for each tile
+                        IntPtr dataPtr = stateMap.Value.DataPointer;
+                        uint hx = (uint)Marshal.ReadInt32(dataPtr, i * historyElementSize + 0 * sizeof(uint));
+                        uint hy = (uint)Marshal.ReadInt32(dataPtr, i * historyElementSize + 1 * sizeof(uint));
+                        uint hz = (uint)Marshal.ReadInt32(dataPtr, i * historyElementSize + 2 * sizeof(uint));
+                        uint hw = (uint)Marshal.ReadInt32(dataPtr, i * historyElementSize + 3 * sizeof(uint));
+                        _debugLogger.Invoke($"  Tile {i}: History = ({hx}, {hy}, {hz}, {hw})");
+                    }
+                    _context?.Unmap(_tileStateInReadback!, 0);
                 }
-                _context?.Unmap(_tileStateInReadback!, 0);
             }
 
             return (result, brightnessData);
@@ -1378,6 +1461,12 @@ namespace TbEinkSuperFlushTurbo
             _tileBrightnessUAV?.Dispose();
             _tileBrightness?.Dispose();
             _tileBrightnessReadback?.Dispose();
+
+            // 释放GPU端状态管理缓冲区
+            _tileStableCountersUAV?.Dispose();
+            _tileStableCountersBuffer?.Dispose();
+            _tileProtectionExpiryUAV?.Dispose();
+            _tileProtectionExpiryBuffer?.Dispose();
             
             _gpuTexCurr?.Dispose();
             _gpuTexPrev?.Dispose();

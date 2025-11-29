@@ -84,7 +84,7 @@ namespace TbEinkSuperFlushTurbo
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool ClientToScreen(IntPtr hWnd, ref Point lpPoint);
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("imm32.dll", SetLastError = true)]
         public static extern IntPtr ImmGetDefaultIMEWnd(IntPtr hWnd);
 
         [DllImport("user32.dll", SetLastError = true)]
