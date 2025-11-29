@@ -36,11 +36,11 @@ namespace TbEinkSuperFlushTurbo
         public const int OVERLAY_DISPLAY_TIME = 100; // ms
         private const int POLL_TIMER_INTERVAL = 515; // ms ditect period
 
-        // 合围区域配置 - 现在使用多个相邻的合围区域
+        // 合围区域配置，这部分用于抑制滚动区域的刷新 - 现在使用多个相邻的合围区域。
         private const int BOUNDING_AREA_WIDTH = 40;  // 每个合围区域宽度（区块单位）
         private const int BOUNDING_AREA_HEIGHT = 40; // 每个合围区域高度（区块单位）
         private const int BOUNDING_AREA_HISTORY_FRAMES = 6; // 历史帧数
-        private const int BOUNDING_AREA_CHANGE_THRESHOLD = 4; // 变化阈值
+        private const int BOUNDING_AREA_CHANGE_THRESHOLD = 6; // 变化阈值
 
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / POLL_TIMER_INTERVAL) + ADDITIONAL_COOLDOWN_FRAMES;
 
