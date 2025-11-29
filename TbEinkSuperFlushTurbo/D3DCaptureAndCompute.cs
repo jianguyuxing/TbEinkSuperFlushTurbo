@@ -612,7 +612,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        public async Task<(List<(int bx, int by)> tiles, float[] brightnessData)> CaptureAndComputeOnceAsync(CancellationToken token)
+        public async Task<(List<(int bx, int by)> tiles, float[] brightnessData)> CaptureAndComputeOnceAsync(uint frameCounter, CancellationToken token)
         {
             var result = new List<(int, int)>();
 
@@ -743,7 +743,7 @@ namespace TbEinkSuperFlushTurbo
             uint[] cbData = { 
                 (uint)_screenW, (uint)_screenH, (uint)TileSize, (uint)PixelDelta, AverageWindowSize,
                 StableFramesRequired, AdditionalCooldownFrames, FirstRefreshExtraDelay,
-                (uint)Environment.TickCount, // currentFrameNumber
+                frameCounter, // currentFrameNumber
                 ProtectionFrames, // 新增：保护期帧数
                 0, 0 // 填充到48字节
             };

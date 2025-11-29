@@ -21,6 +21,7 @@ namespace TbEinkSuperFlushTurbo
         private StreamWriter? _logWriter;
         private CancellationTokenSource? _cts;
         private OverlayForm? _overlayForm;
+        private uint _frameCounter = 0; // The new frame counter
 
         public Action<string>? DebugLogger { get; private set; }
 
@@ -173,7 +174,7 @@ namespace TbEinkSuperFlushTurbo
             Height = 800;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
-            StartPosition = FormStartPosition.CenterScreen;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 
             int buttonWidth = 120;
             int buttonHeight = 50;
@@ -204,6 +205,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 btnStart.Enabled = false;
                 _cts = new CancellationTokenSource();
+                _frameCounter = 0; // Reset frame counter on start
 
                 lblInfo.Text = "Status: initializing GPU capture...";
                 Log("Initializing GPU capture...");
@@ -222,8 +224,26 @@ namespace TbEinkSuperFlushTurbo
                     {
                         if (_cts.Token.IsCancellationRequested || _d3d == null) return;
 
-                        var (tilesToRefresh, brightnessData) = await _d3d.CaptureAndComputeOnceAsync(_cts.Token);
+                        _frameCounter++; // Increment frame counter
+                        
+                        var overlay = _overlayForm;
+                        if (overlay != null)
+                        {
+                            overlay.SuppressDrawing = true;
+                            overlay.UpdateVisuals(); // Force update to clear overlay
+                        }
+
+                        var (tilesToRefresh, brightnessData) = await _d3d.CaptureAndComputeOnceAsync(_frameCounter, _cts.Token);
                         if (_cts.Token.IsCancellationRequested) return;
+
+                        if (overlay != null)
+                        {
+                            overlay.SuppressDrawing = false;
+                            if (tilesToRefresh.Count == 0 && overlay.IsDisplaying)
+                            {
+                                overlay.UpdateVisuals();
+                            }
+                        }
 
                         if (tilesToRefresh.Count > 0)
                         {
@@ -231,7 +251,6 @@ namespace TbEinkSuperFlushTurbo
                             if (refreshRatio >= RESET_THRESHOLD_PERCENT / 100.0)
                             {
                                 Log($"System-wide refresh detected ({refreshRatio:P1}), skipping overlay.");
-                                // The GPU state will automatically handle this, no need for CPU-side reset.
                             }
                             else
                             {
@@ -241,7 +260,7 @@ namespace TbEinkSuperFlushTurbo
                                     listBox.Items.Insert(0, $"{DateTime.Now:HH:mm:ss.fff} tiles: {tilesToRefresh.Count}");
                                     if (listBox.Items.Count > 200) listBox.Items.RemoveAt(listBox.Items.Count - 1);
                                 }));
-                                await ShowTemporaryOverlayAsync(tilesToRefresh, brightnessData, _cts.Token);
+                                ShowTemporaryOverlay(tilesToRefresh, brightnessData);
                             }
                         }
                     };
@@ -285,9 +304,9 @@ namespace TbEinkSuperFlushTurbo
             };
         }
 
-        async Task ShowTemporaryOverlayAsync(List<(int bx, int by)>? tiles, float[]? brightnessData, CancellationToken token)
+        void ShowTemporaryOverlay(List<(int bx, int by)>? tiles, float[]? brightnessData)
         {
-            if (token.IsCancellationRequested || _d3d == null || tiles == null || tiles.Count == 0) return;
+            if (_cts.IsCancellationRequested || _d3d == null || tiles == null || tiles.Count == 0) return;
 
             if (_overlayForm == null)
             {
@@ -300,15 +319,15 @@ namespace TbEinkSuperFlushTurbo
                     ShowInTaskbar = false,
                     FormBorderStyle = FormBorderStyle.None,
                     TopMost = true,
-                    StartPosition = FormStartPosition.Manual,
-                    Location = new Point(0, 0),
                     Size = new Size(_d3d.ScreenWidth, _d3d.ScreenHeight)
                 };
+                _overlayForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
+                _overlayForm.Location = new Point(0, 0);
                 
-                await Task.Run(() => this.Invoke(new Action(() => _overlayForm.Show())), token);
+                _overlayForm.Show();
             }
             
-            await Task.Run(() => _overlayForm.UpdateContent(tiles, brightnessData), token);
+            _overlayForm.UpdateContent(tiles, brightnessData);
         }
 
         protected override void WndProc(ref Message m)
@@ -349,8 +368,8 @@ namespace TbEinkSuperFlushTurbo
             Log("[Manual] F6 triggered refresh");
             try
             {
-                var (tiles, bright) = await _d3d.CaptureAndComputeOnceAsync(CancellationToken.None);
-                await ShowTemporaryOverlayAsync(tiles, bright, CancellationToken.None);
+                var (tiles, bright) = await _d3d.CaptureAndComputeOnceAsync(_frameCounter, CancellationToken.None);
+                ShowTemporaryOverlay(tiles, bright);
             }
             catch (Exception ex)
             {
@@ -373,98 +392,95 @@ namespace TbEinkSuperFlushTurbo
         private const uint SWP_NOACTIVATE = 0x0010;
 
         private readonly Action<string> Logger;
-        readonly Dictionary<(int bx, int by), float> _tiles = new Dictionary<(int bx, int by), float>();
-        readonly List<CancellationTokenSource> _batchCts = new List<CancellationTokenSource>();
-        Bitmap? _overlayBitmap;
-        private readonly object _bitmapLock = new object();
+        private readonly Dictionary<(int bx, int by), (float brightness, DateTime expiry)> _activeTiles = new Dictionary<(int, int), (float, DateTime)>();
+        private readonly System.Windows.Forms.Timer _cleanupTimer;
+        private Bitmap? _overlayBitmap;
+        private readonly object _lock = new object();
         private bool _isDisplaying = false;
         readonly int _tileSize, _screenW, _screenH, _noiseDensity, _noisePointInterval, _borderWidth;
         readonly Color _baseColor, _borderColor;
+
+        public bool SuppressDrawing { get; set; } = false;
+        public bool IsDisplaying => _isDisplaying;
         
         public void UpdateContent(List<(int bx, int by)> tiles, float[]? brightnessData = null)
         {
-            bool addedNewTiles = false;
+            var expiryTime = DateTime.UtcNow.AddMilliseconds(MainForm.OVERLAY_DISPLAY_TIME);
             int tilesX = (_screenW + _tileSize - 1) / _tileSize;
+            bool needsUiUpdate = false;
 
-            foreach (var tile in tiles)
+            lock (_lock)
             {
-                if (!_tiles.ContainsKey(tile))
+                foreach (var tile in tiles)
                 {
                     int tileIdx = tile.by * tilesX + tile.bx;
                     float brightness = (brightnessData != null && tileIdx < brightnessData.Length) ? brightnessData[tileIdx] : 0.5f;
-                    _tiles[tile] = brightness;
-                    addedNewTiles = true;
+                    _activeTiles[tile] = (brightness, expiryTime);
+                }
+                needsUiUpdate = true;
+            }
+
+            if (needsUiUpdate)
+            {
+                this.BeginInvoke(new Action(() =>
+                {
+                    if (!_cleanupTimer.Enabled)
+                    {
+                        _cleanupTimer.Start();
+                    }
+                    if (!_isDisplaying)
+                    {
+                        _isDisplaying = true;
+                    }
+                    UpdateVisuals();
+                }));
+            }
+        }
+    
+        private void CleanupTimer_Tick(object? sender, EventArgs e)
+        {
+            bool needsUiUpdate = false;
+            var now = DateTime.UtcNow;
+
+            lock (_lock)
+            {
+                var expiredKeys = new List<(int, int)>();
+                foreach (var tile in _activeTiles)
+                {
+                    if (tile.Value.expiry < now)
+                    {
+                        expiredKeys.Add(tile.Key);
+                    }
+                }
+
+                if (expiredKeys.Count > 0)
+                {
+                    foreach (var key in expiredKeys)
+                    {
+                        _activeTiles.Remove(key);
+                    }
+                    needsUiUpdate = true;
+                }
+
+                if (_activeTiles.Count == 0)
+                {
+                    _cleanupTimer.Stop();
+                    _isDisplaying = false;
                 }
             }
-            
-            if (tiles.Count > 0)
-            {
-                var cts = new CancellationTokenSource();
-                _batchCts.Add(cts);
-                
-                Task.Run(async () => {
-                    try 
-                    {
-                        await Task.Delay(MainForm.OVERLAY_DISPLAY_TIME, cts.Token);
-                        MarkTilesAsExpired(tiles, cts);
-                    }
-                    catch (OperationCanceledException) { }
-                });
-            }
-            
-            if (!_isDisplaying || addedNewTiles)
+
+            if (needsUiUpdate)
             {
                 UpdateVisuals();
-                _isDisplaying = true;
-            }
-        }
-    
-        private void MarkTilesAsExpired(List<(int bx, int by)> tiles, CancellationTokenSource cts)
-        {
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action(() => MarkTilesAsExpiredInternal(tiles, cts)));
-            }
-            else
-            {
-                MarkTilesAsExpiredInternal(tiles, cts);
-            }
-        }
-    
-        private void MarkTilesAsExpiredInternal(List<(int bx, int by)> tiles, CancellationTokenSource cts)
-        {
-            foreach (var tile in tiles)
-            {
-                _tiles.Remove(tile);
-            }
-            
-            _batchCts.Remove(cts);
-            cts.Dispose();
-            
-            UpdateVisuals();
-            
-            if (_tiles.Count == 0)
-            {
-                lock (_bitmapLock)
-                {
-                    _overlayBitmap?.Dispose();
-                    _overlayBitmap = null;
-                }
-                _isDisplaying = false;
             }
         }
     
         public void HideOverlay()
         {
-            foreach (var cts in _batchCts) cts.Cancel();
-            _batchCts.ForEach(cts => cts.Dispose());
-            _batchCts.Clear();
-            _tiles.Clear();
-            
-            lock (_bitmapLock)
+            _cleanupTimer.Stop();
+            lock (_lock)
             {
-                _overlayBitmap?.Dispose();
-                _overlayBitmap = null;
+                _activeTiles.Clear();
             }
             _isDisplaying = false;
             UpdateVisuals();
@@ -477,13 +493,14 @@ namespace TbEinkSuperFlushTurbo
             _baseColor = baseColor; _borderColor = borderColor; _borderWidth = borderWidth;
             Logger = log;
             
-            FormBorderStyle = FormBorderStyle.None;
-            StartPosition = FormStartPosition.Manual;
-            ShowInTaskbar = false;
-            TopMost = true;
-            Location = new Point(0, 0);
-            Size = new Size(screenW, screenH);
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.ShowInTaskbar = false;
+            this.TopMost = true;
+            this.Size = new Size(screenW, screenH);
             
+            _cleanupTimer = new System.Windows.Forms.Timer { Interval = 50 };
+            _cleanupTimer.Tick += CleanupTimer_Tick;
+
             int exStyle = GetWindowLong(this.Handle, -20);
             SetWindowLong(this.Handle, -20, exStyle | 0x00080000);
         }
@@ -508,8 +525,26 @@ namespace TbEinkSuperFlushTurbo
     
         private void DrawOverlayBitmap()
         {
-            lock (_bitmapLock)
+            lock (_lock)
             {
+                if (SuppressDrawing)
+                {
+                    if (_overlayBitmap != null)
+                    {
+                        using (Graphics g = Graphics.FromImage(_overlayBitmap)) g.Clear(Color.Transparent);
+                    }
+                    return;
+                }
+
+                if (_activeTiles.Count == 0)
+                {
+                    if (_overlayBitmap != null)
+                    {
+                        using (Graphics g = Graphics.FromImage(_overlayBitmap)) g.Clear(Color.Transparent);
+                    }
+                    return;
+                }
+
                 if (_overlayBitmap == null || _overlayBitmap.Width != _screenW || _overlayBitmap.Height != _screenH)
                 {
                     _overlayBitmap?.Dispose();
@@ -524,10 +559,10 @@ namespace TbEinkSuperFlushTurbo
                 {
                     g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
                     
-                    foreach (var tileEntry in _tiles)
+                    foreach (var tileEntry in _activeTiles)
                     {
                         var tile = tileEntry.Key;
-                        float brightness = tileEntry.Value;
+                        float brightness = tileEntry.Value.brightness;
                         int sx = tile.bx * _tileSize, sy = tile.by * _tileSize;
                         int w = Math.Min(_tileSize, _screenW - sx), h = Math.Min(_tileSize, _screenH - sy);
                         
@@ -546,27 +581,35 @@ namespace TbEinkSuperFlushTurbo
     
         private void UpdateLayeredWindowFromBitmap()
         {
-            lock (_bitmapLock)
+            lock (_lock)
             {
                 if (_overlayBitmap == null) return;
                 
                 IntPtr hdcScreen = GetDC(IntPtr.Zero);
                 IntPtr hdcMem = CreateCompatibleDC(hdcScreen);
-                IntPtr hBitmap = _overlayBitmap.GetHbitmap(Color.FromArgb(0));
-                IntPtr hOld = SelectObject(hdcMem, hBitmap);
+                IntPtr hBitmap = IntPtr.Zero;
+                IntPtr hOld = IntPtr.Zero;
 
-                Win32Point ptSrc = new Win32Point(0, 0);
-                Win32Size sz = new Win32Size(_screenW, _screenH);
-                Win32Point ptDest = new Win32Point(0, 0);
-                
-                BLENDFUNCTION blend = new BLENDFUNCTION { BlendOp = 0, BlendFlags = 0, SourceConstantAlpha = 255, AlphaFormat = 1 };
+                try
+                {
+                    hBitmap = _overlayBitmap.GetHbitmap(Color.FromArgb(0));
+                    hOld = SelectObject(hdcMem, hBitmap);
 
-                UpdateLayeredWindow(this.Handle, hdcScreen, ref ptDest, ref sz, hdcMem, ref ptSrc, 0, ref blend, 2);
+                    Win32Point ptSrc = new Win32Point(0, 0);
+                    Win32Size sz = new Win32Size(_screenW, _screenH);
+                    Win32Point ptDest = new Win32Point(0, 0);
+                    
+                    BLENDFUNCTION blend = new BLENDFUNCTION { BlendOp = 0, BlendFlags = 0, SourceConstantAlpha = 255, AlphaFormat = 1 };
 
-                SelectObject(hdcMem, hOld);
-                DeleteObject(hBitmap);
-                DeleteDC(hdcMem);
-                ReleaseDC(IntPtr.Zero, hdcScreen);
+                    UpdateLayeredWindow(this.Handle, hdcScreen, ref ptDest, ref sz, hdcMem, ref ptSrc, 0, ref blend, 2);
+                }
+                finally
+                {
+                    if (hOld != IntPtr.Zero) SelectObject(hdcMem, hOld);
+                    if (hBitmap != IntPtr.Zero) DeleteObject(hBitmap);
+                    if (hdcMem != IntPtr.Zero) DeleteDC(hdcMem);
+                    if (hdcScreen != IntPtr.Zero) ReleaseDC(IntPtr.Zero, hdcScreen);
+                }
             }
         }
     
