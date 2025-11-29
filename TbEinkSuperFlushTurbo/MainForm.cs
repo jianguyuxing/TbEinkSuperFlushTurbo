@@ -39,8 +39,8 @@ namespace TbEinkSuperFlushTurbo
         // 合围区域配置 - 现在使用多个相邻的合围区域
         private const int BOUNDING_AREA_WIDTH = 40;  // 每个合围区域宽度（区块单位）
         private const int BOUNDING_AREA_HEIGHT = 40; // 每个合围区域高度（区块单位）
-        private const int BOUNDING_AREA_HISTORY_FRAMES = 10; // 历史帧数
-        private const int BOUNDING_AREA_CHANGE_THRESHOLD = 1; // 变化阈值
+        private const int BOUNDING_AREA_HISTORY_FRAMES = 6; // 历史帧数
+        private const int BOUNDING_AREA_CHANGE_THRESHOLD = 4; // 变化阈值
 
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / POLL_TIMER_INTERVAL) + ADDITIONAL_COOLDOWN_FRAMES;
 
@@ -217,16 +217,12 @@ namespace TbEinkSuperFlushTurbo
                 Log("Initializing GPU capture...");
                 try
                 {
-                    _d3d = new D3DCaptureAndCompute(DebugLogger, TILE_SIZE, PIXEL_DELTA, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR, _forceDirectXCapture)
-                    {
-                        ProtectionFrames = ProtectionFrames,
-                        // Re-enable scrolling detection
-                        BoundingArea = new BoundingAreaConfig(
+                    _d3d = new D3DCaptureAndCompute(DebugLogger, TILE_SIZE, PIXEL_DELTA, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
+                        new BoundingAreaConfig(
                             BOUNDING_AREA_WIDTH,
                             BOUNDING_AREA_HEIGHT,
                             BOUNDING_AREA_HISTORY_FRAMES,
-                            BOUNDING_AREA_CHANGE_THRESHOLD)
-                    };
+                            BOUNDING_AREA_CHANGE_THRESHOLD));
 
                     _pollTimer = new System.Windows.Forms.Timer
                     {

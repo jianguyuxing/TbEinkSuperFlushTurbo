@@ -33,7 +33,7 @@ namespace TbEinkSuperFlushTurbo
         public int Height;      // 每个合围区域高度（区块单位）
         public int HistoryFrames; // 历史帧数
         public int ChangeThreshold; // 变化阈值
-        
+    
         public BoundingAreaConfig(int width, int height, int historyFrames, int changeThreshold)
         {
             Width = width;
@@ -57,7 +57,7 @@ namespace TbEinkSuperFlushTurbo
         public uint ProtectionFrames { get; set; } // 从MainForm传入的保护期帧数
 
         // 合围区域配置
-        public BoundingAreaConfig BoundingArea { get; set; } = new BoundingAreaConfig(4, 4, 10, 5); // 默认配置
+        public BoundingAreaConfig BoundingArea { get; set; }
 
         public int ScreenWidth => _screenW;
         public int ScreenHeight => _screenH;
@@ -151,15 +151,16 @@ namespace TbEinkSuperFlushTurbo
         private Point _lastGuiCaretPosition = new Point(-1, -1);
         private DateTime _lastGuiCaretCheck = DateTime.MinValue;
 
-        public D3DCaptureAndCompute(Action<string>? debugLogger, bool forceDirectXCapture = true) // Constructor now accepts a logger
+        public D3DCaptureAndCompute(Action<string>? debugLogger, BoundingAreaConfig boundingArea, bool forceDirectXCapture = true) // Constructor now accepts a logger
         {
             _debugLogger = debugLogger;
             _forceDirectXCapture = forceDirectXCapture;
+            BoundingArea = boundingArea; // 使用从MainForm传入的配置
             Console.WriteLine("=== D3DCaptureAndCompute Constructor Started ===");
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
         }
 
-        public D3DCaptureAndCompute(Action<string>? debugLogger, int tileSize, int pixelDelta, uint averageWindowSize, uint stableFramesRequired, uint additionalCooldownFrames, uint firstRefreshExtraDelay, int caretCheckInterval, int imeCheckInterval, int mouseExclusionRadiusFactor, bool forceDirectXCapture) // Constructor with parameters
+        public D3DCaptureAndCompute(Action<string>? debugLogger, int tileSize, int pixelDelta, uint averageWindowSize, uint stableFramesRequired, uint additionalCooldownFrames, uint firstRefreshExtraDelay, int caretCheckInterval, int imeCheckInterval, int mouseExclusionRadiusFactor, BoundingAreaConfig boundingArea, bool forceDirectXCapture = true) // Constructor with parameters
         {
             _debugLogger = debugLogger;
             TileSize = tileSize;
@@ -172,6 +173,8 @@ namespace TbEinkSuperFlushTurbo
             ImeCheckInterval = imeCheckInterval;
             MouseExclusionRadiusFactor = mouseExclusionRadiusFactor;
             _forceDirectXCapture = forceDirectXCapture;
+            BoundingArea = boundingArea; // 使用从MainForm传入的配置
+            
             Console.WriteLine("=== D3DCaptureAndCompute Constructor Started ===");
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
 
@@ -895,6 +898,81 @@ namespace TbEinkSuperFlushTurbo
                     _boundingAreaHistory_cpu![i] &= ~mask;
                 }
             }
+
+            // 打印合围区域历史帧数和变化帧数信息
+            if (_debugLogger != null)
+            {
+                // 打印所有合围区域的信息（不再限制前5个）
+                for (int i = 0; i < _boundingAreaCount; i++)
+                {
+                    uint historyData = _boundingAreaHistory_cpu![i];
+                    uint changeCount = 0;
+                    
+                    // 计算历史变化帧数
+                    uint maxTests = Math.Min((uint)BoundingArea.HistoryFrames, 32);
+                    for (uint j = 0; j < maxTests; j++)
+                    {
+                        if ((historyData & (1u << (int)j)) != 0)
+                        {
+                            changeCount++;
+                        }
+                    }
+                    
+                    // 生成更友好的历史变化模式描述
+                    string patternDescription = "";
+                    if (historyData == 0)
+                    {
+                        patternDescription = "无变化";
+                    }
+                    else if (historyData == uint.MaxValue)
+                    {
+                        patternDescription = "持续变化";
+                    }
+                    else if ((historyData & 0x55555555) == historyData)
+                    {
+                        patternDescription = "偶数帧变化";
+                    }
+                    else if ((historyData & 0xAAAAAAAA) == historyData)
+                    {
+                        patternDescription = "奇数帧变化";
+                    }
+                    else
+                    {
+                        // 统计连续变化的帧数
+                        int maxConsecutive = 0;
+                        int currentConsecutive = 0;
+                        for (int bit = 0; bit < 32; bit++)
+                        {
+                            if ((historyData & (1u << bit)) != 0)
+                            {
+                                currentConsecutive++;
+                                maxConsecutive = Math.Max(maxConsecutive, currentConsecutive);
+                            }
+                            else
+                            {
+                                currentConsecutive = 0;
+                            }
+                        }
+                        
+                        if (maxConsecutive > 3)
+                        {
+                            patternDescription = $"连续{maxConsecutive}帧变化";
+                        }
+                        else
+                        {
+                            patternDescription = "混合变化模式";
+                        }
+                    }
+                    
+                    _debugLogger.Invoke($"DEBUG: BoundingArea {i}: History=0x{historyData:X8}, ChangeCount={changeCount}/{BoundingArea.HistoryFrames}, Pattern={patternDescription}");
+                }
+                
+                // 打印总共有多少个合围区域
+                _debugLogger.Invoke($"DEBUG: Total bounding areas: {_boundingAreaCount}");
+            }
+
+            // 将更新后的CPU历史数据写回到GPU缓冲区
+            _context!.UpdateSubresource(_boundingAreaHistory_cpu!, _boundingAreaHistoryBuffer!);
 
             // 4. 读回结果
             _context?.CopyResource(_refreshCounterReadback!, _refreshCounter!);
