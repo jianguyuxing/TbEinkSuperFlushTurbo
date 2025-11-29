@@ -9,27 +9,28 @@ cbuffer Params : register(b0)
     uint additionalCooldownFrames;
     uint firstRefreshExtraDelay;
     uint currentFrameNumber;
-    uint protectionFrames; // 新增：从C#传入的保护期帧数
+    uint protectionFrames;
+    uint2 boundingAreaSize;
+    uint boundingAreaHistoryFrames;
+    uint boundingAreaChangeThreshold;
 }
 
 Texture2D<float4> g_texPrev : register(t0);
 Texture2D<float4> g_texCurr : register(t1);
 
-// 输入/输出历史差异数据
 RWStructuredBuffer<uint4> g_tileHistoryIn : register(u0);
 RWStructuredBuffer<uint4> g_tileHistoryOut : register(u1);
 
-// 输出的刷新列表和计数器
 RWStructuredBuffer<uint> g_refreshList : register(u2);
 RWByteAddressBuffer g_refreshCounter : register(u3);
 
-// 输出的亮度数据
 RWStructuredBuffer<float> g_tileBrightness : register(u4);
 
-// 输入/输出的图块状态 (由C#管理)
 RWStructuredBuffer<int> g_tileStableCounters : register(u5);
-RWStructuredBuffer<uint2> g_tileProtectionExpiry : register(u6); // 使用 uint2 表示64位值 (low, high)
+RWStructuredBuffer<uint2> g_tileProtectionExpiry : register(u6);
 
+// 合围区域历史帧变化数据 - 每个合围区域一个uint
+RWStructuredBuffer<uint> g_boundingAreaHistory : register(u7);
 
 [numthreads(8, 8, 1)]
 void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
@@ -100,14 +101,12 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
     // --- 修改结束 ---
 
-    // 2. 更新历史差异记录 (用于未来的平均值计算)
     uint4 historyIn = g_tileHistoryIn[tileIdx];
     uint4 historyOut;
-    historyOut.xyz = historyIn.yzw; // Shift history
-    historyOut.w = currentFrameTileDiffSum; // 此处的值已经被修正
+    historyOut.xyz = historyIn.yzw;
+    historyOut.w = currentFrameTileDiffSum;
     g_tileHistoryOut[tileIdx] = historyOut;
 
-    // 3. 计算滑动窗口内的平均差异
     uint sumForAverage = 0;
     if (averageWindowSize >= 1) sumForAverage += currentFrameTileDiffSum;
     if (averageWindowSize >= 2) sumForAverage += historyIn.w;
@@ -118,67 +117,103 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     uint effectiveAverageWindowSize = max(1, averageWindowSize);
     uint averageDiff = sumForAverage / effectiveAverageWindowSize;
 
-    // 4. 核心逻辑：根据差异和状态决定是否刷新
     int stableCounter = g_tileStableCounters[tileIdx];
     uint2 expiryFrame = g_tileProtectionExpiry[tileIdx];
     
-    // 使用平均差异来判断变化，而不是瞬时差异
-    // 如果在保护期内，hasChanged 将为 false
     bool hasChanged = averageDiff > (pixelDeltaThreshold * tileSize * tileSize * 3);
     
-    // --- 关键修改点 2: 移除 inProtection 的 if/else 包装，让状态机始终运行 ---
+    // 计算当前区块属于哪个合围区域
+    uint2 boundingAreaIndex;
+    boundingAreaIndex.x = dispatchThreadId.x / boundingAreaSize.x;
+    boundingAreaIndex.y = dispatchThreadId.y / boundingAreaSize.y;
+    
+    // 计算当前合围区域的起始和结束坐标
+    uint2 boundingAreaStart, boundingAreaEnd;
+    boundingAreaStart.x = boundingAreaIndex.x * boundingAreaSize.x;
+    boundingAreaStart.y = boundingAreaIndex.y * boundingAreaSize.y;
+    boundingAreaEnd.x = boundingAreaStart.x + boundingAreaSize.x;
+    boundingAreaEnd.y = boundingAreaStart.y + boundingAreaSize.y;
+    
+    // 检查当前区块是否在合围区域内
+    bool isInBoundingArea = (dispatchThreadId.x >= boundingAreaStart.x) && 
+                         (dispatchThreadId.x < boundingAreaEnd.x) &&
+                         (dispatchThreadId.y >= boundingAreaStart.y) && 
+                         (dispatchThreadId.y < boundingAreaEnd.y);
+    
+    bool isScrollingContent = false;
+    if (isInBoundingArea && boundingAreaHistoryFrames > 0 && boundingAreaChangeThreshold > 0) 
+    {
+        // 计算当前合围区域的索引
+        uint boundingAreaIdx = boundingAreaIndex.y * ((screenW + boundingAreaSize.x - 1) / boundingAreaSize.x) + boundingAreaIndex.x;
+        
+        uint frameBit = hasChanged ? 1u : 0u;
+        uint historyIndex = currentFrameNumber % boundingAreaHistoryFrames;
+        uint bitPosition = historyIndex;
+        
+        uint historyData = g_boundingAreaHistory[boundingAreaIdx];
+        
+        uint mask = 1u << bitPosition;
+        if (frameBit == 1)
+            historyData |= mask;
+        else
+            historyData &= ~mask;
+            
+        g_boundingAreaHistory[boundingAreaIdx] = historyData;
+        
+        uint changeCount = 0;
+        for (uint i = 0; i < min(boundingAreaHistoryFrames, currentFrameNumber + 1); ++i)
+        {
+            uint checkBitPosition = ((currentFrameNumber - i) % boundingAreaHistoryFrames);
+            uint checkMask = 1u << checkBitPosition;
+            if ((historyData & checkMask) != 0)
+                changeCount++;
+        }
+        
+        if (changeCount >= boundingAreaChangeThreshold)
+            isScrollingContent = true;
+    }
+    
     if (hasChanged)
     {
-        // 区域发生变化
-        if (stableCounter == -1) // 从未变化过的区域
+        if (stableCounter == -1)
         {
             stableCounter = (int)firstRefreshExtraDelay;
         }
-        else if (stableCounter == -2) // 刚冷却完的区域
+        else if (stableCounter == -2)
         {
             stableCounter = (int)firstRefreshExtraDelay;
         }
         else if (stableCounter > (int)stableFramesRequired && stableCounter <= (int)(stableFramesRequired + additionalCooldownFrames))
         {
-            // 在冷却期内发生变化，忽略，不重置计数器
         }
         else
         {
-            // 正在检测中的区域发生变化，重置为1
             stableCounter = 1;
         }
     }
     else if (stableCounter >= 0)
     {
-        // 区域未变化，且正在检测中，增加稳定计数
         if (stableCounter < (int)(stableFramesRequired + additionalCooldownFrames))
         {
             stableCounter++;
         }
         else
         {
-            // 冷却期结束，重置为-2
             stableCounter = -2;
         }
     }
     
-    // 检查是否达到刷新条件, 只有在非保护期内才允许刷新
-    if (!inProtection && stableCounter >= (int)stableFramesRequired && stableCounter < (int)(stableFramesRequired + additionalCooldownFrames))
+    if (!inProtection && !isScrollingContent && stableCounter >= (int)stableFramesRequired && stableCounter < (int)(stableFramesRequired + additionalCooldownFrames))
     {
-        // 添加到刷新列表
         uint writeIndex;
         g_refreshCounter.InterlockedAdd(0, 1, writeIndex);
         g_refreshList[writeIndex] = tileIdx;
         
-        // 重置状态为"已刷新/冷却中"
         stableCounter = -2;
-        // 设置保护期
-        // 计算新的过期帧数
         uint newExpiryLow = currentFrameNumber + protectionFrames;
         uint newExpiryHigh = 0;
         
-        // 检查是否溢出
-        if (newExpiryLow < currentFrameNumber) // 发生溢出
+        if (newExpiryLow < currentFrameNumber)
         {
             newExpiryHigh = 1;
         }
@@ -187,7 +222,6 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         expiryFrame.y = newExpiryHigh;
     }
     
-    // 5. 将更新后的状态写回缓冲区（无论是否在保护期内都要写回）
     g_tileStableCounters[tileIdx] = stableCounter;
     g_tileProtectionExpiry[tileIdx] = expiryFrame;
 }

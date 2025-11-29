@@ -26,6 +26,23 @@ namespace TbEinkSuperFlushTurbo
         Warp = 5
     }
 
+    // 合围区域配置结构 - 现在支持多个相邻的合围区域
+    public struct BoundingAreaConfig
+    {
+        public int Width;       // 每个合围区域宽度（区块单位）
+        public int Height;      // 每个合围区域高度（区块单位）
+        public int HistoryFrames; // 历史帧数
+        public int ChangeThreshold; // 变化阈值
+        
+        public BoundingAreaConfig(int width, int height, int historyFrames, int changeThreshold)
+        {
+            Width = width;
+            Height = height;
+            HistoryFrames = historyFrames;
+            ChangeThreshold = changeThreshold;
+        }
+    }
+
     public class D3DCaptureAndCompute : IDisposable
     {
         public int TileSize { get; set; }
@@ -38,6 +55,9 @@ namespace TbEinkSuperFlushTurbo
         public int ImeCheckInterval { get; set; } // 输入法窗口检查间隔（毫秒）
         public int MouseExclusionRadiusFactor { get; set; } // 鼠标排除区域半径因子
         public uint ProtectionFrames { get; set; } // 从MainForm传入的保护期帧数
+
+        // 合围区域配置
+        public BoundingAreaConfig BoundingArea { get; set; } = new BoundingAreaConfig(4, 4, 10, 5); // 默认配置
 
         public int ScreenWidth => _screenW;
         public int ScreenHeight => _screenH;
@@ -91,6 +111,10 @@ namespace TbEinkSuperFlushTurbo
         private ID3D11UnorderedAccessView? _tileStableCountersUAV;
         private ID3D11Buffer? _tileProtectionExpiryBuffer; // u6
         private ID3D11UnorderedAccessView? _tileProtectionExpiryUAV;
+
+        // 合围区域历史帧缓冲区
+        private ID3D11Buffer? _boundingAreaHistoryBuffer; // u7
+        private ID3D11UnorderedAccessView? _boundingAreaHistoryUAV;
 
         private ID3D11ComputeShader? _computeShader;
         private ID3D11Buffer? _paramBuffer;
@@ -566,6 +590,36 @@ namespace TbEinkSuperFlushTurbo
             var expiryUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)tileCount } };
             _tileProtectionExpiryUAV = _device.CreateUnorderedAccessView(_tileProtectionExpiryBuffer, expiryUavDesc);
 
+            // --- 创建合围区域历史帧缓冲区 ---
+            // 计算合围区域的数量
+            int boundingAreaCountX = (_screenW / TileSize + BoundingArea.Width - 1) / BoundingArea.Width;
+            int boundingAreaCountY = (_screenH / TileSize + BoundingArea.Height - 1) / BoundingArea.Height;
+            int boundingAreaCount = boundingAreaCountX * boundingAreaCountY;
+            
+            var boundingAreaHistoryDesc = new BufferDescription
+            {
+                ByteWidth = (uint)(sizeof(uint) * boundingAreaCount),
+                Usage = ResourceUsage.Default,
+                BindFlags = BindFlags.UnorderedAccess,
+                MiscFlags = ResourceOptionFlags.BufferStructured,
+                StructureByteStride = sizeof(uint)
+            };
+            var initialHistory = new uint[boundingAreaCount];
+            Array.Fill(initialHistory, 0U);
+            var historyHandle = GCHandle.Alloc(initialHistory, GCHandleType.Pinned);
+            try
+            {
+                var historySubresourceData = new SubresourceData(historyHandle.AddrOfPinnedObject());
+                _boundingAreaHistoryBuffer = _device.CreateBuffer(boundingAreaHistoryDesc, historySubresourceData);
+            }
+            finally
+            {
+                historyHandle.Free();
+            }
+            
+            var boundingAreaHistoryUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)boundingAreaCount } };
+            _boundingAreaHistoryUAV = _device.CreateUnorderedAccessView(_boundingAreaHistoryBuffer, boundingAreaHistoryUavDesc);
+
             // --- 初始化历史差异状态缓冲区 ---
             _context!.ClearUnorderedAccessView(_tileStateInUAV!, new Vortice.Mathematics.Int4(0, 0, 0, 0));
 
@@ -575,8 +629,8 @@ namespace TbEinkSuperFlushTurbo
             _computeShader = _device.CreateComputeShader(csBlob.Span);
 
             // --- 常量缓冲区大小必须是16的倍数 ---
-            // 10个uint = 40字节。下一个16的倍数是48。
-            _paramBuffer = _device.CreateBuffer(new BufferDescription(48, BindFlags.ConstantBuffer));
+            // 16个uint = 64字节。
+            _paramBuffer = _device.CreateBuffer(new BufferDescription(64, BindFlags.ConstantBuffer));
             
             // 初始化 _gpuTexPrev 为零纹理，确保第一帧有有效的参考帧
             if (_device != null && _gpuTexPrev != null)
@@ -745,7 +799,9 @@ namespace TbEinkSuperFlushTurbo
                 StableFramesRequired, AdditionalCooldownFrames, FirstRefreshExtraDelay,
                 frameCounter, // currentFrameNumber
                 ProtectionFrames, // 新增：保护期帧数
-                0, 0 // 填充到48字节
+                (uint)BoundingArea.Width, (uint)BoundingArea.Height, 0, 0,  // 包围区域尺寸
+                (uint)BoundingArea.HistoryFrames, (uint)BoundingArea.ChangeThreshold, // 历史帧数和变化阈值
+                0, 0, 0, 0 // 填充到64字节
             };
             _context?.UpdateSubresource(cbData, _paramBuffer!);
             _context?.CSSetConstantBuffer(0, _paramBuffer);
@@ -761,6 +817,7 @@ namespace TbEinkSuperFlushTurbo
             _context?.CSSetUnorderedAccessView(4, _tileBrightnessUAV);
             _context?.CSSetUnorderedAccessView(5, _tileStableCountersUAV);
             _context?.CSSetUnorderedAccessView(6, _tileProtectionExpiryUAV);
+            _context?.CSSetUnorderedAccessView(7, _boundingAreaHistoryUAV); // 绑定合围区域历史帧缓冲区
             
             // 3. 执行计算
             uint groupX = (uint)_tilesX;
@@ -779,6 +836,7 @@ namespace TbEinkSuperFlushTurbo
             _context?.CSSetUnorderedAccessView(4, null);
             _context?.CSSetUnorderedAccessView(5, null);
             _context?.CSSetUnorderedAccessView(6, null);
+            _context?.CSSetUnorderedAccessView(7, null);
 
             // 5. 读回结果
             _context?.CopyResource(_refreshCounterReadback!, _refreshCounter!);
