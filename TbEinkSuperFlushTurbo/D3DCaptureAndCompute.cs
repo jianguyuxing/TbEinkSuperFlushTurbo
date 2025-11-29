@@ -114,7 +114,13 @@ namespace TbEinkSuperFlushTurbo
 
         // 合围区域历史帧缓冲区
         private ID3D11Buffer? _boundingAreaHistoryBuffer; // u7
-        private ID3D11UnorderedAccessView? _boundingAreaHistoryUAV;
+
+        // --- 滚动抑制相关资源 ---
+        private ID3D11Buffer? _boundingAreaTileChangeCountBuffer; // u8 (GPU-side counter)
+        private ID3D11UnorderedAccessView? _boundingAreaTileChangeCountUAV;
+        private ID3D11Buffer? _boundingAreaTileChangeCountReadback; // Readback for the counter
+        private uint[]? _boundingAreaHistory_cpu; // CPU-side history for logic
+        private int _boundingAreaCount;
 
         private ID3D11ComputeShader? _computeShader;
         private ID3D11Buffer? _paramBuffer;
@@ -592,33 +598,42 @@ namespace TbEinkSuperFlushTurbo
 
             // --- 创建合围区域历史帧缓冲区 ---
             // 计算合围区域的数量
-            int boundingAreaCountX = (_screenW / TileSize + BoundingArea.Width - 1) / BoundingArea.Width;
-            int boundingAreaCountY = (_screenH / TileSize + BoundingArea.Height - 1) / BoundingArea.Height;
-            int boundingAreaCount = boundingAreaCountX * boundingAreaCountY;
-            
+            int boundingAreaCountX = (_tilesX + BoundingArea.Width - 1) / BoundingArea.Width;
+            int boundingAreaCountY = (_tilesY + BoundingArea.Height - 1) / BoundingArea.Height;
+            _boundingAreaCount = boundingAreaCountX * boundingAreaCountY;
+
             var boundingAreaHistoryDesc = new BufferDescription
             {
-                ByteWidth = (uint)(sizeof(uint) * boundingAreaCount),
+                ByteWidth = (uint)(sizeof(uint) * _boundingAreaCount),
+                Usage = ResourceUsage.Default, // Will be updated by CPU
+                BindFlags = BindFlags.ShaderResource, // Readonly for shader
+                MiscFlags = ResourceOptionFlags.BufferStructured,
+                StructureByteStride = sizeof(uint)
+            };
+            _boundingAreaHistoryBuffer = _device.CreateBuffer(boundingAreaHistoryDesc);
+            _boundingAreaHistory_cpu = new uint[_boundingAreaCount];
+            
+            // 创建合围区域历史缓冲区的着色器资源视图 (SRV)
+            var boundingAreaHistorySrvDesc = new ShaderResourceViewDescription(
+                _boundingAreaHistoryBuffer,
+                Format.Unknown,
+                0,
+                (uint)_boundingAreaCount);
+            // 注意：我们暂时不在这创建SRV，因为它将在每次渲染时创建
+
+            // --- 创建并初始化合围区域单帧变化计数缓冲区 ---
+            var boundingAreaCountDesc = new BufferDescription
+            {
+                ByteWidth = (uint)(sizeof(uint) * _boundingAreaCount),
                 Usage = ResourceUsage.Default,
                 BindFlags = BindFlags.UnorderedAccess,
                 MiscFlags = ResourceOptionFlags.BufferStructured,
                 StructureByteStride = sizeof(uint)
             };
-            var initialHistory = new uint[boundingAreaCount];
-            Array.Fill(initialHistory, 0U);
-            var historyHandle = GCHandle.Alloc(initialHistory, GCHandleType.Pinned);
-            try
-            {
-                var historySubresourceData = new SubresourceData(historyHandle.AddrOfPinnedObject());
-                _boundingAreaHistoryBuffer = _device.CreateBuffer(boundingAreaHistoryDesc, historySubresourceData);
-            }
-            finally
-            {
-                historyHandle.Free();
-            }
-            
-            var boundingAreaHistoryUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)boundingAreaCount } };
-            _boundingAreaHistoryUAV = _device.CreateUnorderedAccessView(_boundingAreaHistoryBuffer, boundingAreaHistoryUavDesc);
+            _boundingAreaTileChangeCountBuffer = _device.CreateBuffer(boundingAreaCountDesc);
+            var boundingAreaCountUavDesc = new UnorderedAccessViewDescription(_boundingAreaTileChangeCountBuffer, Format.Unknown, 0, (uint)_boundingAreaCount);
+            _boundingAreaTileChangeCountUAV = _device.CreateUnorderedAccessView(_boundingAreaTileChangeCountBuffer, boundingAreaCountUavDesc);
+            _boundingAreaTileChangeCountReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(sizeof(uint) * _boundingAreaCount) });
 
             // --- 初始化历史差异状态缓冲区 ---
             _context!.ClearUnorderedAccessView(_tileStateInUAV!, new Vortice.Mathematics.Int4(0, 0, 0, 0));
@@ -626,6 +641,13 @@ namespace TbEinkSuperFlushTurbo
             var shaderPath = Path.Combine(AppContext.BaseDirectory, "ComputeShader.hlsl");
             var csBlob = Compiler.CompileFromFile(shaderPath, "CSMain", "cs_5_0", ShaderFlags.None, EffectFlags.None);
             _debugLogger?.Invoke($"Shader compiled successfully, bytecode size: {csBlob.Span.Length} bytes");
+            
+            // 检查编译后的字节码是否有效
+            if (csBlob.Span.Length == 0)
+            {
+                throw new InvalidOperationException("Shader compilation resulted in empty bytecode");
+            }
+            
             _computeShader = _device.CreateComputeShader(csBlob.Span);
 
             // --- 常量缓冲区大小必须是16的倍数 ---
@@ -788,28 +810,41 @@ namespace TbEinkSuperFlushTurbo
                 return (result, new float[_tilesX * _tilesY]); // Return empty list with brightness data
             }
 
-            // 1. 清空刷新计数器
+            // 1. GPU 计算
             _context?.ClearUnorderedAccessView(_refreshCounterUAV!, new Vortice.Mathematics.Int4(0));
+            // Re-enable scrolling detection
+            _context?.ClearUnorderedAccessView(_boundingAreaTileChangeCountUAV!, new Vortice.Mathematics.Int4(0));
 
-            // 2. 绑定资源
             _context?.CSSetShader(_computeShader);
-            // 更新常量缓冲区
-            uint[] cbData = { 
-                (uint)_screenW, (uint)_screenH, (uint)TileSize, (uint)PixelDelta, AverageWindowSize,
-                StableFramesRequired, AdditionalCooldownFrames, FirstRefreshExtraDelay,
-                frameCounter, // currentFrameNumber
-                ProtectionFrames, // 新增：保护期帧数
-                (uint)BoundingArea.Width, (uint)BoundingArea.Height, 0, 0,  // 包围区域尺寸
-                (uint)BoundingArea.HistoryFrames, (uint)BoundingArea.ChangeThreshold, // 历史帧数和变化阈值
-                0, 0, 0, 0 // 填充到64字节
-            };
+
+            // 确保传递给着色器的参数数量与 HLSL 中定义的匹配
+            uint[] cbData = new uint[16];
+            cbData[0] = (uint)_screenW;
+            cbData[1] = (uint)_screenH;
+            cbData[2] = (uint)TileSize;
+            cbData[3] = (uint)PixelDelta;
+            cbData[4] = AverageWindowSize;
+            cbData[5] = StableFramesRequired;
+            cbData[6] = AdditionalCooldownFrames;
+            cbData[7] = FirstRefreshExtraDelay;
+            cbData[8] = frameCounter;
+            cbData[9] = ProtectionFrames;
+            cbData[10] = (uint)BoundingArea.Width;
+            cbData[11] = (uint)BoundingArea.Height;
+            cbData[12] = (uint)BoundingArea.HistoryFrames;
+            cbData[13] = (uint)BoundingArea.ChangeThreshold;
+            cbData[14] = 0; // padding1
+            cbData[15] = 0; // padding2
             _context?.UpdateSubresource(cbData, _paramBuffer!);
             _context?.CSSetConstantBuffer(0, _paramBuffer);
-            
+
             using var srvPrev = _device!.CreateShaderResourceView(_gpuTexPrev!);
             using var srvCurr = _device!.CreateShaderResourceView(_gpuTexCurr!);
+            using var srvHistory = _device.CreateShaderResourceView(_boundingAreaHistoryBuffer);
             _context?.CSSetShaderResource(0, srvPrev);
             _context?.CSSetShaderResource(1, srvCurr);
+            _context?.CSSetShaderResource(2, srvHistory); // 作为只读资源绑定
+
             _context?.CSSetUnorderedAccessView(0, _tileStateInUAV);
             _context?.CSSetUnorderedAccessView(1, _tileStateOutUAV);
             _context?.CSSetUnorderedAccessView(2, _refreshListUAV);
@@ -817,28 +852,51 @@ namespace TbEinkSuperFlushTurbo
             _context?.CSSetUnorderedAccessView(4, _tileBrightnessUAV);
             _context?.CSSetUnorderedAccessView(5, _tileStableCountersUAV);
             _context?.CSSetUnorderedAccessView(6, _tileProtectionExpiryUAV);
-            _context?.CSSetUnorderedAccessView(7, _boundingAreaHistoryUAV); // 绑定合围区域历史帧缓冲区
-            
-            // 3. 执行计算
-            uint groupX = (uint)_tilesX;
-            uint groupY = (uint)_tilesY;
-            _context?.Dispatch(groupX, groupY, 1);
-            
-            // 添加GPU同步点，确保计算着色器执行完成
-            _context?.Flush();
+            // Re-enable scrolling detection
+            _context?.CSSetUnorderedAccessView(7, _boundingAreaTileChangeCountUAV);
 
-            // 4. 解绑资源
+            _context?.Dispatch((uint)_tilesX, (uint)_tilesY, 1);
+
             _context?.CSSetShader(null);
-            _context?.CSSetUnorderedAccessView(0, null);
-            _context?.CSSetUnorderedAccessView(1, null);
-            _context?.CSSetUnorderedAccessView(2, null);
-            _context?.CSSetUnorderedAccessView(3, null);
-            _context?.CSSetUnorderedAccessView(4, null);
-            _context?.CSSetUnorderedAccessView(5, null);
-            _context?.CSSetUnorderedAccessView(6, null);
-            _context?.CSSetUnorderedAccessView(7, null);
+            _context?.CSSetShaderResource(0, null);
+            _context?.CSSetShaderResource(1, null);
+            _context?.CSSetShaderResource(7, null);
+            for (int i = 0; i <= 8; i++)
+            {
+                if (i != 7) _context?.CSSetUnorderedAccessView((uint)i, null);
+            }
 
-            // 5. 读回结果
+            // 3. CPU端处理滚动抑制逻辑
+            _context?.CopyResource(_boundingAreaTileChangeCountReadback!, _boundingAreaTileChangeCountBuffer!);
+            var map = _context!.Map(_boundingAreaTileChangeCountReadback!, 0, MapMode.Read);
+            var changeCounts = new uint[_boundingAreaCount];
+            
+            unsafe 
+            {
+                fixed (uint* ptr = changeCounts)
+                {
+                    Buffer.MemoryCopy((void*)map.DataPointer, ptr, changeCounts.Length * (long)sizeof(uint), changeCounts.Length * (long)sizeof(uint));
+                }
+            }
+            _context.Unmap(_boundingAreaTileChangeCountReadback!, 0);
+
+            for (int i = 0; i < _boundingAreaCount; i++)
+            {
+                bool isAreaChangedSignificantly = changeCounts[i] > 0;
+                uint historyIndex = frameCounter % (uint)BoundingArea.HistoryFrames;
+                uint mask = 1u << (int)(historyIndex & 31);
+
+                if (isAreaChangedSignificantly)
+                {
+                    _boundingAreaHistory_cpu![i] |= mask;
+                }
+                else
+                {
+                    _boundingAreaHistory_cpu![i] &= ~mask;
+                }
+            }
+
+            // 4. 读回结果
             _context?.CopyResource(_refreshCounterReadback!, _refreshCounter!);
             var counterMap = _context?.Map(_refreshCounterReadback!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
             int refreshCount = counterMap.HasValue ? Marshal.ReadInt32(counterMap.Value.DataPointer) : 0;
@@ -861,13 +919,13 @@ namespace TbEinkSuperFlushTurbo
                 }
             }
 
-            // 6. 状态迭代：将当前帧的输出状态复制到下一帧的输入状态
+            // 5. 状态迭代：将当前帧的输出状态复制到下一帧的输入状态
             _context?.CopyResource(_tileStateIn!, _tileStateOut!);
             
-            // 7. 纹理迭代：将当前帧的纹理复制到下一帧的上一帧纹理
+            // 6. 纹理迭代：将当前帧的纹理复制到下一帧的上一帧纹理
             _context?.CopyResource(_gpuTexPrev!, _gpuTexCurr!);
             
-            // 8. 读回亮度数据
+            // 7. 读回亮度数据
             float[] brightnessData = new float[_tilesX * _tilesY];
             _context?.CopyResource(_tileBrightnessReadback!, _tileBrightness!);
             var brightnessMap = _context?.Map(_tileBrightnessReadback!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
