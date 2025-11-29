@@ -84,11 +84,27 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         g_tileBrightness[tileIdx] = 0.0f;
     }
 
+    // --- 关键修改点 ---
+    // 在更新历史记录之前，检查保护期
+    uint2 expiryFrameCheck = g_tileProtectionExpiry[tileIdx];
+    bool inProtection = false;
+    if (expiryFrameCheck.y > 0 || (expiryFrameCheck.y == 0 && expiryFrameCheck.x > currentFrameNumber))
+    {
+        inProtection = true;
+    }
+
+    if (inProtection)
+    {
+        // 如果在保护期内，则强制认为本帧没有变化，避免污染历史记录
+        currentFrameTileDiffSum = 0;
+    }
+    // --- 修改结束 ---
+
     // 2. 更新历史差异记录 (用于未来的平均值计算)
     uint4 historyIn = g_tileHistoryIn[tileIdx];
     uint4 historyOut;
     historyOut.xyz = historyIn.yzw; // Shift history
-    historyOut.w = currentFrameTileDiffSum;
+    historyOut.w = currentFrameTileDiffSum; // 此处的值已经被修正
     g_tileHistoryOut[tileIdx] = historyOut;
 
     // 3. 计算滑动窗口内的平均差异
@@ -106,85 +122,72 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     int stableCounter = g_tileStableCounters[tileIdx];
     uint2 expiryFrame = g_tileProtectionExpiry[tileIdx];
     
-    // 比较 uint2 表示的64位值
-    // 先比较高位，如果高位相等再比较低位
-    bool inProtection = false;
-    if (expiryFrame.y > 0)
-    {
-        inProtection = true; // 高位大于0，肯定大于currentFrameNumber（currentFrameNumber的高位为0）
-    }
-    else if (expiryFrame.y == 0)
-    {
-        inProtection = expiryFrame.x > currentFrameNumber;
-    }
-    
     // 使用平均差异来判断变化，而不是瞬时差异
+    // 如果在保护期内，hasChanged 将为 false
     bool hasChanged = averageDiff > (pixelDeltaThreshold * tileSize * tileSize * 3);
     
-    if (!inProtection)
+    // --- 关键修改点 2: 移除 inProtection 的 if/else 包装，让状态机始终运行 ---
+    if (hasChanged)
     {
-        if (hasChanged)
+        // 区域发生变化
+        if (stableCounter == -1) // 从未变化过的区域
         {
-            // 区域发生变化
-            if (stableCounter == -1) // 从未变化过的区域
-            {
-                stableCounter = (int)firstRefreshExtraDelay;
-            }
-            else if (stableCounter == -2) // 刚冷却完的区域
-            {
-                stableCounter = (int)firstRefreshExtraDelay;
-            }
-            else if (stableCounter > (int)stableFramesRequired && stableCounter <= (int)(stableFramesRequired + additionalCooldownFrames))
-            {
-                // 在冷却期内发生变化，忽略，不重置计数器
-            }
-            else
-            {
-                // 正在检测中的区域发生变化，重置为1
-                stableCounter = 1;
-            }
+            stableCounter = (int)firstRefreshExtraDelay;
         }
-        else if (stableCounter >= 0)
+        else if (stableCounter == -2) // 刚冷却完的区域
         {
-            // 区域未变化，且正在检测中，增加稳定计数
-            if (stableCounter < (int)(stableFramesRequired + additionalCooldownFrames))
-            {
-                stableCounter++;
-            }
-            else
-            {
-                // 冷却期结束，重置为-2
-                stableCounter = -2;
-            }
+            stableCounter = (int)firstRefreshExtraDelay;
         }
-        
-        // 检查是否达到刷新条件
-        if (stableCounter >= (int)stableFramesRequired && stableCounter < (int)(stableFramesRequired + additionalCooldownFrames))
+        else if (stableCounter > (int)stableFramesRequired && stableCounter <= (int)(stableFramesRequired + additionalCooldownFrames))
         {
-            // 添加到刷新列表
-            uint writeIndex;
-            g_refreshCounter.InterlockedAdd(0, 1, writeIndex);
-            g_refreshList[writeIndex] = tileIdx;
-            
-            // 重置状态为“已刷新/冷却中”
+            // 在冷却期内发生变化，忽略，不重置计数器
+        }
+        else
+        {
+            // 正在检测中的区域发生变化，重置为1
+            stableCounter = 1;
+        }
+    }
+    else if (stableCounter >= 0)
+    {
+        // 区域未变化，且正在检测中，增加稳定计数
+        if (stableCounter < (int)(stableFramesRequired + additionalCooldownFrames))
+        {
+            stableCounter++;
+        }
+        else
+        {
+            // 冷却期结束，重置为-2
             stableCounter = -2;
-            // 设置保护期
-            // 计算新的过期帧数
-            uint newExpiryLow = currentFrameNumber + protectionFrames;
-            uint newExpiryHigh = 0;
-            
-            // 检查是否溢出
-            if (newExpiryLow < currentFrameNumber) // 发生溢出
-            {
-                newExpiryHigh = 1;
-            }
-            
-            expiryFrame.x = newExpiryLow;
-            expiryFrame.y = newExpiryHigh;
         }
     }
     
-    // 5. 将更新后的状态写回缓冲区
+    // 检查是否达到刷新条件, 只有在非保护期内才允许刷新
+    if (!inProtection && stableCounter >= (int)stableFramesRequired && stableCounter < (int)(stableFramesRequired + additionalCooldownFrames))
+    {
+        // 添加到刷新列表
+        uint writeIndex;
+        g_refreshCounter.InterlockedAdd(0, 1, writeIndex);
+        g_refreshList[writeIndex] = tileIdx;
+        
+        // 重置状态为"已刷新/冷却中"
+        stableCounter = -2;
+        // 设置保护期
+        // 计算新的过期帧数
+        uint newExpiryLow = currentFrameNumber + protectionFrames;
+        uint newExpiryHigh = 0;
+        
+        // 检查是否溢出
+        if (newExpiryLow < currentFrameNumber) // 发生溢出
+        {
+            newExpiryHigh = 1;
+        }
+        
+        expiryFrame.x = newExpiryLow;
+        expiryFrame.y = newExpiryHigh;
+    }
+    
+    // 5. 将更新后的状态写回缓冲区（无论是否在保护期内都要写回）
     g_tileStableCounters[tileIdx] = stableCounter;
     g_tileProtectionExpiry[tileIdx] = expiryFrame;
 }
