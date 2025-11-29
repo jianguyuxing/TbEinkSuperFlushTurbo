@@ -33,13 +33,15 @@ namespace TbEinkSuperFlushTurbo
         public int Height;      // 每个合围区域高度（区块单位）
         public int HistoryFrames; // 历史帧数
         public int ChangeThreshold; // 变化阈值
+        public int RefreshBlockThreshold; // 判定合围区域刷新所需的区块数阈值
     
-        public BoundingAreaConfig(int width, int height, int historyFrames, int changeThreshold)
+        public BoundingAreaConfig(int width, int height, int historyFrames, int changeThreshold, int refreshBlockThreshold)
         {
             Width = width;
             Height = height;
             HistoryFrames = historyFrames;
             ChangeThreshold = changeThreshold;
+            RefreshBlockThreshold = refreshBlockThreshold;
         }
     }
 
@@ -654,8 +656,8 @@ namespace TbEinkSuperFlushTurbo
             _computeShader = _device.CreateComputeShader(csBlob.Span);
 
             // --- 常量缓冲区大小必须是16的倍数 ---
-            // 16个uint = 64字节。
-            _paramBuffer = _device.CreateBuffer(new BufferDescription(64, BindFlags.ConstantBuffer));
+            // 17个uint = 68字节，需要向上取整到16的倍数 -> 80字节 (5个16字节块)。
+            _paramBuffer = _device.CreateBuffer(new BufferDescription(80, BindFlags.ConstantBuffer));
             
             // 初始化 _gpuTexPrev 为零纹理，确保第一帧有有效的参考帧
             if (_device != null && _gpuTexPrev != null)
@@ -821,7 +823,7 @@ namespace TbEinkSuperFlushTurbo
             _context?.CSSetShader(_computeShader);
 
             // 确保传递给着色器的参数数量与 HLSL 中定义的匹配
-            uint[] cbData = new uint[16];
+            uint[] cbData = new uint[20]; // 增加数组大小以容纳新参数
             cbData[0] = (uint)_screenW;
             cbData[1] = (uint)_screenH;
             cbData[2] = (uint)TileSize;
@@ -836,8 +838,10 @@ namespace TbEinkSuperFlushTurbo
             cbData[11] = (uint)BoundingArea.Height;
             cbData[12] = (uint)BoundingArea.HistoryFrames;
             cbData[13] = (uint)BoundingArea.ChangeThreshold;
-            cbData[14] = 0; // padding1
-            cbData[15] = 0; // padding2
+            cbData[14] = (uint)BoundingArea.RefreshBlockThreshold; // 新增参数
+            cbData[15] = 0; // padding1
+            cbData[16] = 0; // padding2
+            // 剩余位置自动初始化为0
             _context?.UpdateSubresource(cbData, _paramBuffer!);
             _context?.CSSetConstantBuffer(0, _paramBuffer);
 

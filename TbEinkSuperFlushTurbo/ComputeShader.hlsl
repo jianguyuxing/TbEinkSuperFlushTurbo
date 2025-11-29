@@ -14,8 +14,8 @@ cbuffer Params : register(b0)
     uint boundingAreaHeight;
     uint boundingAreaHistoryFrames;
     uint boundingAreaChangeThreshold;
+    uint boundingAreaRefreshBlockThreshold; // 新增：判定合围区域刷新所需的区块数阈值
     uint padding1;
-    uint padding2;
 }
 
 Texture2D<float4> g_texPrev : register(t0);
@@ -109,20 +109,30 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
             InterlockedAdd(g_boundingAreaTileChangeCount[boundingAreaIdx], 1);
         }
         
-        uint historyData = g_boundingAreaHistory[boundingAreaIdx];
-        uint significantChangeCount = 0;
-        uint maxTests = boundingAreaHistoryFrames < 32 ? boundingAreaHistoryFrames : 32;
-        for (uint i = 0; i < maxTests; ++i)
-        {
-            if ((historyData & (1u << i)) != 0)
-            {
-                significantChangeCount++;
-            }
-        }
-        
-        if (significantChangeCount >= boundingAreaChangeThreshold)
+        // 只有当变化区块数达到阈值时，才认为该合围区域正在滚动
+        uint areaChangeCount = g_boundingAreaTileChangeCount[boundingAreaIdx];
+        if (areaChangeCount >= boundingAreaRefreshBlockThreshold)
         {
             isScrollingContent = true;
+        }
+        else
+        {
+            // 保留原有的基于历史帧的判断逻辑作为备选
+            uint historyData = g_boundingAreaHistory[boundingAreaIdx];
+            uint significantChangeCount = 0;
+            uint maxTests = boundingAreaHistoryFrames < 32 ? boundingAreaHistoryFrames : 32;
+            for (uint i = 0; i < maxTests; ++i)
+            {
+                if ((historyData & (1u << i)) != 0)
+                {
+                    significantChangeCount++;
+                }
+            }
+            
+            if (significantChangeCount >= boundingAreaChangeThreshold)
+            {
+                isScrollingContent = true;
+            }
         }
     }
     
