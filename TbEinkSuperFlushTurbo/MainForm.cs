@@ -34,18 +34,18 @@ namespace TbEinkSuperFlushTurbo
         private const uint FIRST_REFRESH_EXTRA_DELAY = 2;
 
         public const int OVERLAY_DISPLAY_TIME = 100; // ms
-        private const int POLL_TIMER_INTERVAL = 515; // ms ditect period
+        private const int POLL_TIMER_INTERVAL = 500; // ms ditect period
 
-        // 合围区域配置，用于抑制滚动区域的刷新 - 现在使用多个相邻的合围区域
-        private const int BOUNDING_AREA_WIDTH = 40;  // 每个合围区域宽度（区块数量）
-        private const int BOUNDING_AREA_HEIGHT = 40; // 每个合围区域高度（区块数量）
-        private const int BOUNDING_AREA_HISTORY_FRAMES = 5; // 历史帧数
-        private const int BOUNDING_AREA_CHANGE_THRESHOLD = 5; // 变化帧阈值
-        private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = 120; // 单帧变化区块数阈值
+        // 合围区域配置，用于抑制滚动区域的刷新 - 单个区域内m帧内n帧变动时，区域内区块不刷新
+        private const int BOUNDING_AREA_WIDTH = 80;  // 每个合围区域宽度（区块数量）
+        private const int BOUNDING_AREA_HEIGHT = 80; // 每个合围区域高度（区块数量）
+        private const int BOUNDING_AREA_HISTORY_FRAMES = 4; // 历史帧数
+        private const int BOUNDING_AREA_CHANGE_THRESHOLD = 4; // 变化帧阈值
+        private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = 4200; // 区块变化数阈值（单个合围区域内每帧）
 
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / POLL_TIMER_INTERVAL) + ADDITIONAL_COOLDOWN_FRAMES;
 
-        private const double RESET_THRESHOLD_PERCENT = 95;
+        private const double RESET_THRESHOLD_PERCENT = 98;
         private NotifyIcon? _trayIcon;
         private bool _forceDirectXCapture = false;
 
