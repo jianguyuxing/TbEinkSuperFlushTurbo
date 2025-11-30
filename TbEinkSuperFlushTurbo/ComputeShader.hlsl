@@ -139,11 +139,37 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     int stableCounter = g_tileStableCounters[tileIdx];
     if (hasChanged)
     {
-        stableCounter = (stableCounter == -1) ? (int)firstRefreshExtraDelay : 0;
+        // Modification: For -1 state blocks, do not set to firstRefreshExtraDelay, instead set to -100-firstRefreshExtraDelay
+        if (stableCounter == -1) 
+        {
+            stableCounter = -100 - (int)firstRefreshExtraDelay;
+        }
+        else if (stableCounter < -100)
+        {
+           stableCounter ++;
+        }
+        else if (stableCounter == -2 && inProtection)
+        {
+            // Keep stability counter unchanged
+        }
+        else
+        {
+            stableCounter = 0;
+        }
     }
     else if (stableCounter >= 0)
     {
         stableCounter = (stableCounter < (int)(stableFramesRequired + additionalCooldownFrames)) ? (stableCounter + 1) : -2;
+    }
+    else if (stableCounter < -100)
+    {
+        // Process -100 type counters, increment until reaching -100
+        stableCounter++;
+
+    }
+    else if (stableCounter == -100)
+    {
+        stableCounter = -2;
     }
     
     if (!inProtection && !isScrollingContent && stableCounter >= (int)stableFramesRequired && stableCounter < (int)(stableFramesRequired + additionalCooldownFrames))
