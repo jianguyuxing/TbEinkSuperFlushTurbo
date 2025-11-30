@@ -480,7 +480,8 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke($"DEBUG: Created textures with format: {texFormat}, conversion needed: {needConversion}");
 
             // --- 创建新的 GPU 缓冲区 ---
-            // The shader now uses RWStructuredBuffer<uint> with 20 values per tile
+            // The shader now uses RWStructuredBuffer<uint> with 20 values per tile for history
+            // Note: This supports up to 20-frame average window size (AVERAGE_WINDOW_SIZE in MainForm)
             const int historyElementSize = sizeof(uint); // sizeof(uint)
             int historyArraySize = 20; // Support up to 20-frame history
 

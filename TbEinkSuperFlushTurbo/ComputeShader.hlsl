@@ -36,7 +36,8 @@ RWStructuredBuffer<uint2> g_tileProtectionExpiry : register(u6);
 StructuredBuffer<uint> g_boundingAreaHistory : register(t2);
 RWStructuredBuffer<uint> g_boundingAreaTileChangeCount : register(u7);
 
-// Increase history frame count to 20
+// Maximum supported history frame count - can be increased if needed
+// Note: This should be kept in sync with the C# code buffer allocation
 #define HISTORY_FRAME_COUNT 20
 
 [numthreads(8, 8, 1)]
@@ -102,7 +103,8 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
     g_tileHistoryOut[tileIdx * HISTORY_FRAME_COUNT + HISTORY_FRAME_COUNT - 1] = currentFrameTileDiffSum;
 
-    // Calculate sum based on averageWindowSize parameter
+    // Calculate sum based on averageWindowSize parameter (passed from MainForm)
+    // Note: Currently supports up to 20 frames maximum
     uint sumForAverage = currentFrameTileDiffSum;
     for (uint i = 1; i < min(HISTORY_FRAME_COUNT, averageWindowSize); i++) {
         sumForAverage += historyValues[HISTORY_FRAME_COUNT - i];
