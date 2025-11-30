@@ -139,7 +139,7 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     int stableCounter = g_tileStableCounters[tileIdx];
     if (hasChanged)
     {
-        stableCounter = (stableCounter < 0) ? (int)firstRefreshExtraDelay : 1;
+        stableCounter = (stableCounter == -1) ? (int)firstRefreshExtraDelay : 0;
     }
     else if (stableCounter >= 0)
     {
