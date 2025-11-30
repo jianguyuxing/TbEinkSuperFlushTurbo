@@ -480,12 +480,13 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke($"DEBUG: Created textures with format: {texFormat}, conversion needed: {needConversion}");
 
             // --- 创建新的 GPU 缓冲区 ---
-            // The shader uses RWStructuredBuffer<uint4>, so the stride is always 16.
-            const int historyElementSize = 16; // sizeof(uint4)
+            // The shader now uses RWStructuredBuffer<uint> with 20 values per tile
+            const int historyElementSize = sizeof(uint); // sizeof(uint)
+            int historyArraySize = 20; // Support up to 20-frame history
 
             var stateBufferDesc = new BufferDescription
             {
-                ByteWidth = (uint)(historyElementSize * tileCount),
+                ByteWidth = (uint)(historyElementSize * tileCount * historyArraySize),
                 Usage = ResourceUsage.Default,
                 BindFlags = BindFlags.UnorderedAccess,
                 MiscFlags = ResourceOptionFlags.BufferStructured,
@@ -514,7 +515,7 @@ namespace TbEinkSuperFlushTurbo
             _refreshCounter = _device.CreateBuffer(counterDesc);
 
             // --- 创建 UAVs ---
-            var structuredUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)tileCount } };
+            var structuredUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)(tileCount * historyArraySize) } };
             _tileStateInUAV = _device.CreateUnorderedAccessView(_tileStateIn, structuredUavDesc);
             _tileStateOutUAV = _device.CreateUnorderedAccessView(_tileStateOut, structuredUavDesc);
             
@@ -528,7 +529,7 @@ namespace TbEinkSuperFlushTurbo
             var readbackDesc = new BufferDescription { Usage = ResourceUsage.Staging, CPUAccessFlags = CpuAccessFlags.Read, BindFlags = BindFlags.None };
             _refreshListReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(sizeof(uint) * tileCount) });
             _refreshCounterReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = sizeof(uint) });
-            _tileStateInReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(historyElementSize * tileCount) });
+            _tileStateInReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(historyElementSize * tileCount * historyArraySize) });
             
             // --- 创建亮度数据缓冲区 ---
             var brightnessBufferDesc = new BufferDescription

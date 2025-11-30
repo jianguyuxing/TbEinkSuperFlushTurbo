@@ -21,9 +21,9 @@ cbuffer Params : register(b0)
 Texture2D<float4> g_texPrev : register(t0);
 Texture2D<float4> g_texCurr : register(t1);
 
-// Increase buffer size to support larger average window sizes
-RWStructuredBuffer<uint4> g_tileHistoryIn : register(u0);
-RWStructuredBuffer<uint4> g_tileHistoryOut : register(u1);
+// Use array-based buffers to support larger average windows
+RWStructuredBuffer<uint> g_tileHistoryIn : register(u0);
+RWStructuredBuffer<uint> g_tileHistoryOut : register(u1);
 
 RWStructuredBuffer<uint> g_refreshList : register(u2);
 RWByteAddressBuffer g_refreshCounter : register(u3);
@@ -35,6 +35,9 @@ RWStructuredBuffer<uint2> g_tileProtectionExpiry : register(u6);
 
 StructuredBuffer<uint> g_boundingAreaHistory : register(t2);
 RWStructuredBuffer<uint> g_boundingAreaTileChangeCount : register(u7);
+
+// Increase history frame count to 20
+#define HISTORY_FRAME_COUNT 20
 
 [numthreads(8, 8, 1)]
 void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
@@ -86,18 +89,24 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         currentFrameTileDiffSum = 0;
     }
 
-    uint4 historyIn = g_tileHistoryIn[tileIdx];
-    uint4 historyOut;
-    historyOut.xyz = historyIn.yzw;
-    historyOut.w = currentFrameTileDiffSum;
-    g_tileHistoryOut[tileIdx] = historyOut;
+    // Handle history with array-based approach
+    // Read 20 history values (support up to 20-frame average)
+    uint historyValues[HISTORY_FRAME_COUNT];
+    for (int i = 0; i < HISTORY_FRAME_COUNT; i++) {
+        historyValues[i] = g_tileHistoryIn[tileIdx * HISTORY_FRAME_COUNT + i];
+    }
+    
+    // Shift history and add current value
+    for (int i = 0; i < HISTORY_FRAME_COUNT - 1; i++) {
+        g_tileHistoryOut[tileIdx * HISTORY_FRAME_COUNT + i] = historyValues[i + 1];
+    }
+    g_tileHistoryOut[tileIdx * HISTORY_FRAME_COUNT + HISTORY_FRAME_COUNT - 1] = currentFrameTileDiffSum;
 
     // Calculate sum based on averageWindowSize parameter
     uint sumForAverage = currentFrameTileDiffSum;
-    if (averageWindowSize > 1) sumForAverage += historyIn.w;
-    if (averageWindowSize > 2) sumForAverage += historyIn.z;
-    if (averageWindowSize > 3) sumForAverage += historyIn.y;
-    if (averageWindowSize > 4) sumForAverage += historyIn.x;
+    for (uint i = 1; i < min(HISTORY_FRAME_COUNT, averageWindowSize); i++) {
+        sumForAverage += historyValues[HISTORY_FRAME_COUNT - i];
+    }
     
     uint averageDiff = sumForAverage / max(1, averageWindowSize);
     bool hasChanged = averageDiff > (pixelDeltaThreshold * tileSize * tileSize * 3);
