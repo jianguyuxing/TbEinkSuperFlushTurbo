@@ -14,13 +14,14 @@ cbuffer Params : register(b0)
     uint boundingAreaHeight;
     uint boundingAreaHistoryFrames;
     uint boundingAreaChangeThreshold;
-    uint boundingAreaRefreshBlockThreshold; // 新增：判定合围区域刷新所需的区块数阈值
+    uint boundingAreaRefreshBlockThreshold; // New: threshold for determining refresh of bounding areas
     uint padding1;
 }
 
 Texture2D<float4> g_texPrev : register(t0);
 Texture2D<float4> g_texCurr : register(t1);
 
+// Increase buffer size to support larger average window sizes
 RWStructuredBuffer<uint4> g_tileHistoryIn : register(u0);
 RWStructuredBuffer<uint4> g_tileHistoryOut : register(u1);
 
@@ -34,7 +35,6 @@ RWStructuredBuffer<uint2> g_tileProtectionExpiry : register(u6);
 
 StructuredBuffer<uint> g_boundingAreaHistory : register(t2);
 RWStructuredBuffer<uint> g_boundingAreaTileChangeCount : register(u7);
-
 
 [numthreads(8, 8, 1)]
 void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
@@ -61,7 +61,7 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
                 uint3 diff = (uint3)(abs(currColor.rgb - prevColor.rgb) * 255.0f);
                 currentFrameTileDiffSum += diff.r + diff.g + diff.b;
                 
-                // 计算亮度 (用于OverlayForm)
+                // Calculate brightness (for OverlayForm)
                 float luminance = 0.299f * currColor.r + 0.587f * currColor.g + 0.114f * currColor.b;
                 tileBrightnessSum += luminance;
                 pixelCount++;
@@ -69,7 +69,7 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         }
     }
     
-    // 写入平均亮度
+    // Write average brightness
     if (pixelCount > 0)
     {
         g_tileBrightness[tileIdx] = tileBrightnessSum / (float)pixelCount;
@@ -92,7 +92,13 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     historyOut.w = currentFrameTileDiffSum;
     g_tileHistoryOut[tileIdx] = historyOut;
 
-    uint sumForAverage = historyOut.w + historyIn.w + historyIn.z + historyIn.y + historyIn.x;
+    // Calculate sum based on averageWindowSize parameter
+    uint sumForAverage = currentFrameTileDiffSum;
+    if (averageWindowSize > 1) sumForAverage += historyIn.w;
+    if (averageWindowSize > 2) sumForAverage += historyIn.z;
+    if (averageWindowSize > 3) sumForAverage += historyIn.y;
+    if (averageWindowSize > 4) sumForAverage += historyIn.x;
+    
     uint averageDiff = sumForAverage / max(1, averageWindowSize);
     bool hasChanged = averageDiff > (pixelDeltaThreshold * tileSize * tileSize * 3);
 
@@ -109,7 +115,7 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
             InterlockedAdd(g_boundingAreaTileChangeCount[boundingAreaIdx], 1);
         }
         
-        // 只有当变化区块数达到阈值时，才认为该合围区域正在滚动
+        // Only consider the bounding area as scrolling when the number of changed blocks reaches the threshold
         uint areaChangeCount = g_boundingAreaTileChangeCount[boundingAreaIdx];
         if (areaChangeCount >= boundingAreaRefreshBlockThreshold)
         {
@@ -117,7 +123,7 @@ void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         }
         else
         {
-            // 保留原有的基于历史帧的判断逻辑作为备选
+            // Retain the original judgment logic based on historical frames as an alternative
             uint historyData = g_boundingAreaHistory[boundingAreaIdx];
             uint significantChangeCount = 0;
             uint maxTests = boundingAreaHistoryFrames < 32 ? boundingAreaHistoryFrames : 32;
