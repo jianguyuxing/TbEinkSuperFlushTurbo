@@ -18,15 +18,23 @@ TbEinkSuperFlushTurbo is an intelligent ghosting reduction tool specifically des
 - **Tiled Detection**: Divides screen into 8x8 pixel tiles for precise change detection
 - **Smart Refresh Algorithm**: Multi-frame stability detection to avoid over-refreshing
 
+### 💡 Working Principle
+- **Non-Waveform Driving Technology**: Uses the inverse semi-transparent brightness color (black/white) of the current stable area as the refresh color, briefly displayed for 100ms to drive the e-ink screen to quickly disturb ink particles, achieving ghosting reduction effect
+- **Local Refresh Advantage**: Employs local refresh instead of full-screen refresh, reducing screen flickering
+- **Single Inverse Color Refresh**: Inverse color refresh flashes only once, significantly reducing interference compared to the system driver's 4 flashes (black→white→black→white)
+
+### 🚀 Turbo Features
+- **GPU Parallel Computing**: Pixel difference comparison of each block and traversal operations on blocks are all performed in GPU, greatly reducing the performance impact of calculating millions of pixels across the full screen
+- **Scrolling Area Suppression Refresh**: Based on small blocks, it adds fixed partitioned adjacent blocks to form an enclosing area. For areas where n frames out of m frames need to be refreshed within the enclosing area (considered as scrolling), the blocks within the area are not refreshed. After scrolling stops, refreshing will occur, greatly reducing the interference caused by temporarily displaying inverse colors on text during scrolling
+
 ### 🚫 Smart Area Filtering
 - **Cursor Area Exclusion**: Automatically excludes areas around mouse and text cursor (3-tile radius)
   - ⚠️ **Limitation**: Only supports standard Windows text cursor APIs. Third-party applications using non-standard cursor APIs may not be detectable
-- **IME Candidate Window Detection**: Intelligently identifies and excludes input method candidate window areas
-- **System UI Recognition**: Automatically recognizes system UI areas like taskbars
 
 ### ⚡ Performance Optimization
-- **Protection Period Mechanism**: Refreshed blocks enter protection period to avoid repeated refreshing
-- **Adaptive Threshold**: Triggers reset when 95% area changes to avoid conflicts with system refresh
+- **First Refresh Delay Mechanism**: To avoid full-screen refresh caused by massive area changes at startup, the first refresh trigger has an appropriate delay to ensure that only areas that truly need refresh are processed
+- **Cooldown Period Mechanism**: Refreshed blocks enter a short-term cooldown period to prevent repeated refreshing, further reducing screen flickering and improving user experience
+- **User Full Refresh Smart Recognition**: Considers 95% area change as user manually/automatically using the computer's original E-ink driver for full refresh, resets change statistics at this time to avoid repeated full-screen refreshes
 - **Minimal Interference**: Only refreshes necessary areas to reduce screen flickering
 
 ### 🎨 Visual Feedback
@@ -36,10 +44,19 @@ TbEinkSuperFlushTurbo is an intelligent ghosting reduction tool specifically des
 
 ## Technical Features
 
-### Advanced Algorithms
-- **Multi-frame Stability Detection**: Based on 4-frame average window and 3-frame stability requirement
-- **Dynamic Protection Period**: Dynamically calculates protection period based on overlay display time
-- **Noise Filtering**: Intelligent identification and filtering of screen noise
+### Brightness Difference Detection Algorithm
+This project employs a GPU-based brightness difference detection algorithm that efficiently analyzes screen content through DirectX 11 compute shaders:
+
+1. **Tiled Processing**: The entire screen is divided into 8x8 pixel tiles for parallel processing and localized refresh
+2. **Pixel-level Comparison**: Compare pixels between consecutive frames for each tile, calculating RGB channel differences
+3. **Luminance Calculation**: Use the standard luminance formula Y = 0.299×R + 0.587×G + 0.114×B to calculate the brightness of each pixel
+4. **Average Difference Threshold**: Set pixel difference threshold, changes exceeding the threshold are considered significant
+5. **Sliding Window Average**: Employ a 4-frame sliding window average algorithm to smooth instantaneous changes and improve detection stability
+6. **Multi-frame Stability Detection**: Only areas that remain stable for 3 or more consecutive frames will trigger a refresh operation
+7. **Dynamic Cooldown Period**: Dynamically calculates cooldown period based on overlay display time, ensuring refreshed blocks won't be refreshed again during the cooldown period
+8. **Noise Filtering**: Intelligent identification and filtering of screen noise
+
+This algorithm fully leverages GPU parallel computing power to achieve high processing efficiency while ensuring detection accuracy.
 
 ### DirectX Integration
 - **Vortice.DirectX**: Uses modern .NET DirectX wrappers
@@ -121,6 +138,13 @@ dotnet run
 2. **DirectX Initialization Failed**: Update graphics card drivers
 3. **Inaccurate Detection**: Adjust DPI settings or detection parameters
 4. **Cursor Detection Failed**: Some third-party applications use non-standard cursor APIs that cannot be detected
+5. **Poor Display Effect**: Works best with light themes + Intel Graphics Control Center adjusted contrast enhancement to make the interface pure white, or using a white background high contrast theme
+
+### ⚠️ Special Tips
+- **System Feature Interference**: Power saving mode, night mode, and the following two system brightness options (enabled by default, which also affect E-ink screens) may impact display quality:
+  - "Adjust brightness according to content"
+  - "Adjust brightness according to ambient light"
+- **Display Effect Explanation**: These features create numerous gray wavy lines on light-colored interfaces. The pure white displayed after ghosting clearance may contrast with these gray interfaces, appearing like white ghosting.
 
 ### Debug Information
 - Check detailed log files in the `Logs` directory
