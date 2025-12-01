@@ -36,7 +36,7 @@ namespace TbEinkSuperFlushTurbo
         private const uint FIRST_REFRESH_EXTRA_DELAY = 1;
 
         public const int OVERLAY_DISPLAY_TIME = 100; // ms
-        private const int POLL_TIMER_INTERVAL = 500; // ms ditect period
+        private int _pollInterval = 500; // ms detect period, configurable
 
         // 合围区域配置，用于抑制滚动区域的刷新 - 单个区域内m帧内n帧变动时，区域内区块不刷新
         private const int BOUNDING_AREA_WIDTH = 45;  // 每个合围区域宽度（区块数量）
@@ -45,7 +45,8 @@ namespace TbEinkSuperFlushTurbo
         private const int BOUNDING_AREA_CHANGE_THRESHOLD = 3; // 变化帧阈值
         private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = 1518; // 区块变化数阈值（单个合围区域内每帧）
 
-        private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / POLL_TIMER_INTERVAL) + ADDITIONAL_COOLDOWN_FRAMES;
+        private int PollTimerInterval => _pollInterval; // Use configurable poll interval
+        private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / 500) + ADDITIONAL_COOLDOWN_FRAMES; // Use default 500ms for protection calculation
 
         private const double RESET_THRESHOLD_PERCENT = 95;
         private NotifyIcon? _trayIcon;
@@ -130,10 +131,14 @@ namespace TbEinkSuperFlushTurbo
                 string configPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
                 if (File.Exists(configPath))
                 {
-                    string content = File.ReadAllText(configPath);
-                    if (int.TryParse(content, out int savedPixelDelta))
+                    string[] lines = File.ReadAllLines(configPath);
+                    if (lines.Length >= 1 && int.TryParse(lines[0], out int savedPixelDelta))
                     {
                         _pixelDelta = Math.Max(2, Math.Min(25, savedPixelDelta));
+                    }
+                    if (lines.Length >= 2 && int.TryParse(lines[1], out int savedPollInterval))
+                    {
+                        _pollInterval = Math.Max(200, Math.Min(5000, savedPollInterval));
                     }
                 }
             }
@@ -148,8 +153,9 @@ namespace TbEinkSuperFlushTurbo
             try
             {
                 string configPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
-                File.WriteAllText(configPath, _pixelDelta.ToString());
-                Log($"Saved PIXEL_DELTA: {_pixelDelta}");
+                string[] lines = { _pixelDelta.ToString(), _pollInterval.ToString() };
+                File.WriteAllLines(configPath, lines);
+                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms");
             }
             catch (Exception ex)
             {
@@ -272,25 +278,42 @@ namespace TbEinkSuperFlushTurbo
             _overlayForm = null;
 
             Text = "EInk Kaleido Ghost Reducer (GPU)";
-            Width = 1200; 
-            Height = 800;
+            Width = 1500; // 进一步扩大窗口宽度
+            Height = 1100;  // 进一步扩大窗口高度
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 
-            int buttonWidth = 120;
-            int buttonHeight = 50;
-            var btnStart = new Button() { Text = "Start", Left = 20, Top = 20, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 10f, FontStyle.Bold) };
-            var btnStop = new Button() { Text = "Stop", Left = 160, Top = 20, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 10f, FontStyle.Bold), Enabled = false };
+            int buttonWidth = 180;  // 增加按钮宽度适应高DPI
+            int buttonHeight = 60;  // 增加按钮高度适应高DPI
+            int labelWidth = 450;   // 大幅增加标签宽度，确保长文本完整显示
+            int sliderWidth = 500;  // 大幅增加滑动条宽度适应高DPI
+            int valueWidth = 150;   // 增加数值显示宽度适应高DPI
             
-            // 设置项放在按钮下一行，与按钮大小相同
-            var lblPixelDelta = new Label() { Text = "Pixel Delta:", Left = 20, Top = 80, Width = buttonWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 9f) };
-            var numPixelDelta = new NumericUpDown() { Left = 160, Top = 80, Width = buttonWidth, Height = buttonHeight, Minimum = 2, Maximum = 25, Value = _pixelDelta, Font = new Font(this.Font.FontFamily, 9f) };
-            var btnSave = new Button() { Text = "Save", Left = 300, Top = 80, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 9f) };
-            var btnHelp = new Button() { Text = "?", Left = 440, Top = 80, Width = buttonHeight, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 9f) };
+            var btnStart = new Button() { Text = "Start", Left = 30, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
+            var btnStop = new Button() { Text = "Stop", Left = 220, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
             
-            var lblInfo = new Label() { Left = 30, Top = 140, Width = 1140, Height = 40, Text = "Status: stopped" };
-            var listBox = new ListBox() { Left = 30, Top = 190, Width = 1100, Height = 490 };
+            // 设置项放在单独一行 - Per-Pixel Brightness Threshold (增加垂直间距)
+            var lblPixelDelta = new Label() { Text = "Per-Pixel Brightness Threshold:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var trackPixelDelta = new TrackBar() { Left = 520, Top = 115, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
+            var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 930, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            
+            // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
+            var lblPollInterval = new Label() { Text = "Detection Interval (ms):", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var trackPollInterval = new TrackBar() { Left = 520, Top = 232, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = _pollInterval, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
+            var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 930, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 930 + valueWidth, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            
+            // 问号按钮 - 仅悬停提示 (增大高度和宽度保持圆形)
+            var btnHelp = new Button() { Text = "?", Left = 1220, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
+            btnHelp.TextAlign = ContentAlignment.MiddleCenter;
+            // 设置圆形区域（宽高相同保持正圆）
+            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddEllipse(0, 0, 80, 80);
+            btnHelp.Region = new Region(path);
+            
+            var lblInfo = new Label() { Left = 30, Top = 320, Width = 1400, Height = 60, Text = "Status: stopped", Font = new Font(this.Font.FontFamily, 12f) };
+            var listBox = new ListBox() { Left = 30, Top = 400, Width = 1400, Height = 500 };
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
@@ -299,18 +322,53 @@ namespace TbEinkSuperFlushTurbo
             Controls.Add(lblInfo);
             Controls.Add(listBox);
             Controls.Add(lblPixelDelta);
-            Controls.Add(numPixelDelta);
-            Controls.Add(btnSave);
+            Controls.Add(trackPixelDelta);
+            Controls.Add(lblPixelDeltaValue);
+            Controls.Add(lblPollInterval);
+            Controls.Add(trackPollInterval);
+            Controls.Add(lblPollIntervalValue);
+            Controls.Add(lblPollIntervalUnit);
             Controls.Add(btnHelp);
 
-            btnSave.Click += (s, e) => {
-                _pixelDelta = (int)numPixelDelta.Value;
+            // 添加鼠标悬停提示 - 多行详细说明
+            var toolTip = new ToolTip();
+            toolTip.SetToolTip(lblPixelDelta, "Per-Pixel Brightness Threshold:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(trackPixelDelta, "Per-Pixel Brightness Threshold:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            
+            // 优化问号按钮提示 - 支持换行和透明效果
+            var helpToolTip = new ToolTip();
+            helpToolTip.ToolTipTitle = "Settings Help";
+            helpToolTip.UseFading = true;
+            helpToolTip.UseAnimation = true;
+            helpToolTip.IsBalloon = false;
+            helpToolTip.BackColor = Color.FromArgb(240, 240, 240);
+            helpToolTip.ForeColor = Color.Black;
+            helpToolTip.AutoPopDelay = 15000; // 15秒显示时间
+            helpToolTip.InitialDelay = 500;   // 0.5秒延迟
+            helpToolTip.ReshowDelay = 100;     // 0.1秒重新显示延迟
+            helpToolTip.SetToolTip(btnHelp, "Per-Pixel Brightness Threshold:\nControls the sensitivity of pixel change detection. Higher values require larger pixel differences to trigger updates.\n\nDetection Interval:\nSets the time interval (in milliseconds) between screen change checks. Lower values provide more responsive updates but use more CPU.");
+
+            // 滑动条事件处理
+            trackPixelDelta.ValueChanged += (s, e) => {
+                _pixelDelta = trackPixelDelta.Value;
+                lblPixelDeltaValue.Text = _pixelDelta.ToString();
                 SaveConfig();
             };
 
-            btnHelp.Click += (s, e) => {
-                MessageBox.Show("Lower values better distinguish color brightness changes. Increase to reduce sensitivity to minor brightness differences.\n\n- Low values are recommended for light themes to differentiate between gray and white.\n- High values are recommended for high-contrast themes.", "Pixel Delta Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            trackPollInterval.ValueChanged += (s, e) => {
+                _pollInterval = trackPollInterval.Value;
+                lblPollIntervalValue.Text = _pollInterval.ToString();
+                SaveConfig();
+                // 更新定时器间隔
+                if (_pollTimer != null)
+                {
+                    _pollTimer.Interval = _pollInterval;
+                }
             };
+
+            // 问号按钮不再有点击事件，仅用于悬停提示
 
             _trayIcon = new NotifyIcon() { Icon = SystemIcons.Application, Text = "EInk Ghost Reducer", Visible = true };
             _trayIcon.Click += (s, e) => { if (this.WindowState == FormWindowState.Minimized || !this.Visible) { this.Show(); this.WindowState = FormWindowState.Normal; this.Activate(); } else { this.Hide(); } };
@@ -328,11 +386,14 @@ namespace TbEinkSuperFlushTurbo
                 _cts = new CancellationTokenSource();
                 _frameCounter = 0; // Reset frame counter on start
 
+                // 禁用设置项修改
+                trackPixelDelta.Enabled = false;
+                trackPollInterval.Enabled = false;
+
                 lblInfo.Text = "Status: initializing GPU capture...";
                 Log("Initializing GPU capture...");
                 try
                 {
-                    _pixelDelta = (int)numPixelDelta.Value;
                     _d3d = new D3DCaptureAndCompute(DebugLogger, TILE_SIZE, _pixelDelta, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
                         new BoundingAreaConfig(
                             BOUNDING_AREA_WIDTH,
@@ -343,7 +404,7 @@ namespace TbEinkSuperFlushTurbo
 
                     _pollTimer = new System.Windows.Forms.Timer
                     {
-                        Interval = POLL_TIMER_INTERVAL
+                        Interval = _pollInterval
                     };
                     _pollTimer.Tick += async (ss, ee) =>
                     {
@@ -406,6 +467,11 @@ namespace TbEinkSuperFlushTurbo
                 lblInfo.Text = "Status: stopped";
                 btnStart.Enabled = true;
                 btnStop.Enabled = false;
+                
+                // 重新启用设置项修改
+                trackPixelDelta.Enabled = true;
+                trackPollInterval.Enabled = true;
+                
                 _cts?.Dispose();
                 _cts = null;
                 
