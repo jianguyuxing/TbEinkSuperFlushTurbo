@@ -278,7 +278,7 @@ namespace TbEinkSuperFlushTurbo
             _overlayForm = null;
 
             Text = "EInk Kaleido Ghost Reducer (GPU)";
-            Width = 1500; // 进一步扩大窗口宽度
+            Width = 1800; // 进一步扩大窗口宽度
             Height = 1100;  // 进一步扩大窗口高度
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -286,8 +286,8 @@ namespace TbEinkSuperFlushTurbo
 
             int buttonWidth = 180;  // 增加按钮宽度适应高DPI
             int buttonHeight = 60;  // 增加按钮高度适应高DPI
-            int labelWidth = 450;   // 大幅增加标签宽度，确保长文本完整显示
-            int sliderWidth = 500;  // 大幅增加滑动条宽度适应高DPI
+            int labelWidth = 550;   // 大幅增加标签宽度，确保长文本完整显示
+            int sliderWidth = 700;  // 大幅增加滑动条宽度适应高DPI
             int valueWidth = 150;   // 增加数值显示宽度适应高DPI
             
             var btnStart = new Button() { Text = "Start", Left = 30, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
@@ -295,25 +295,25 @@ namespace TbEinkSuperFlushTurbo
             
             // 设置项放在单独一行 - Per-Pixel Brightness Threshold (增加垂直间距)
             var lblPixelDelta = new Label() { Text = "Per-Pixel Brightness Threshold:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var trackPixelDelta = new TrackBar() { Left = 520, Top = 115, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
-            var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 930, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            var trackPixelDelta = new TrackBar() { Left = 620, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
+            var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1230, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
             var lblPollInterval = new Label() { Text = "Detection Interval (ms):", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var trackPollInterval = new TrackBar() { Left = 520, Top = 232, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = _pollInterval, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
-            var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 930, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
-            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 930 + valueWidth, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var trackPollInterval = new TrackBar() { Left = 520, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = _pollInterval, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
+            var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1230, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1390, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 问号按钮 - 仅悬停提示 (增大高度和宽度保持圆形)
-            var btnHelp = new Button() { Text = "?", Left = 1220, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
+            var btnHelp = new Button() { Text = "?", Left = 1500, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
             btnHelp.TextAlign = ContentAlignment.MiddleCenter;
             // 设置圆形区域（宽高相同保持正圆）
             System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
             path.AddEllipse(0, 0, 80, 80);
             btnHelp.Region = new Region(path);
             
-            var lblInfo = new Label() { Left = 30, Top = 320, Width = 1400, Height = 60, Text = "Status: stopped", Font = new Font(this.Font.FontFamily, 12f) };
-            var listBox = new ListBox() { Left = 30, Top = 400, Width = 1400, Height = 500 };
+            var lblInfo = new Label() { Left = 30, Top = 320, Width = 1600, Height = 60, Text = "Status: stopped", Font = new Font(this.Font.FontFamily, 12f) };
+            var listBox = new ListBox() { Left = 30, Top = 400, Width = 1600, Height = 500 };
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
