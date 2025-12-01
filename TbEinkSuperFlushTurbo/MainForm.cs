@@ -27,7 +27,7 @@ namespace TbEinkSuperFlushTurbo
 
         // --- Refresh parameters ---
         private const int TILE_SIZE = 8;
-        private const int PIXEL_DELTA = 4;
+        private const int PIXEL_DELTA = 10;
         // Average window size for frame difference calculation (maximum supported: 4 frames)
         private const uint AVERAGE_WINDOW_SIZE = 3;
         private const uint STABLE_FRAMES_REQUIRED = 4;
