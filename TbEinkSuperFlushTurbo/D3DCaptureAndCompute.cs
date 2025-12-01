@@ -130,9 +130,9 @@ namespace TbEinkSuperFlushTurbo
         private Action<string>? _debugLogger; // Field to store the logger
 
         // Eink屏幕兼容性支持
-        private bool _useGdiCapture = false; // 是否使用GDI+捕获作为替代方案
+        private bool _useGdiCapture = false; // 是否使用GDI+捕获
         private bool _isEinkScreen = false; // 是否为eink屏幕
-        private bool _forceDirectXCapture = true; // 是否强制使用DirectX捕获（从MainForm传入）
+        private bool _forceDirectXCapture; // 是否强制使用DirectX捕获（从MainForm传入）
         private double _detectedRefreshRate = 60.0; // 检测到的刷新率
         private Bitmap? _gdiBitmap; // GDI+位图用于屏幕捕获
         private Graphics? _gdiGraphics; // GDI+图形对象
@@ -303,13 +303,12 @@ namespace TbEinkSuperFlushTurbo
                 // 检测是否为eink屏幕
                 _isEinkScreen = DetectEinkScreen(selectedOutput);
                 
-                // Use GDI+ only if DirectX capture is NOT forced AND an E-ink screen is detected.
-                // This is to ensure the cursor is captured, as GDI often fails to do so.
-                if (!_forceDirectXCapture && _isEinkScreen) 
+                // If DirectX capture is not forced, prioritize GDI+ capture.
+                if (!_forceDirectXCapture)
                 {
-                    _debugLogger?.Invoke("检测到eink屏幕，将优先尝试GDI+捕获");
-                    
-                    // 直接使用GDI+捕获，避免DuplicateOutput调用
+                    _debugLogger?.Invoke("非强制DirectX捕获模式，将优先尝试GDI+捕获");
+
+                    // Directly use GDI+ capture, avoiding DuplicateOutput call
                     if (InitializeGdiCapture(selectedOutput))
                     {
                         _useGdiCapture = true;
@@ -321,7 +320,7 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                // 如果不是eink屏幕或GDI+捕获失败，尝试DirectX桌面复制
+                // 如果GDI+捕获失败，尝试DirectX桌面复制
                 if (!_useGdiCapture)
                 {
                     if (_forceDirectXCapture)
@@ -1265,15 +1264,8 @@ namespace TbEinkSuperFlushTurbo
                     return false;
                 }
                 
-                // 获取当前屏幕分辨率，避免使用过时的缓存值
-                var primaryScreen = Screen.PrimaryScreen;
-                if (primaryScreen == null)
-                {
-                    _debugLogger?.Invoke("无法获取主屏幕信息");
-                    return false;
-                }
-                
-                Rectangle currentScreenBounds = primaryScreen.Bounds;
+                // Use the screen bounds determined during initialization
+                Rectangle currentScreenBounds = _screenBounds;
                 
                 _debugLogger?.Invoke($"开始GDI+屏幕捕获，捕获区域: {currentScreenBounds}");
                 _debugLogger?.Invoke($"DPI缩放: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
@@ -1285,10 +1277,8 @@ namespace TbEinkSuperFlushTurbo
                     return false;
                 }
                 
-                // 确保捕获区域不超出屏幕范围
-                int captureWidth = Math.Min(currentScreenBounds.Width, _screenW);
-                int captureHeight = Math.Min(currentScreenBounds.Height, _screenH);
-                Rectangle safeCaptureBounds = new Rectangle(currentScreenBounds.X, currentScreenBounds.Y, captureWidth, captureHeight);
+                // The capture bounds are already determined to be safe during initialization
+                Rectangle safeCaptureBounds = currentScreenBounds;
                 
                 bool captureSuccess = false;
                 int retryCount = 0;

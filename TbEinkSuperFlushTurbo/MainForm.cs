@@ -225,7 +225,7 @@ namespace TbEinkSuperFlushTurbo
                             BOUNDING_AREA_HEIGHT,
                             BOUNDING_AREA_HISTORY_FRAMES,
                             BOUNDING_AREA_CHANGE_THRESHOLD,
-                            BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD));
+                            BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture);
 
                     _pollTimer = new System.Windows.Forms.Timer
                     {
