@@ -118,7 +118,7 @@ namespace TbEinkSuperFlushTurbo
         private ID3D11Buffer? _boundingAreaHistoryBuffer; // u7
 
         // --- 滚动抑制相关资源 ---
-        private ID3D11Buffer? _boundingAreaTileChangeCountBuffer; // u8 (GPU-side counter)
+        private ID3D11Buffer? _boundingAreaTileChangeCountBuffer; // u7 (GPU-side counter)
         private ID3D11UnorderedAccessView? _boundingAreaTileChangeCountUAV;
         private ID3D11Buffer? _boundingAreaTileChangeCountReadback; // Readback for the counter
         private uint[]? _boundingAreaHistory_cpu; // CPU-side history for logic

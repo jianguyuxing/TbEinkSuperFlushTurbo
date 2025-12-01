@@ -32,7 +32,7 @@ namespace TbEinkSuperFlushTurbo
         private const uint AVERAGE_WINDOW_SIZE = 3;
         private const uint STABLE_FRAMES_REQUIRED = 4;
         private const uint ADDITIONAL_COOLDOWN_FRAMES = 2;
-        private const uint FIRST_REFRESH_EXTRA_DELAY = 2;
+        private const uint FIRST_REFRESH_EXTRA_DELAY = 1;
 
         public const int OVERLAY_DISPLAY_TIME = 100; // ms
         private const int POLL_TIMER_INTERVAL = 500; // ms ditect period
