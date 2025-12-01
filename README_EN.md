@@ -67,6 +67,14 @@ This algorithm fully leverages GPU parallel computing power to achieve high proc
 - **High DPI Support**: Automatically adapts to different DPI scaling settings
 - **Multi-architecture Support**: Supports x64 architecture
 - **Windows 10/11**: Optimized for modern Windows systems
+- **Smart Screen Detection**: Automatically detects screen refresh rates, DPI scaling factors, and supports
+  multi-monitor environments
+- **E-ink Screen Auto-Recognition**: Intelligently identifies e-ink display devices through refresh rate
+  characteristics (less than 55Hz)
+- **Smart Screen Detection**: Automatically detects screen refresh rates, DPI scaling factors, and supports
+  multi-monitor environments
+- **E-ink Screen Auto-Recognition**: Intelligently identifies e-ink display devices through refresh rate
+  characteristics (less than 55Hz)
 
 ## Usage
 
@@ -132,6 +140,24 @@ dotnet run
 - **Extended Screen Life**: Minimizes unnecessary refresh operations
 
 ## Troubleshooting
+
+### ⚙️ Automatic Detection Features
+
+#### Screen Detection Mechanism
+
+- **Refresh Rate Detection**: Automatically scans all connected displays to identify refresh rate characteristics
+- **E-ink Screen Recognition**: Intelligently identifies e-ink display devices through low refresh rate
+  characteristics (less than 55Hz)
+- **Multi-monitor Support**: Automatically selects E-ink screens for processing in multi-monitor environments
+- **DPI Adaptation**: Automatically detects and adapts to different DPI scaling settings
+
+#### Detection Logic
+
+1. **System Enumeration**: Enumerates all display information through Windows API
+2. **Feature Recognition**: Identifies E-ink screens based on refresh rate, resolution, and other characteristics
+3. **Priority Processing**: Prioritizes processing of identified E-ink screens, supports multiple E-ink screen
+   environments
+4. **Dynamic Adaptation**: Automatically re-detects when display connection status changes
 
 ### Common Issues
 1. **Program Won't Start**: Check if .NET 8.0 runtime is installed
