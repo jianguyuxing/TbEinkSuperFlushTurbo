@@ -28,7 +28,7 @@ namespace TbEinkSuperFlushTurbo
 
         // --- Refresh parameters ---
         private const int TILE_SIZE = 8;
-        private const int PIXEL_DELTA = 10;
+        private int _pixelDelta = 10;
         // Average window size for frame difference calculation (maximum supported: 4 frames)
         private const uint AVERAGE_WINDOW_SIZE = 3;
         private const uint STABLE_FRAMES_REQUIRED = 4;
@@ -95,6 +95,7 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
+                LoadConfig();
                 InitLogFile();
                 InitUI();
                 
@@ -119,6 +120,40 @@ namespace TbEinkSuperFlushTurbo
                 File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "debug_output.txt"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] MainForm constructor ERROR: {ex.GetType().Name}: {ex.Message}{Environment.NewLine}");
                 File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "debug_output.txt"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] StackTrace: {ex.StackTrace}{Environment.NewLine}");
                 throw;
+            }
+        }
+
+        private void LoadConfig()
+        {
+            try
+            {
+                string configPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
+                if (File.Exists(configPath))
+                {
+                    string content = File.ReadAllText(configPath);
+                    if (int.TryParse(content, out int savedPixelDelta))
+                    {
+                        _pixelDelta = Math.Max(2, Math.Min(25, savedPixelDelta));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to load config: {ex.Message}");
+            }
+        }
+
+        private void SaveConfig()
+        {
+            try
+            {
+                string configPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
+                File.WriteAllText(configPath, _pixelDelta.ToString());
+                Log($"Saved PIXEL_DELTA: {_pixelDelta}");
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to save config: {ex.Message}");
             }
         }
 
@@ -248,8 +283,14 @@ namespace TbEinkSuperFlushTurbo
             var btnStart = new Button() { Text = "Start", Left = 20, Top = 20, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 10f, FontStyle.Bold) };
             var btnStop = new Button() { Text = "Stop", Left = 160, Top = 20, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 10f, FontStyle.Bold), Enabled = false };
             
-            var lblInfo = new Label() { Left = 30, Top = 80, Width = 1140, Height = 40, Text = "Status: stopped" };
-            var listBox = new ListBox() { Left = 30, Top = 130, Width = 1100, Height = 550 };
+            // 设置项放在按钮下一行，与按钮大小相同
+            var lblPixelDelta = new Label() { Text = "Pixel Delta:", Left = 20, Top = 80, Width = buttonWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 9f) };
+            var numPixelDelta = new NumericUpDown() { Left = 160, Top = 80, Width = buttonWidth, Height = buttonHeight, Minimum = 2, Maximum = 25, Value = _pixelDelta, Font = new Font(this.Font.FontFamily, 9f) };
+            var btnSave = new Button() { Text = "Save", Left = 300, Top = 80, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 9f) };
+            var btnHelp = new Button() { Text = "?", Left = 440, Top = 80, Width = buttonHeight, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 9f) };
+            
+            var lblInfo = new Label() { Left = 30, Top = 140, Width = 1140, Height = 40, Text = "Status: stopped" };
+            var listBox = new ListBox() { Left = 30, Top = 190, Width = 1100, Height = 490 };
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
@@ -257,6 +298,19 @@ namespace TbEinkSuperFlushTurbo
             Controls.Add(btnStop);
             Controls.Add(lblInfo);
             Controls.Add(listBox);
+            Controls.Add(lblPixelDelta);
+            Controls.Add(numPixelDelta);
+            Controls.Add(btnSave);
+            Controls.Add(btnHelp);
+
+            btnSave.Click += (s, e) => {
+                _pixelDelta = (int)numPixelDelta.Value;
+                SaveConfig();
+            };
+
+            btnHelp.Click += (s, e) => {
+                MessageBox.Show("Lower values better distinguish color brightness changes. Increase to reduce sensitivity to minor brightness differences.\n\n- Low values are recommended for light themes to differentiate between gray and white.\n- High values are recommended for high-contrast themes.", "Pixel Delta Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
 
             _trayIcon = new NotifyIcon() { Icon = SystemIcons.Application, Text = "EInk Ghost Reducer", Visible = true };
             _trayIcon.Click += (s, e) => { if (this.WindowState == FormWindowState.Minimized || !this.Visible) { this.Show(); this.WindowState = FormWindowState.Normal; this.Activate(); } else { this.Hide(); } };
@@ -278,7 +332,8 @@ namespace TbEinkSuperFlushTurbo
                 Log("Initializing GPU capture...");
                 try
                 {
-                    _d3d = new D3DCaptureAndCompute(DebugLogger, TILE_SIZE, PIXEL_DELTA, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
+                    _pixelDelta = (int)numPixelDelta.Value;
+                    _d3d = new D3DCaptureAndCompute(DebugLogger, TILE_SIZE, _pixelDelta, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
                         new BoundingAreaConfig(
                             BOUNDING_AREA_WIDTH,
                             BOUNDING_AREA_HEIGHT,
