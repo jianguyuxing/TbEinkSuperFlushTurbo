@@ -26,7 +26,7 @@ namespace TbEinkSuperFlushTurbo
         Warp = 5
     }
 
-    // 合围区域配置结构 - 现在支持多个相邻的合围区域
+    // 合围区域配置结构,多个相邻区块的合围区域用于抑制滚动刷新
     public struct BoundingAreaConfig
     {
         public int Width;       // 每个合围区域宽度（区块单位）
@@ -47,7 +47,7 @@ namespace TbEinkSuperFlushTurbo
 
     public class D3DCaptureAndCompute : IDisposable
     {
-        public int TileSize { get; set; }
+        public int TileSize { get; set; } //区块尺寸边长，单位是像素
         public int PixelDelta { get; set; } // Per-component threshold
         public uint AverageWindowSize { get; set; } // 平均窗口大小（帧数）
         public uint StableFramesRequired { get; set; } // 稳定帧数，平衡响应速度和稳定性
@@ -482,9 +482,9 @@ namespace TbEinkSuperFlushTurbo
             // --- 创建新的 GPU 缓冲区 ---
             // The shader uses RWStructuredBuffer<uint> with values per tile for history
             // The actual number of history frames is determined by the AverageWindowSize parameter passed from MainForm
-            // Note: Currently supports up to 20-frame average window size (AVERAGE_WINDOW_SIZE in MainForm)
+            // Note: Currently supports up to 4-frame average window size (AVERAGE_WINDOW_SIZE in MainForm)
             const int historyElementSize = sizeof(uint); // sizeof(uint)
-            int historyArraySize = 20; // Maximum supported history frames (must match shader)
+            int historyArraySize = 4; // Maximum supported history frames (must match shader)
 
             var stateBufferDesc = new BufferDescription
             {
