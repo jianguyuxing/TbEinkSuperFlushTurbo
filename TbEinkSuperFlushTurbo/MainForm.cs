@@ -294,18 +294,18 @@ namespace TbEinkSuperFlushTurbo
             var btnStop = new Button() { Text = "Stop", Left = 220, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
             
             // 设置项放在单独一行 - Per-Pixel Brightness Threshold (增加垂直间距)
-            var lblPixelDelta = new Label() { Text = "Per-Pixel Brightness Threshold:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPixelDelta = new Label() { Text = "Brightness Diff Delta:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPixelDelta = new TrackBar() { Left = 620, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
-            var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1230, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1330, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
             var lblPollInterval = new Label() { Text = "Detection Interval (ms):", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var trackPollInterval = new TrackBar() { Left = 520, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = _pollInterval, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
-            var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1230, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
-            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1390, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var trackPollInterval = new TrackBar() { Left = 620, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = 500, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
+            var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1330, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1490, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 问号按钮 - 仅悬停提示 (增大高度和宽度保持圆形)
-            var btnHelp = new Button() { Text = "?", Left = 1500, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
+            var btnHelp = new Button() { Text = "?", Left = 1600, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
             btnHelp.TextAlign = ContentAlignment.MiddleCenter;
             // 设置圆形区域（宽高相同保持正圆）
             System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
@@ -332,8 +332,11 @@ namespace TbEinkSuperFlushTurbo
 
             // 添加鼠标悬停提示 - 多行详细说明
             var toolTip = new ToolTip();
-            toolTip.SetToolTip(lblPixelDelta, "Per-Pixel Brightness Threshold:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(trackPixelDelta, "Per-Pixel Brightness Threshold:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(lblPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(trackPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            toolTip.SetToolTip(trackPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
             toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
             toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
             
@@ -346,9 +349,9 @@ namespace TbEinkSuperFlushTurbo
             helpToolTip.BackColor = Color.FromArgb(240, 240, 240);
             helpToolTip.ForeColor = Color.Black;
             helpToolTip.AutoPopDelay = 15000; // 15秒显示时间
-            helpToolTip.InitialDelay = 500;   // 0.5秒延迟
+            helpToolTip.InitialDelay = 200;   // 0.2秒延迟
             helpToolTip.ReshowDelay = 100;     // 0.1秒重新显示延迟
-            helpToolTip.SetToolTip(btnHelp, "Per-Pixel Brightness Threshold:\nControls the sensitivity of pixel change detection. Higher values require larger pixel differences to trigger updates.\n\nDetection Interval:\nSets the time interval (in milliseconds) between screen change checks. Lower values provide more responsive updates but use more CPU.");
+            helpToolTip.SetToolTip(btnHelp, "Brightness Diff Delta:\nControls sensitivity to pixel changes.\nHigher values need larger differences.\n\nDetection Interval:\nTime between screen checks (ms).\nLower = more responsive but higher CPU.");
 
             // 滑动条事件处理
             trackPixelDelta.ValueChanged += (s, e) => {
