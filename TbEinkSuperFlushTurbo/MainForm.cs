@@ -38,15 +38,15 @@ namespace TbEinkSuperFlushTurbo
         private const int POLL_TIMER_INTERVAL = 500; // ms ditect period
 
         // 合围区域配置，用于抑制滚动区域的刷新 - 单个区域内m帧内n帧变动时，区域内区块不刷新
-        private const int BOUNDING_AREA_WIDTH = 50;  // 每个合围区域宽度（区块数量）
-        private const int BOUNDING_AREA_HEIGHT = 50; // 每个合围区域高度（区块数量）
+        private const int BOUNDING_AREA_WIDTH = 45;  // 每个合围区域宽度（区块数量）
+        private const int BOUNDING_AREA_HEIGHT = 45; // 每个合围区域高度（区块数量）
         private const int BOUNDING_AREA_HISTORY_FRAMES = 3; // 历史帧数
         private const int BOUNDING_AREA_CHANGE_THRESHOLD = 3; // 变化帧阈值
-        private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = 2000; // 区块变化数阈值（单个合围区域内每帧）
+        private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = 1518; // 区块变化数阈值（单个合围区域内每帧）
 
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / POLL_TIMER_INTERVAL) + ADDITIONAL_COOLDOWN_FRAMES;
 
-        private const double RESET_THRESHOLD_PERCENT = 98;
+        private const double RESET_THRESHOLD_PERCENT = 95;
         private NotifyIcon? _trayIcon;
         private bool _forceDirectXCapture = false;
 
@@ -225,7 +225,7 @@ namespace TbEinkSuperFlushTurbo
                             BOUNDING_AREA_HEIGHT,
                             BOUNDING_AREA_HISTORY_FRAMES,
                             BOUNDING_AREA_CHANGE_THRESHOLD,
-                            BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture);
+                            BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture, ProtectionFrames);
 
                     _pollTimer = new System.Windows.Forms.Timer
                     {

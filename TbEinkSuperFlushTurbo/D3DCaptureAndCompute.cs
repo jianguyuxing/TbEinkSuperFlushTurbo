@@ -162,7 +162,7 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
         }
 
-        public D3DCaptureAndCompute(Action<string>? debugLogger, int tileSize, int pixelDelta, uint averageWindowSize, uint stableFramesRequired, uint additionalCooldownFrames, uint firstRefreshExtraDelay, int caretCheckInterval, int imeCheckInterval, int mouseExclusionRadiusFactor, BoundingAreaConfig boundingArea, bool forceDirectXCapture = true) // Constructor with parameters
+        public D3DCaptureAndCompute(Action<string>? debugLogger, int tileSize, int pixelDelta, uint averageWindowSize, uint stableFramesRequired, uint additionalCooldownFrames, uint firstRefreshExtraDelay, int caretCheckInterval, int imeCheckInterval, int mouseExclusionRadiusFactor, BoundingAreaConfig boundingArea, bool forceDirectXCapture = true, uint protectionFrames = 0) // Constructor with parameters
         {
             _debugLogger = debugLogger;
             TileSize = tileSize;
@@ -176,6 +176,7 @@ namespace TbEinkSuperFlushTurbo
             MouseExclusionRadiusFactor = mouseExclusionRadiusFactor;
             _forceDirectXCapture = forceDirectXCapture;
             BoundingArea = boundingArea; // 使用从MainForm传入的配置
+            ProtectionFrames = protectionFrames;
             
             Console.WriteLine("=== D3DCaptureAndCompute Constructor Started ===");
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
@@ -325,7 +326,7 @@ namespace TbEinkSuperFlushTurbo
                 {
                     if (_forceDirectXCapture)
                     {
-                        _debugLogger?.Invoke("Forcing DirectX capture mode to ensure cursor is visible.");
+                        _debugLogger?.Invoke("Forcing DirectX capture mode .");
                     }
 
                     _debugLogger?.Invoke("Getting IDXGIOutput1 interface...");
