@@ -1186,8 +1186,8 @@ namespace TbEinkSuperFlushTurbo
                         
                         _debugLogger?.Invoke($"检测到刷新率: {refreshRate}Hz");
                         
-                        // eink屏幕通常有较低的刷新率（低于55Hz）
-                        if (refreshRate < 55.0)
+                        // eink屏幕通常有较低的刷新率（低于59Hz）
+                        if (refreshRate < 59.0) // Changed from 55.0 to 59.0
                         {
                             _debugLogger?.Invoke($"低刷新率({refreshRate}Hz)可能为eink屏幕");
                             return true;
@@ -1627,6 +1627,34 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 忽略清理失败的情况
             }
+        }
+
+        /// <summary>
+        /// 获取当前主显示器的刷新率。
+        /// </summary>
+        /// <returns>主显示器的刷新率，如果获取失败则返回0.0。</returns>
+        public double GetCurrentPrimaryDisplayRefreshRate()
+        {
+            try
+            {
+                using var dxgiFactory = new IDXGIFactory1();
+                using var adapter = dxgiFactory.EnumAdapters1(0); // Assuming primary adapter
+                using var output = adapter.EnumOutputs(0); // Assuming primary output
+
+                var displayModeList = output.GetDisplayModeList(Format.B8G8R8A8_UNorm, DisplayModeEnumerationFlags.Interlaced | DisplayModeEnumerationFlags.Scaling);
+                if (displayModeList.Any())
+                {
+                    var primaryMode = displayModeList[0];
+                    double refreshRate = (double)primaryMode.RefreshRate.Numerator / primaryMode.RefreshRate.Denominator;
+                    _debugLogger?.Invoke($"DEBUG: 获取到主显示器刷新率: {refreshRate}Hz");
+                    return refreshRate;
+                }
+            }
+            catch (Exception ex)
+            {
+                _debugLogger?.Invoke($"ERROR: 获取主显示器刷新率失败: {ex.Message}");
+            }
+            return 0.0;
         }
 
         public void Dispose()

@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using System.IO;
 using System.Globalization;
 using System.Linq;
+using Microsoft.Win32;
 
 namespace TbEinkSuperFlushTurbo
 {
@@ -88,6 +89,8 @@ namespace TbEinkSuperFlushTurbo
         private const int OVERLAY_BORDER_WIDTH = 0;
         private const int OVERLAY_BORDER_ALPHA = 100;
         
+        private System.Windows.Forms.Timer? _displayChangeTimer;
+
         public MainForm()
         {
             try
@@ -103,6 +106,13 @@ namespace TbEinkSuperFlushTurbo
                 {
                     Log($"Brightness test failed: {ex.Message}");
                 }
+                
+                SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+                
+                _displayChangeTimer = new System.Windows.Forms.Timer();
+                _displayChangeTimer.Interval = 2000; // Check every 2 seconds
+                _displayChangeTimer.Tick += OnDisplayChangeTimerTick;
+                _displayChangeTimer.Start();
             }
             catch (Exception ex)
             {
@@ -110,6 +120,55 @@ namespace TbEinkSuperFlushTurbo
                 File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "debug_output.txt"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] StackTrace: {ex.StackTrace}{Environment.NewLine}");
                 throw;
             }
+        }
+
+        private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+        {
+            Log("Display settings changed, stopping capture.");
+            StopCapture();
+        }
+
+        private void OnDisplayChangeTimerTick(object? sender, EventArgs e)
+        {
+            if (_d3d != null)
+            {
+                double refreshRate = _d3d.GetCurrentPrimaryDisplayRefreshRate();
+                if (refreshRate >= 59.0)
+                {
+                    Log($"High refresh rate detected ({refreshRate}Hz), stopping capture.");
+                    StopCapture();
+                }
+            }
+        }
+
+        private void StopCapture()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(StopCapture));
+                return;
+            }
+
+            if (_pollTimer?.Enabled == true)
+            {
+                // Simulate stop button click
+                var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Stop");
+                btnStop?.PerformClick();
+            }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_DISPLAYCHANGE = 0x007E;
+            const int WM_DPICHANGED = 0x02E0;
+
+            if (m.Msg == WM_DISPLAYCHANGE || m.Msg == WM_DPICHANGED)
+            {
+                Log("Display settings changed (WM_DISPLAYCHANGE or WM_DPICHANGED), stopping capture.");
+                StopCapture();
+            }
+
+            base.WndProc(ref m);
         }
 
         private void InitLogFile()
@@ -356,6 +415,9 @@ namespace TbEinkSuperFlushTurbo
             _logWriter?.Close();
             _cts?.Dispose();
             Log("Application closed");
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+            _displayChangeTimer?.Stop();
+            _displayChangeTimer?.Dispose();
         }
 
         public async void ManualRefresh()
