@@ -27,7 +27,7 @@ namespace TbEinkSuperFlushTurbo
 
         // --- Refresh parameters ---
         private const int TILE_SIZE = 8;
-        private const int PIXEL_DELTA = 10;
+        private const int PIXEL_DELTA = 4;
         // Average window size for frame difference calculation (maximum supported: 4 frames)
         private const uint AVERAGE_WINDOW_SIZE = 3;
         private const uint STABLE_FRAMES_REQUIRED = 4;
@@ -59,14 +59,14 @@ namespace TbEinkSuperFlushTurbo
                 Log($"ForceDirectXCapture set to: {_forceDirectXCapture}");
             }
         }
-        private const int HOTKEY_ID = 9000;
-        private const int MOD_NONE = 0;
-        private const int VK_F6 = 0x75;
+        // private const int HOTKEY_ID = 9000;
+        // private const int MOD_NONE = 0;
+        // private const int VK_F6 = 0x75;
 
-        [DllImport("user32.dll")]
-        private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
-        [DllImport("user32.dll")]
-        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        // [DllImport("user32.dll")]
+        // private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
+        // [DllImport("user32.dll")]
+        // private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")]
@@ -302,7 +302,7 @@ namespace TbEinkSuperFlushTurbo
 
         void ShowTemporaryOverlay(List<(int bx, int by)>? tiles, float[]? brightnessData)
         {
-            if (_cts.IsCancellationRequested || _d3d == null || tiles == null || tiles.Count == 0) return;
+            if (_cts?.IsCancellationRequested == true || _d3d == null || tiles == null || tiles.Count == 0) return;
 
             if (_overlayForm == null)
             {
@@ -326,20 +326,20 @@ namespace TbEinkSuperFlushTurbo
             _overlayForm?.UpdateContent(tiles, brightnessData);
         }
 
-        protected override void WndProc(ref Message m)
-        {
-            if (m.Msg == 0x0312 && m.WParam.ToInt32() == HOTKEY_ID)
-            {
-                ManualRefresh();
-                return;
-            }
-            base.WndProc(ref m);
-        }
+        // protected override void WndProc(ref Message m)
+        // {
+        //     if (m.Msg == 0x0312 && m.WParam.ToInt32() == HOTKEY_ID)
+        //     {
+        //         ManualRefresh();
+        //         return;
+        //     }
+        //     base.WndProc(ref m);
+        // }
 
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            RegisterHotKey(this.Handle, HOTKEY_ID, MOD_NONE, VK_F6);
+            // RegisterHotKey(this.Handle, HOTKEY_ID, MOD_NONE, VK_F6);
             _trayIcon?.ShowBalloonTip(3000, "EInk Ghost Reducer", "Application started. Click tray icon to show panel.", ToolTipIcon.Info);
         }
 
@@ -352,7 +352,7 @@ namespace TbEinkSuperFlushTurbo
             _d3d?.Dispose();
             _overlayForm?.Dispose();
             _trayIcon?.Dispose();
-            UnregisterHotKey(this.Handle, HOTKEY_ID);
+            // UnregisterHotKey(this.Handle, HOTKEY_ID);
             _logWriter?.Close();
             _cts?.Dispose();
             Log("Application closed");
