@@ -376,9 +376,9 @@ namespace TbEinkSuperFlushTurbo
             // 快捷键设置项 - 切换运行状态
             var lblToggleHotkey = new Label() { Text = "Toggle Hotkey:", Left = 30, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             _txtToggleHotkey = new TextBox() { Left = 620, Top = 360, Width = sliderWidth, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            _btnToggleRecord = new Button() { Text = "●", Left = 1340, Top = 360, Width = 60, Height = 50, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
+            _btnToggleRecord = new Button() { Text = "●", Left = 1340, Top = 360, Width = 60, Height = 70, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
             _btnToggleRecord.BackColor = Color.Red;
-            _btnToggleSave = new Button() { Text = "Save", Left = 1410, Top = 360, Width = 120, Height = 50, Font = new Font(this.Font.FontFamily, 11f) };
+            _btnToggleSave = new Button() { Text = "Save", Left = 1410, Top = 360, Width = 120, Height = 70, Font = new Font(this.Font.FontFamily, 11f) };
             _btnToggleSave.Enabled = false;
             
             // 初始化快捷键显示
