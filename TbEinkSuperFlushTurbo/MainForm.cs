@@ -13,6 +13,7 @@ using System.Linq;
 using Microsoft.Win32;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Media;
 
 namespace TbEinkSuperFlushTurbo
 {
@@ -70,7 +71,6 @@ namespace TbEinkSuperFlushTurbo
         private bool _isRecordingHotkey = false;
         private TextBox? _txtToggleHotkey;
         private Button? _btnToggleRecord;
-        private Button? _btnToggleSave;
         private bool _isHotkeyRegistered = false;
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -375,11 +375,11 @@ namespace TbEinkSuperFlushTurbo
 
             // 快捷键设置项 - 切换运行状态
             var lblToggleHotkey = new Label() { Text = "Toggle Hotkey:", Left = 30, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            _txtToggleHotkey = new TextBox() { Left = 620, Top = 360, Width = sliderWidth, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            _btnToggleRecord = new Button() { Text = "●", Left = 1340, Top = 360, Width = 60, Height = 70, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
-            _btnToggleRecord.BackColor = Color.Red;
-            _btnToggleSave = new Button() { Text = "Save", Left = 1410, Top = 360, Width = 120, Height = 70, Font = new Font(this.Font.FontFamily, 11f) };
-            _btnToggleSave.Enabled = false;
+            _txtToggleHotkey = new TextBox() { Left = 620, Top = 350, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
+            _btnToggleRecord = new Button() { Text = "●", Left = 1340, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold) };
+            _btnToggleRecord.BackColor = Color.White;
+            _btnToggleRecord.ForeColor = Color.Red;
+
             
             // 初始化快捷键显示
             _txtToggleHotkey.Text = _toggleHotkey.ToString();
@@ -397,7 +397,7 @@ namespace TbEinkSuperFlushTurbo
             Controls.Add(lblToggleHotkey);
             Controls.Add(_txtToggleHotkey);
             Controls.Add(_btnToggleRecord);
-            Controls.Add(_btnToggleSave);
+
             Controls.Add(lblInfo);
             Controls.Add(listBox);
             Controls.Add(lblPixelDelta);
@@ -599,30 +599,31 @@ namespace TbEinkSuperFlushTurbo
 
                 if (_isRecordingHotkey)
                 {
-                    // 停止录制
+                    // 停止录制并自动保存
                     _isRecordingHotkey = false;
                     _btnToggleRecord.Text = "●";
-                    _btnToggleRecord.BackColor = Color.LightCoral;
-                    _btnToggleSave!.Enabled = false;
-                    Log("Hotkey recording stopped");
+                    _btnToggleRecord.ForeColor = Color.Red;
+                    _btnToggleRecord.BackColor = Color.White;
+                    SaveToggleHotkey();
+                    // Log("Hotkey recording stopped and saved"); // 移除录制提示
                 }
                 else
                 {
                     // 开始录制
-                    _isRecordingHotkey = true;
-                    _btnToggleRecord.Text = "■";
-                    _btnToggleRecord.BackColor = Color.Red;
-                    _txtToggleHotkey!.Text = "Press hotkey combination...";
-                    _btnToggleSave!.Enabled = false;
-                    Log("Recording hotkey - press your desired key combination");
+                _isRecordingHotkey = true;
+                _btnToggleRecord.Text = "■";
+                _btnToggleRecord.ForeColor = Color.Black;
+                _btnToggleRecord.BackColor = Color.White;
+                _txtToggleHotkey!.Text = "Press hotkey combination...";
+                // Log("Recording hotkey - press your desired key combination"); // 移除录制提示
                 }
             };
 
             // 保存按钮事件处理
-            _btnToggleSave!.Click += (s, e) =>
-            {
-                SaveToggleHotkey();
-            };
+            // _btnToggleSave!.Click += (s, e) =>
+            // {
+            //     SaveToggleHotkey();
+            // };
 
             // 窗体按键事件处理（用于录制快捷键）
             this.KeyPreview = true;
@@ -669,7 +670,7 @@ namespace TbEinkSuperFlushTurbo
         {
             base.OnLoad(e);
             // RegisterHotKey(this.Handle, HOTKEY_ID, MOD_NONE, VK_F6);
-            _trayIcon?.ShowBalloonTip(3000, "EInk Ghost Reducer", "Application started. Click tray icon to show panel.", ToolTipIcon.Info);
+            ShowForceNotification("EInk Ghost Reducer", "Application started. Click tray icon to show panel.", ToolTipIcon.Info);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -732,20 +733,56 @@ namespace TbEinkSuperFlushTurbo
                 _toggleHotkey = keyCombo;
                 _txtToggleHotkey!.Text = FormatShortcut(keyCombo);
                 
-                // 停止录制，启用保存
+                // 停止录制，自动保存
                 _isRecordingHotkey = false;
                 _btnToggleRecord!.Text = "●";
-                _btnToggleRecord.BackColor = Color.LightCoral;
-                _btnToggleSave!.Enabled = true;
+                _btnToggleRecord.ForeColor = Color.Red;
+                _btnToggleRecord.BackColor = Color.White;
+                SaveToggleHotkey();
                 
-                Log($"Hotkey recording completed: {FormatShortcut(keyCombo)}");
+                // Log($"Hotkey recording completed and saved: {FormatShortcut(keyCombo)}"); // 移除录制提示
             }
-            else if (e.KeyData == _toggleHotkey && _isHotkeyRegistered)
+            else if (e.KeyData == _toggleHotkey && _isHotkeyRegistered && !_isRecordingHotkey)
             {
-                // 切换运行状态
+                // 切换运行状态（仅在非录制状态下响应）
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 ToggleCaptureState();
+            }
+        }
+
+        // 播放提示音
+        private void PlayNotificationSound()
+        {
+            try
+            {
+                SystemSounds.Asterisk.Play();
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to play notification sound: {ex.Message}");
+            }
+        }
+
+        // 显示强制通知（气泡提示+提示音）
+        private void ShowForceNotification(string title, string message, ToolTipIcon icon = ToolTipIcon.Info)
+        {
+            try
+            {
+                // 确保托盘图标可见
+                if (_trayIcon != null) _trayIcon.Visible = true;
+                
+                // 显示气泡提示
+                _trayIcon?.ShowBalloonTip(3000, title, message, icon);
+                
+                // 播放提示音
+                PlayNotificationSound();
+                
+                Log($"Notification shown: {title} - {message}");
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to show notification: {ex.Message}");
             }
         }
 
@@ -756,7 +793,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 当前正在运行，停止它
                 Log($"Hotkey triggered: Stop capture");
-                _trayIcon?.ShowBalloonTip(3000, "EInk Ghost Reducer", "Screen refresh capture stopped", ToolTipIcon.Info);
+                ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture stopped", ToolTipIcon.Info);
                 var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Stop");
                 btnStop?.PerformClick();
             }
@@ -764,7 +801,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 当前已停止，开始运行
                 Log($"Hotkey triggered: Start capture");
-                _trayIcon?.ShowBalloonTip(3000, "EInk Ghost Reducer", "Screen refresh capture started", ToolTipIcon.Info);
+                ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture started", ToolTipIcon.Info);
                 var btnStart = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Start");
                 btnStart?.PerformClick();
             }
@@ -791,7 +828,6 @@ namespace TbEinkSuperFlushTurbo
                 if (success)
                 {
                     _isHotkeyRegistered = true;
-                    _btnToggleSave!.Enabled = false;
                     SaveConfig(); // 保存到配置文件
                     Log($"Hotkey set successfully: {FormatShortcut(_toggleHotkey)}");
                     MessageBox.Show($"Hotkey set successfully: {FormatShortcut(_toggleHotkey)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -814,10 +850,22 @@ namespace TbEinkSuperFlushTurbo
         {
             _isRecordingHotkey = false;
             _btnToggleRecord!.Text = "●";
-            _btnToggleRecord.BackColor = Color.LightCoral;
-            _txtToggleHotkey!.Text = FormatShortcut(_toggleHotkey);
-            _btnToggleSave!.Enabled = false;
-            Log("Hotkey recording cancelled");
+            _btnToggleRecord.ForeColor = Color.Red;
+            _btnToggleRecord.BackColor = Color.White;
+            
+            // 清空快捷键而不是保留上一次的
+            _toggleHotkey = Keys.None;
+            _txtToggleHotkey!.Text = "";
+            
+            // 取消注册当前快捷键
+            if (_isHotkeyRegistered)
+            {
+                NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
+                _isHotkeyRegistered = false;
+            }
+            
+            SaveConfig();
+            Log("Hotkey recording cancelled and cleared");
         }
 
         // 格式化快捷键显示
