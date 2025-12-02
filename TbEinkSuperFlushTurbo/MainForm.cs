@@ -379,9 +379,22 @@ namespace TbEinkSuperFlushTurbo
             // 快捷键设置项 - 切换运行状态
             var lblToggleHotkey = new Label() { Text = "Toggle Hotkey:", Left = 30, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             _txtToggleHotkey = new TextBox() { Left = 620, Top = 350, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            _btnToggleRecord = new Button() { Text = "●", Left = 1350, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.TopRight, Padding = new Padding(0, 8, 18, 0) };
+            _btnToggleRecord = new Button() { Text = "●", Left = 1350, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
             _btnToggleRecord.BackColor = Color.White;
             _btnToggleRecord.ForeColor = Color.Red;
+            _btnToggleRecord.Paint += (sender, e) => {
+                var btn = (Button)sender;
+                var text = btn.Text;
+                using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
+                using (var brush = new SolidBrush(btn.ForeColor))
+                {
+                    var textSize = e.Graphics.MeasureString(text, font);
+                    var x = (btn.Width - textSize.Width) / 2;
+                    var y = (btn.Height - textSize.Height) / 2;
+                    e.Graphics.Clear(btn.BackColor); // 清除背景，防止重影
+                    e.Graphics.DrawString(text, font, brush, x, y);
+                }
+            };
 
             
             // 初始化快捷键显示
