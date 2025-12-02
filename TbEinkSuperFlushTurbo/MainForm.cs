@@ -27,7 +27,7 @@ namespace TbEinkSuperFlushTurbo
         public Action<string>? DebugLogger { get; private set; }
 
         // --- Refresh parameters ---
-        private const int TILE_SIZE = 8;
+        private int _tileSize = 8; // 区块的像素边长数，默认值8代表8*8像素
         private int _pixelDelta = 10;
         // Average window size for frame difference calculation (maximum supported: 4 frames)
         private const uint AVERAGE_WINDOW_SIZE = 3;
@@ -43,7 +43,8 @@ namespace TbEinkSuperFlushTurbo
         private const int BOUNDING_AREA_HEIGHT = 45; // 每个合围区域高度（区块数量）
         private const int BOUNDING_AREA_HISTORY_FRAMES = 3; // 历史帧数
         private const int BOUNDING_AREA_CHANGE_THRESHOLD = 3; // 变化帧阈值
-        private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = 1518; // 区块变化数阈值（单个合围区域内每帧）
+        private const double BOUNDING_AREA_REFRESH_BLOCK_RATIO = 0.75; // 区块比例阈值（75%的区块变化时抑制刷新）
+        private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = (int)(BOUNDING_AREA_WIDTH * BOUNDING_AREA_HEIGHT * BOUNDING_AREA_REFRESH_BLOCK_RATIO); // 区块变化数阈值（由比例计算得出）
 
         private int PollTimerInterval => _pollInterval; // Use configurable poll interval
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / 500) + ADDITIONAL_COOLDOWN_FRAMES; // Use default 500ms for protection calculation
@@ -75,6 +76,8 @@ namespace TbEinkSuperFlushTurbo
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
         [DllImport("user32.dll")]
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+        [DllImport("user32.dll")]
+        private static extern uint GetDpiForWindow(IntPtr hWnd);
 
         private const int CARET_CHECK_INTERVAL = 400;
         private const int IME_CHECK_INTERVAL = 400;
@@ -140,6 +143,10 @@ namespace TbEinkSuperFlushTurbo
                     {
                         _pollInterval = Math.Max(200, Math.Min(5000, savedPollInterval));
                     }
+                    if (lines.Length >= 3 && int.TryParse(lines[2], out int savedTileSize))
+                    {
+                        _tileSize = Math.Max(8, Math.Min(64, savedTileSize));
+                    }
                 }
             }
             catch (Exception ex)
@@ -153,9 +160,9 @@ namespace TbEinkSuperFlushTurbo
             try
             {
                 string configPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
-                string[] lines = { _pixelDelta.ToString(), _pollInterval.ToString() };
+                string[] lines = { _pixelDelta.ToString(), _pollInterval.ToString(), _tileSize.ToString() };
                 File.WriteAllLines(configPath, lines);
-                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms");
+                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}");
             }
             catch (Exception ex)
             {
@@ -304,6 +311,12 @@ namespace TbEinkSuperFlushTurbo
             var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1330, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1490, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             
+            // 设置项放在单独一行 - Block Size (区块尺寸设置) - 已隐藏，默认值为8
+            // var lblTileSize = new Label() { Text = "Block Size (pixels):", Left = 30, Top = 340, Width = labelWidth, Height = 100, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            // var trackTileSize = new TrackBar() { Left = 620, Top = 357, Width = sliderWidth, Height = 70, Minimum = 8, Maximum = 64, Value = _tileSize, TickFrequency = 8, SmallChange = 1, LargeChange = 8 };
+            // var lblTileSizeValue = new Label() { Text = _tileSize.ToString(), Left = 1330, Top = 350, Width = valueWidth, Height = 80, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            // var lblTileSizeUnit = new Label() { Text = "px", Left = 1490, Top = 350, Width = 80, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            
             // 问号按钮 - 仅悬停提示 (增大高度和宽度保持圆形)
             var btnHelp = new Button() { Text = "?", Left = 1600, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
             btnHelp.TextAlign = ContentAlignment.MiddleCenter;
@@ -311,14 +324,41 @@ namespace TbEinkSuperFlushTurbo
             System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
             path.AddEllipse(0, 0, 80, 80);
             btnHelp.Region = new Region(path);
+
+            // 快捷键设置项 - 开启快捷键
+            var lblStartHotkey = new Label() { Text = "Start Hotkey:", Left = 30, Top = 420, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var txtStartHotkey = new TextBox() { Left = 620, Top = 430, Width = 200, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
+            var btnStartRecord = new Button() { Text = "●", Left = 840, Top = 430, Width = 40, Height = 40, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
+            btnStartRecord.BackColor = Color.LightCoral;
+            var btnStartSave = new Button() { Text = "Save", Left = 890, Top = 430, Width = 80, Height = 40, Font = new Font(this.Font.FontFamily, 10f) };
+            btnStartSave.Enabled = false;
+
+            // 快捷键设置项 - 停止快捷键
+            var lblStopHotkey = new Label() { Text = "Stop Hotkey:", Left = 30, Top = 490, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var txtStopHotkey = new TextBox() { Left = 620, Top = 500, Width = 200, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
+            var btnStopRecord = new Button() { Text = "●", Left = 840, Top = 500, Width = 40, Height = 40, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
+            btnStopRecord.BackColor = Color.LightCoral;
+            var btnStopSave = new Button() { Text = "Save", Left = 890, Top = 500, Width = 80, Height = 40, Font = new Font(this.Font.FontFamily, 10f) };
+            btnStopSave.Enabled = false;
             
-            var lblInfo = new Label() { Left = 30, Top = 320, Width = 1600, Height = 60, Text = "Status: stopped", Font = new Font(this.Font.FontFamily, 12f) };
-            var listBox = new ListBox() { Left = 30, Top = 400, Width = 1600, Height = 500 };
+            var lblInfo = new Label() { Left = 30, Top = 580, Width = 1600, Height = 80, Text = "Status: stopped", Font = new Font(this.Font.FontFamily, 12f) };
+            // 日志字体大小与设置项保持一致（9号字体）
+            float dpiScale = GetDpiForWindow(this.Handle) / 96f;
+            float logFontSize = 9f * dpiScale; // 与设置项相同的9号字体大小
+            var listBox = new ListBox() { Left = 50, Top = 670, Width = 1700, Height = 350, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 优化布局：左右对称留白，左侧50px，右侧50px，宽度1700px居中显示
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
             Controls.Add(btnStart);
             Controls.Add(btnStop);
+            Controls.Add(lblStartHotkey);
+            Controls.Add(txtStartHotkey);
+            Controls.Add(btnStartRecord);
+            Controls.Add(btnStartSave);
+            Controls.Add(lblStopHotkey);
+            Controls.Add(txtStopHotkey);
+            Controls.Add(btnStopRecord);
+            Controls.Add(btnStopSave);
             Controls.Add(lblInfo);
             Controls.Add(listBox);
             Controls.Add(lblPixelDelta);
@@ -328,19 +368,32 @@ namespace TbEinkSuperFlushTurbo
             Controls.Add(trackPollInterval);
             Controls.Add(lblPollIntervalValue);
             Controls.Add(lblPollIntervalUnit);
-            Controls.Add(btnHelp);
+            // 区块尺寸设置项已隐藏，默认值为8
+            // Controls.Add(lblTileSize);
+            // Controls.Add(trackTileSize);
+            // Controls.Add(lblTileSizeValue);
+            // Controls.Add(lblTileSizeUnit);
+            // Controls.Add(btnHelp); // 问号按钮暂时注释掉，未来可以视情况恢复
 
             // 添加鼠标悬停提示 - 多行详细说明
             var toolTip = new ToolTip();
-            toolTip.SetToolTip(lblPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(trackPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            toolTip.SetToolTip(trackPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            toolTip.SetToolTip(lblPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes within each block.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each pixel within a block.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(trackPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes within each block.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each pixel within a block.\nRecommended: Start with 10 and adjust based on your theme.");
             
-            // 优化问号按钮提示 - 支持换行和透明效果
+            // Block Size 提示 - 已隐藏，注释掉相关提示
+            // toolTip.SetToolTip(lblTileSize, "Block Size (pixels):\n\nSets the pixel dimensions of each detection block.\n• Smaller values (8-16): More precise detection but higher CPU usage\n• Larger values (32-64): Less CPU usage but coarser detection\n\nExample: 8 means 8×8 pixel blocks (64 pixels total)\nRecommended: Start with 8 for good balance.");
+            // toolTip.SetToolTip(trackTileSize, "Block Size (pixels):\n\nSets the pixel dimensions of each detection block.\n• Smaller values (8-16): More precise detection but higher CPU usage\n• Larger values (32-64): Less CPU usage but coarser detection\n\nExample: 8 means 8×8 pixel blocks (64 pixels total)\nRecommended: Start with 8 for good balance.");
+            
+            // 检测间隔提示暂时注释掉
+            // toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            // toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            toolTip.SetToolTip(trackPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
+            // 检测间隔提示暂时注释掉
+            // toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            // toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
+            
+            // 问号按钮提示暂时注释掉
+            /*
             var helpToolTip = new ToolTip();
             helpToolTip.ToolTipTitle = "Settings Help";
             helpToolTip.UseFading = true;
@@ -352,6 +405,7 @@ namespace TbEinkSuperFlushTurbo
             helpToolTip.InitialDelay = 200;   // 0.2秒延迟
             helpToolTip.ReshowDelay = 100;     // 0.1秒重新显示延迟
             helpToolTip.SetToolTip(btnHelp, "Brightness Diff Delta:\nControls sensitivity to pixel changes.\nHigher values need larger differences.\n\nDetection Interval:\nTime between screen checks (ms).\nLower = more responsive but higher CPU.");
+            */
 
             // 滑动条事件处理
             trackPixelDelta.ValueChanged += (s, e) => {
@@ -371,7 +425,14 @@ namespace TbEinkSuperFlushTurbo
                 }
             };
 
-            // 问号按钮不再有点击事件，仅用于悬停提示
+            // trackTileSize.ValueChanged += (s, e) => {
+            //     // 注意：tile Size 改变需要重启才能生效（当前值会在下次启动时应用）
+            //     _tileSize = trackTileSize.Value;
+            //     lblTileSizeValue.Text = _tileSize.ToString();
+            //     SaveConfig();
+            // };
+
+            // 问号按钮暂时注释掉，相关事件处理也注释掉
 
             _trayIcon = new NotifyIcon() { Icon = SystemIcons.Application, Text = "EInk Ghost Reducer", Visible = true };
             _trayIcon.Click += (s, e) => { if (this.WindowState == FormWindowState.Minimized || !this.Visible) { this.Show(); this.WindowState = FormWindowState.Normal; this.Activate(); } else { this.Hide(); } };
@@ -392,12 +453,13 @@ namespace TbEinkSuperFlushTurbo
                 // 禁用设置项修改
                 trackPixelDelta.Enabled = false;
                 trackPollInterval.Enabled = false;
+                // trackTileSize.Enabled = false; // 已隐藏
 
                 lblInfo.Text = "Status: initializing GPU capture...";
                 Log("Initializing GPU capture...");
                 try
                 {
-                    _d3d = new D3DCaptureAndCompute(DebugLogger, TILE_SIZE, _pixelDelta, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
+                    _d3d = new D3DCaptureAndCompute(DebugLogger, _tileSize, _pixelDelta, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
                         new BoundingAreaConfig(
                             BOUNDING_AREA_WIDTH,
                             BOUNDING_AREA_HEIGHT,
@@ -440,9 +502,12 @@ namespace TbEinkSuperFlushTurbo
                     };
                     _pollTimer.Start();
 
-                    lblInfo.Text = $"Status: running (screen {_d3d.ScreenWidth}x{_d3d.ScreenHeight})";
+                    // 获取系统缩放比例
+                    float dpiScale = GetDpiForWindow(this.Handle) / 96f;
+                    int scalePercent = (int)(dpiScale * 100);
+                    lblInfo.Text = $"Status: running (screen {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, scale: {scalePercent}%)";
                     btnStop.Enabled = true;
-                    Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}");
+                    Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%");
                 }
                 catch (Exception ex)
                 {
@@ -474,6 +539,7 @@ namespace TbEinkSuperFlushTurbo
                 // 重新启用设置项修改
                 trackPixelDelta.Enabled = true;
                 trackPollInterval.Enabled = true;
+                // trackTileSize.Enabled = true; // 已隐藏
                 
                 _cts?.Dispose();
                 _cts = null;
