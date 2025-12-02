@@ -379,7 +379,7 @@ namespace TbEinkSuperFlushTurbo
             // 快捷键设置项 - 切换运行状态
             var lblToggleHotkey = new Label() { Text = "Toggle Hotkey:", Left = 30, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             _txtToggleHotkey = new TextBox() { Left = 620, Top = 350, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            _btnToggleRecord = new Button() { Text = "●", Left = 1350, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold) };
+            _btnToggleRecord = new Button() { Text = "●", Left = 1350, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.TopRight, Padding = new Padding(0, 8, 18, 0) };
             _btnToggleRecord.BackColor = Color.White;
             _btnToggleRecord.ForeColor = Color.Red;
 
@@ -488,6 +488,13 @@ namespace TbEinkSuperFlushTurbo
 
             btnStart.Click += (s, e) =>
             {
+                // 检查是否正在录制快捷键
+                if (_isRecordingHotkey)
+                {
+                    MessageBox.Show("Cannot start capture while recording hotkey. Please complete hotkey recording first.", "Hotkey Recording in Progress", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                
                 btnStart.Enabled = false;
                 _cts = new CancellationTokenSource();
                 _frameCounter = 0; // Reset frame counter on start
@@ -611,8 +618,8 @@ namespace TbEinkSuperFlushTurbo
                     else
                     {
                         // 用户输入了按键，保存快捷键
-                        SaveToggleHotkey();
-                    }
+                    SaveToggleHotkey();
+                }
                     
 
                     
