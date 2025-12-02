@@ -706,9 +706,9 @@ namespace TbEinkSuperFlushTurbo
                     // 获取系统缩放比例
                     float dpiScale = GetDpiForWindow(this.Handle) / 96f;
                     int scalePercent = (int)(dpiScale * 100);
-                    lblInfo.Text = $"Status: Running (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%)";
+                    lblInfo.Text = $"Status: Running (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile: {_tileSize}x{_tileSize} pixels)";
                     btnStop.Enabled = true;
-                    Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%");
+                    Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile: {_tileSize}x{_tileSize} pixels");
                 }
                 catch (Exception ex)
                 {
