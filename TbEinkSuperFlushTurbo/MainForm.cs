@@ -11,6 +11,8 @@ using System.IO;
 using System.Globalization;
 using System.Linq;
 using Microsoft.Win32;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace TbEinkSuperFlushTurbo
 {
@@ -62,14 +64,14 @@ namespace TbEinkSuperFlushTurbo
                 Log($"ForceDirectXCapture set to: {_forceDirectXCapture}");
             }
         }
-        // private const int HOTKEY_ID = 9000;
-        // private const int MOD_NONE = 0;
-        // private const int VK_F6 = 0x75;
-
-        // [DllImport("user32.dll")]
-        // private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
-        // [DllImport("user32.dll")]
-        // private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        // 快捷键相关字段
+        private const int TOGGLE_HOTKEY_ID = 9001;
+        private Keys _toggleHotkey = Keys.F6; // 默认快捷键
+        private bool _isRecordingHotkey = false;
+        private TextBox? _txtToggleHotkey;
+        private Button? _btnToggleRecord;
+        private Button? _btnToggleSave;
+        private bool _isHotkeyRegistered = false;
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")]
@@ -118,6 +120,9 @@ namespace TbEinkSuperFlushTurbo
                 _displayChangeTimer.Interval = 2000; // Check every 2 seconds
                 _displayChangeTimer.Tick += OnDisplayChangeTimerTick;
                 _displayChangeTimer.Start();
+                
+                // 注册快捷键
+                RegisterToggleHotkey();
             }
             catch (Exception ex)
             {
@@ -148,10 +153,36 @@ namespace TbEinkSuperFlushTurbo
                         _tileSize = Math.Max(8, Math.Min(64, savedTileSize));
                     }
                 }
+
+                // 加载快捷键配置
+                string hotkeyConfigPath = Path.Combine(AppContext.BaseDirectory, "hotkey.json");
+                if (File.Exists(hotkeyConfigPath))
+                {
+                    string json = File.ReadAllText(hotkeyConfigPath);
+                    using JsonDocument doc = JsonDocument.Parse(json);
+                    JsonElement root = doc.RootElement;
+                    
+                    if (root.TryGetProperty("ToggleHotkey", out JsonElement hotkeyElement))
+                    {
+                        _toggleHotkey = (Keys)hotkeyElement.GetInt32();
+                        if (_txtToggleHotkey != null)
+                            _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+                    }
+                }
+                else
+                {
+                    // 默认快捷键
+                    _toggleHotkey = Keys.F6;
+                    if (_txtToggleHotkey != null)
+                        _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+                }
             }
             catch (Exception ex)
             {
                 Log($"Failed to load config: {ex.Message}");
+                _toggleHotkey = Keys.F6;
+                if (_txtToggleHotkey != null)
+                    _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
             }
         }
 
@@ -163,6 +194,16 @@ namespace TbEinkSuperFlushTurbo
                 string[] lines = { _pixelDelta.ToString(), _pollInterval.ToString(), _tileSize.ToString() };
                 File.WriteAllLines(configPath, lines);
                 Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}");
+
+                // 保存快捷键配置
+                string hotkeyConfigPath = Path.Combine(AppContext.BaseDirectory, "hotkey.json");
+                var hotkeyConfig = new
+                {
+                    ToggleHotkey = (int)_toggleHotkey
+                };
+                string json = JsonSerializer.Serialize(hotkeyConfig, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(hotkeyConfigPath, json);
+                Log($"Saved hotkey config: {FormatShortcut(_toggleHotkey)}");
             }
             catch (Exception ex)
             {
@@ -209,11 +250,18 @@ namespace TbEinkSuperFlushTurbo
         {
             const int WM_DISPLAYCHANGE = 0x007E;
             const int WM_DPICHANGED = 0x02E0;
+            const int WM_HOTKEY = 0x0312;
 
             if (m.Msg == WM_DISPLAYCHANGE || m.Msg == WM_DPICHANGED)
             {
                 Log("Display settings changed (WM_DISPLAYCHANGE or WM_DPICHANGED), stopping capture.");
                 StopCapture();
+            }
+            else if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == TOGGLE_HOTKEY_ID)
+            {
+                // 全局快捷键触发
+                ToggleCaptureState();
+                return;
             }
 
             base.WndProc(ref m);
@@ -325,21 +373,16 @@ namespace TbEinkSuperFlushTurbo
             path.AddEllipse(0, 0, 80, 80);
             btnHelp.Region = new Region(path);
 
-            // 快捷键设置项 - 开启快捷键
-            var lblStartHotkey = new Label() { Text = "Start Hotkey:", Left = 30, Top = 420, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var txtStartHotkey = new TextBox() { Left = 620, Top = 430, Width = 200, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            var btnStartRecord = new Button() { Text = "●", Left = 840, Top = 430, Width = 40, Height = 40, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
-            btnStartRecord.BackColor = Color.LightCoral;
-            var btnStartSave = new Button() { Text = "Save", Left = 890, Top = 430, Width = 80, Height = 40, Font = new Font(this.Font.FontFamily, 10f) };
-            btnStartSave.Enabled = false;
-
-            // 快捷键设置项 - 停止快捷键
-            var lblStopHotkey = new Label() { Text = "Stop Hotkey:", Left = 30, Top = 490, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var txtStopHotkey = new TextBox() { Left = 620, Top = 500, Width = 200, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            var btnStopRecord = new Button() { Text = "●", Left = 840, Top = 500, Width = 40, Height = 40, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
-            btnStopRecord.BackColor = Color.LightCoral;
-            var btnStopSave = new Button() { Text = "Save", Left = 890, Top = 500, Width = 80, Height = 40, Font = new Font(this.Font.FontFamily, 10f) };
-            btnStopSave.Enabled = false;
+            // 快捷键设置项 - 切换运行状态
+            var lblToggleHotkey = new Label() { Text = "切换运行状态:", Left = 30, Top = 420, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            _txtToggleHotkey = new TextBox() { Left = 620, Top = 430, Width = 200, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
+            _btnToggleRecord = new Button() { Text = "●", Left = 840, Top = 430, Width = 40, Height = 40, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
+            _btnToggleRecord.BackColor = Color.LightCoral;
+            _btnToggleSave = new Button() { Text = "保存", Left = 890, Top = 430, Width = 80, Height = 40, Font = new Font(this.Font.FontFamily, 10f) };
+            _btnToggleSave.Enabled = false;
+            
+            // 初始化快捷键显示
+            _txtToggleHotkey.Text = _toggleHotkey.ToString();
             
             var lblInfo = new Label() { Left = 30, Top = 580, Width = 1600, Height = 80, Text = "Status: stopped", Font = new Font(this.Font.FontFamily, 12f) };
             // 日志字体大小与设置项保持一致（9号字体）
@@ -351,14 +394,10 @@ namespace TbEinkSuperFlushTurbo
 
             Controls.Add(btnStart);
             Controls.Add(btnStop);
-            Controls.Add(lblStartHotkey);
-            Controls.Add(txtStartHotkey);
-            Controls.Add(btnStartRecord);
-            Controls.Add(btnStartSave);
-            Controls.Add(lblStopHotkey);
-            Controls.Add(txtStopHotkey);
-            Controls.Add(btnStopRecord);
-            Controls.Add(btnStopSave);
+            Controls.Add(lblToggleHotkey);
+            Controls.Add(_txtToggleHotkey);
+            Controls.Add(_btnToggleRecord);
+            Controls.Add(_btnToggleSave);
             Controls.Add(lblInfo);
             Controls.Add(listBox);
             Controls.Add(lblPixelDelta);
@@ -547,6 +586,40 @@ namespace TbEinkSuperFlushTurbo
                 _overlayForm?.HideOverlay();
                 Log("GPU capture stopped");
             };
+
+            // 快捷键录制按钮事件处理
+            _btnToggleRecord!.Click += (s, e) =>
+            {
+                if (_isRecordingHotkey)
+                {
+                    // 停止录制
+                    _isRecordingHotkey = false;
+                    _btnToggleRecord.Text = "●";
+                    _btnToggleRecord.BackColor = Color.LightCoral;
+                    _btnToggleSave!.Enabled = false;
+                    Log("快捷键录制已停止");
+                }
+                else
+                {
+                    // 开始录制
+                    _isRecordingHotkey = true;
+                    _btnToggleRecord.Text = "■";
+                    _btnToggleRecord.BackColor = Color.Red;
+                    _txtToggleHotkey!.Text = "请按下快捷键...";
+                    _btnToggleSave!.Enabled = false;
+                    Log("开始录制快捷键，请按下您想要的快捷键组合");
+                }
+            };
+
+            // 保存按钮事件处理
+            _btnToggleSave!.Click += (s, e) =>
+            {
+                SaveToggleHotkey();
+            };
+
+            // 窗体按键事件处理（用于录制快捷键）
+            this.KeyPreview = true;
+            this.KeyDown += MainForm_KeyDown;
         }
 
         void ShowTemporaryOverlay(List<(int bx, int by)>? tiles, float[]? brightnessData)
@@ -622,6 +695,188 @@ namespace TbEinkSuperFlushTurbo
             catch (Exception ex)
             {
                 Log($"[ManualRefresh] Exception: {ex}");
+            }
+        }
+
+        // 快捷键捕获事件处理
+        private void MainForm_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (_isRecordingHotkey)
+            {
+                // 录制模式：捕获按键
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                
+                if (e.KeyCode == Keys.Escape)
+                {
+                    // ESC键取消录制
+                    CancelHotkeyRecording();
+                    return;
+                }
+                
+                if (e.KeyCode == Keys.ControlKey || e.KeyCode == Keys.ShiftKey || e.KeyCode == Keys.Menu)
+                {
+                    // 忽略单独的修饰键
+                    return;
+                }
+                
+                // 获取按键组合
+                Keys keyCombo = e.KeyData;
+                _toggleHotkey = keyCombo;
+                _txtToggleHotkey!.Text = FormatShortcut(keyCombo);
+                
+                // 停止录制，启用保存
+                _isRecordingHotkey = false;
+                _btnToggleRecord!.Text = "●";
+                _btnToggleRecord.BackColor = Color.LightCoral;
+                _btnToggleSave!.Enabled = true;
+                
+                Log($"快捷键录制完成: {FormatShortcut(keyCombo)}");
+            }
+            else if (e.KeyData == _toggleHotkey && _isHotkeyRegistered)
+            {
+                // 切换运行状态
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                ToggleCaptureState();
+            }
+        }
+
+        // 切换捕获状态
+        private void ToggleCaptureState()
+        {
+            if (_cts?.IsCancellationRequested == false && _pollTimer?.Enabled == true)
+            {
+                // 当前正在运行，停止它
+                Log($"快捷键触发: 停止捕获");
+                var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Stop");
+                btnStop?.PerformClick();
+            }
+            else
+            {
+                // 当前已停止，开始运行
+                Log($"快捷键触发: 开始捕获");
+                var btnStart = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Start");
+                btnStart?.PerformClick();
+            }
+        }
+
+        // 保存快捷键
+        private void SaveToggleHotkey()
+        {
+            try
+            {
+                // 注销旧快捷键
+                if (_isHotkeyRegistered)
+                {
+                    NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
+                    _isHotkeyRegistered = false;
+                }
+                
+                // 注册新快捷键
+                uint modifiers = GetModifiers(_toggleHotkey);
+                Keys keyCode = GetKeyCode(_toggleHotkey);
+                
+                bool success = NativeMethods.RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modifiers, (uint)keyCode);
+                
+                if (success)
+                {
+                    _isHotkeyRegistered = true;
+                    _btnToggleSave!.Enabled = false;
+                    SaveConfig(); // 保存到配置文件
+                    Log($"快捷键设置成功: {FormatShortcut(_toggleHotkey)}");
+                    MessageBox.Show($"快捷键设置成功: {FormatShortcut(_toggleHotkey)}", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    Log($"快捷键注册失败: {FormatShortcut(_toggleHotkey)}");
+                    MessageBox.Show($"快捷键注册失败，可能被其他程序占用: {FormatShortcut(_toggleHotkey)}", "失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"保存快捷键失败: {ex.Message}");
+                MessageBox.Show($"保存快捷键失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // 取消快捷键录制
+        private void CancelHotkeyRecording()
+        {
+            _isRecordingHotkey = false;
+            _btnToggleRecord!.Text = "●";
+            _btnToggleRecord.BackColor = Color.LightCoral;
+            _txtToggleHotkey!.Text = FormatShortcut(_toggleHotkey);
+            _btnToggleSave!.Enabled = false;
+            Log("快捷键录制已取消");
+        }
+
+        // 格式化快捷键显示
+        private string FormatShortcut(Keys keys)
+        {
+            List<string> parts = new List<string>();
+            
+            if ((keys & Keys.Control) == Keys.Control)
+                parts.Add("Ctrl");
+            if ((keys & Keys.Shift) == Keys.Shift)
+                parts.Add("Shift");
+            if ((keys & Keys.Alt) == Keys.Alt)
+                parts.Add("Alt");
+            
+            Keys keyCode = keys & Keys.KeyCode;
+            if (keyCode != Keys.ControlKey && keyCode != Keys.ShiftKey && keyCode != Keys.Menu)
+            {
+                parts.Add(keyCode.ToString());
+            }
+            
+            return string.Join(" + ", parts);
+        }
+
+        // 获取修饰键
+        private uint GetModifiers(Keys keys)
+        {
+            uint modifiers = 0;
+            if ((keys & Keys.Control) == Keys.Control) modifiers |= 0x0002; // MOD_CONTROL
+            if ((keys & Keys.Shift) == Keys.Shift) modifiers |= 0x0004;     // MOD_SHIFT
+            if ((keys & Keys.Alt) == Keys.Alt) modifiers |= 0x0001;       // MOD_ALT
+            return modifiers;
+        }
+
+        // 获取键码
+        private Keys GetKeyCode(Keys keys)
+        {
+            return keys & Keys.KeyCode;
+        }
+
+        // 注册快捷键
+        private void RegisterToggleHotkey()
+        {
+            try
+            {
+                if (_isHotkeyRegistered)
+                {
+                    NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
+                    _isHotkeyRegistered = false;
+                }
+                
+                uint modifiers = GetModifiers(_toggleHotkey);
+                Keys keyCode = GetKeyCode(_toggleHotkey);
+                
+                bool success = NativeMethods.RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modifiers, (uint)keyCode);
+                
+                if (success)
+                {
+                    _isHotkeyRegistered = true;
+                    Log($"快捷键注册成功: {FormatShortcut(_toggleHotkey)}");
+                }
+                else
+                {
+                    Log($"快捷键注册失败: {FormatShortcut(_toggleHotkey)}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"注册快捷键失败: {ex.Message}");
             }
         }
     }
@@ -989,5 +1244,15 @@ namespace TbEinkSuperFlushTurbo
         [StructLayout(LayoutKind.Sequential)] private struct Win32Point { public int X, Y; public Win32Point(int x, int y) { X = x; Y = y; } }
         [StructLayout(LayoutKind.Sequential)] private struct Win32Size { public int cx, cy; public Win32Size(int cx, int cy) { this.cx = cx; this.cy = cy; } }
         [StructLayout(LayoutKind.Sequential)] private struct BLENDFUNCTION { public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat; }
+
+        // Windows热键API
+        private static class NativeMethods
+        {
+            [DllImport("user32.dll", SetLastError = true)]
+            public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+            
+            [DllImport("user32.dll", SetLastError = true)]
+            public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        }
     }
 }
