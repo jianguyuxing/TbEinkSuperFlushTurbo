@@ -352,7 +352,7 @@ namespace TbEinkSuperFlushTurbo
             var btnStop = new Button() { Text = "Stop", Left = 220, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
             
             // 设置项放在单独一行 - Color Channel Changes (增加垂直间距)
-            var lblPixelDelta = new Label() { Text = "Color Channel Changes:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPixelDelta = new Label() { Text = "Pixel Color Diff:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPixelDelta = new TrackBar() { Left = 620, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
             var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1330, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             
@@ -384,6 +384,15 @@ namespace TbEinkSuperFlushTurbo
             _btnToggleRecord.ForeColor = Color.Red;
             _btnToggleRecord.FlatStyle = FlatStyle.Flat; // 关键：移除按钮边框
             _btnToggleRecord.FlatAppearance.BorderSize = 0; // 无边框
+            _btnToggleRecord.Cursor = Cursors.Hand; // 鼠标悬停时显示手型光标
+            
+            // 添加鼠标悬停效果
+            _btnToggleRecord.MouseEnter += (s, e) => {
+                _btnToggleRecord.BackColor = Color.LightGray; // 悬停时背景变灰
+            };
+            _btnToggleRecord.MouseLeave += (s, e) => {
+                _btnToggleRecord.BackColor = Color.White; // 离开时恢复白色
+            };
             _btnToggleRecord.Paint += (sender, e) => {
                 var btn = (Button)sender;
                 var text = btn.Text;
@@ -404,14 +413,19 @@ namespace TbEinkSuperFlushTurbo
                 {
                     if (text == "●") // 圆点 - 改为圆环+内部小圆点
                     {
-                        // 绘制圆环
-                        int outerDiameter = Math.Min(btn.Width, btn.Height) - 30; // 缩小尺寸
-                        int ringThickness = 3;
+                        // 绘制圆环 - DPI自适应
+                        float dpiScale = GetDpiForWindow(this.Handle) / 96f;
+                        int baseSize = Math.Min(btn.Width, btn.Height);
+                        int outerDiameter = (int)((baseSize - 38) * dpiScale); // DPI缩放，保留38
+                        int ringThickness = (int)(2 * dpiScale); // DPI缩放环厚度
                         int x = (btn.Width - outerDiameter) / 2;
                         int y = (btn.Height - outerDiameter) / 2;
                         
-                        // 绘制外圆环
-                        e.Graphics.FillEllipse(borderBrush, x, y, outerDiameter, outerDiameter);
+                        // 绘制外圆环（红色）
+                        using (var redBrush = new SolidBrush(Color.Red))
+                        {
+                            e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
+                        }
                         
                         // 绘制内圆（白色背景，形成圆环效果）
                         int innerDiameter = outerDiameter - (ringThickness * 2);
@@ -419,8 +433,8 @@ namespace TbEinkSuperFlushTurbo
                         int innerY = y + ringThickness;
                         e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
                         
-                        // 绘制中心小圆点
-                        int centerDiameter = innerDiameter - 6;
+                        // 绘制中心小圆点 - DPI自适应
+                        int centerDiameter = (int)((innerDiameter - 8) * dpiScale);
                         int centerX = (btn.Width - centerDiameter) / 2;
                         int centerY = (btn.Height - centerDiameter) / 2;
                         e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
@@ -428,7 +442,7 @@ namespace TbEinkSuperFlushTurbo
                     else if (text == "■") // 方点
                     {
                         // 绘制一个较小的实心方形，基于中心点
-                        int size = Math.Min(btn.Width, btn.Height) - 35; // 缩小尺寸
+                        int size = Math.Min(btn.Width, btn.Height) - 42; // 再小一点
                         int x = (btn.Width - size) / 2;
                         int y = (btn.Height - size) / 2;
                         e.Graphics.FillRectangle(brush, x, y, size, size);
@@ -479,8 +493,8 @@ namespace TbEinkSuperFlushTurbo
 
             // 添加鼠标悬停提示 - 多行详细说明
             var toolTip = new ToolTip();
-            toolTip.SetToolTip(lblPixelDelta, "Color Channel Changes:\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(trackPixelDelta, "Color Channel Changes:\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(lblPixelDelta, "Pixel Color Diff:\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(trackPixelDelta, "Pixel Color Diff:\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
             
             // Block Size 提示 - 已隐藏，注释掉相关提示
             // toolTip.SetToolTip(lblTileSize, "Block Size (pixels):\n\nSets the pixel dimensions of each detection block.\n• Smaller values (8-16): More precise detection but higher CPU usage\n• Larger values (32-64): Less CPU usage but coarser detection\n\nExample: 8 means 8×8 pixel blocks (64 pixels total)\nRecommended: Start with 8 for good balance.");
@@ -986,6 +1000,12 @@ namespace TbEinkSuperFlushTurbo
             if (keyCode != Keys.ControlKey && keyCode != Keys.ShiftKey && keyCode != Keys.Menu)
             {
                 parts.Add(keyCode.ToString());
+            }
+            
+            // 如果没有设置任何快捷键，显示提示文本
+            if (parts.Count == 0)
+            {
+                return "click Btn to set";
             }
             
             return string.Join(" + ", parts);
