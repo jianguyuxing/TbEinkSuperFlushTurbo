@@ -352,7 +352,7 @@ namespace TbEinkSuperFlushTurbo
             _overlayForm = null;
 
             Text = "EInk Kaleido Ghost Reducer (GPU)";
-            Width = 1800; // 进一步扩大窗口宽度
+            Width = 1770; // 减少30px宽度到1770
             Height = 1100;  // 进一步扩大窗口高度
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -364,19 +364,19 @@ namespace TbEinkSuperFlushTurbo
             int sliderWidth = 700;  // 大幅增加滑动条宽度适应高DPI
             int valueWidth = 150;   // 增加数值显示宽度适应高DPI
             
-            var btnStart = new Button() { Text = "Start", Left = 30, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
-            var btnStop = new Button() { Text = "Stop", Left = 220, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
+            var btnStart = new Button() { Text = "Start", Left = 60, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
+            var btnStop = new Button() { Text = "Stop", Left = 250, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
             
             // DPI缩放因子 - 提前声明用于问号按钮
             float dpiScale = GetDpiForWindow(this.Handle) / 96f;
             
             // 设置项放在单独一行 - Color Channel Changes (增加垂直间距)
-            var lblPixelDelta = new Label() { Text = "Pixel Color Diff:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var trackPixelDelta = new TrackBar() { Left = 620, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
-            var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1330, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPixelDelta = new Label() { Text = "Pixel Color Diff:", Left = 60, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var trackPixelDelta = new TrackBar() { Left = 650, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
+            var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1360, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 问号按钮 - DPI自适应，增大尺寸和字体，改为点击显示弹窗，优化悬停效果
-            var btnHelpPixelDelta = new Button() { Text = "?", Left = 1480, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 10, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
+            var btnHelpPixelDelta = new Button() { Text = "?", Left = 1510, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 10, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 像素差异问号按钮右移30px
             btnHelpPixelDelta.TextAlign = ContentAlignment.MiddleCenter;
             // 设置圆形区域（宽高相同保持正圆）
             System.Drawing.Drawing2D.GraphicsPath pathHelp = new System.Drawing.Drawing2D.GraphicsPath();
@@ -412,10 +412,10 @@ namespace TbEinkSuperFlushTurbo
             };
             
             // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
-            var lblPollInterval = new Label() { Text = "Detect Interval:", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var trackPollInterval = new TrackBar() { Left = 620, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = 500, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
-            var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1330, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
-            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1490, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollInterval = new Label() { Text = "Detect Interval:", Left = 60, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var trackPollInterval = new TrackBar() { Left = 650, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = 500, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
+            var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1360, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1520, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 设置项放在单独一行 - Block Size (区块尺寸设置) - 已隐藏，默认值为8
             // var lblTileSize = new Label() { Text = "Block Size (pixels):", Left = 30, Top = 340, Width = labelWidth, Height = 100, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
@@ -424,7 +424,7 @@ namespace TbEinkSuperFlushTurbo
             // var lblTileSizeUnit = new Label() { Text = "px", Left = 1490, Top = 350, Width = 80, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 问号按钮 - 仅悬停提示 (增大高度和宽度保持圆形)
-            var btnHelp = new Button() { Text = "?", Left = 1600, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
+            var btnHelp = new Button() { Text = "?", Left = 1645, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 问号按钮再向右移动30px（总计45px）
             btnHelp.TextAlign = ContentAlignment.MiddleCenter;
             // 设置圆形区域（宽高相同保持正圆）
             System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
@@ -432,9 +432,9 @@ namespace TbEinkSuperFlushTurbo
             btnHelp.Region = new Region(path);
 
             // 快捷键设置项 - 切换运行状态
-            var lblToggleHotkey = new Label() { Text = "Toggle Hotkey:", Left = 30, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            _txtToggleHotkey = new TextBox() { Left = 620, Top = 350, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            _btnToggleRecord = new Button() { Text = "●", Left = 1350, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
+            var lblToggleHotkey = new Label() { Text = "Toggle Hotkey:", Left = 60, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            _txtToggleHotkey = new TextBox() { Left = 650, Top = 350, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
+            _btnToggleRecord = new Button() { Text = "●", Left = 1380, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
             _btnToggleRecord.BackColor = Color.White;
             _btnToggleRecord.ForeColor = Color.Red;
             _btnToggleRecord.FlatStyle = FlatStyle.Flat; // 关键：移除按钮边框
@@ -521,10 +521,10 @@ namespace TbEinkSuperFlushTurbo
                 _txtToggleHotkey.Text = "click button to set";
             }
             
-            var lblInfo = new Label() { Left = 30, Top = 460, Width = 1600, Height = 60, Text = "Status: Stopped", Font = new Font(this.Font.FontFamily, 12f) };
+            var lblInfo = new Label() { Left = 60, Top = 460, Width = 1600, Height = 60, Text = "Status: Stopped", Font = new Font(this.Font.FontFamily, 12f) };
             // 日志字体大小调整为5号字体（比之前小3个字号）
             float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
-            var listBox = new ListBox() { Left = 50, Top = 530, Width = 1660, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 再次微调：下移20px，右侧增加20px留白（总共40px）
+            var listBox = new ListBox() { Left = 70, Top = 530, Width = 1595, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 宽度减少15px到1595px
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
