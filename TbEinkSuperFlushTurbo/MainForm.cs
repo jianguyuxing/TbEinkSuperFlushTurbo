@@ -351,10 +351,49 @@ namespace TbEinkSuperFlushTurbo
             var btnStart = new Button() { Text = "Start", Left = 30, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
             var btnStop = new Button() { Text = "Stop", Left = 220, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
             
+            // DPI缩放因子 - 提前声明用于问号按钮
+            float dpiScale = GetDpiForWindow(this.Handle) / 96f;
+            
             // 设置项放在单独一行 - Color Channel Changes (增加垂直间距)
             var lblPixelDelta = new Label() { Text = "Pixel Color Diff:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPixelDelta = new TrackBar() { Left = 620, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
             var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1330, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            
+            // 问号按钮 - DPI自适应，增大尺寸和字体，改为点击显示弹窗，优化悬停效果
+            var btnHelpPixelDelta = new Button() { Text = "?", Left = 1480, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 10, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } };
+            btnHelpPixelDelta.TextAlign = ContentAlignment.MiddleCenter;
+            // 设置圆形区域（宽高相同保持正圆）
+            System.Drawing.Drawing2D.GraphicsPath pathHelp = new System.Drawing.Drawing2D.GraphicsPath();
+            pathHelp.AddEllipse(0, 0, btnHelpPixelDelta.Width, btnHelpPixelDelta.Height);
+            btnHelpPixelDelta.Region = new Region(pathHelp);
+            
+            // 自定义绘制确保问号完全居中
+            btnHelpPixelDelta.Paint += (sender, e) => {
+                var btn = (Button)sender;
+                e.Graphics.Clear(btn.BackColor);
+                
+                using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
+                // 根据按钮状态选择颜色：悬停时为白色，正常时为前景色
+                using (var brush = new SolidBrush(btn.BackColor == Color.FromArgb(135, 206, 235) ? Color.White : btn.ForeColor))
+                {
+                    // 精确测量文本尺寸
+                    var textSize = e.Graphics.MeasureString("?", font);
+                    // 计算精确位置实现完美居中
+                    var x = (btn.Width - textSize.Width) / 2;
+                    var y = (btn.Height - textSize.Height) / 2;
+                    e.Graphics.DrawString("?", font, brush, x, y);
+                }
+            };
+            
+            // 添加鼠标悬停效果 - 使用亮度变化而非颜色变化
+            btnHelpPixelDelta.MouseEnter += (s, e) => {
+                btnHelpPixelDelta.BackColor = Color.FromArgb(135, 206, 235); // 稍微暗一点的淡蓝色
+                btnHelpPixelDelta.Cursor = Cursors.Hand;
+            };
+            btnHelpPixelDelta.MouseLeave += (s, e) => {
+                btnHelpPixelDelta.BackColor = Color.LightBlue;
+                btnHelpPixelDelta.Cursor = Cursors.Default;
+            };
             
             // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
             var lblPollInterval = new Label() { Text = "Detection Interval:", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
@@ -413,11 +452,10 @@ namespace TbEinkSuperFlushTurbo
                 {
                     if (text == "●") // 圆点 - 改为圆环+内部小圆点
                     {
-                        // 绘制圆环 - DPI自适应
-                        float dpiScale = GetDpiForWindow(this.Handle) / 96f;
+                        // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
                         int baseSize = Math.Min(btn.Width, btn.Height);
-                        int outerDiameter = (int)((baseSize - 38) * dpiScale); // DPI缩放，保留38
-                        int ringThickness = (int)(2 * dpiScale); // DPI缩放环厚度
+                        int outerDiameter = baseSize - 36; // 再放大圆环，从-40改为-36
+                        int ringThickness = 2; // 固定环厚度，不再DPI缩放
                         int x = (btn.Width - outerDiameter) / 2;
                         int y = (btn.Height - outerDiameter) / 2;
                         
@@ -433,8 +471,8 @@ namespace TbEinkSuperFlushTurbo
                         int innerY = y + ringThickness;
                         e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
                         
-                        // 绘制中心小圆点 - DPI自适应
-                        int centerDiameter = (int)((innerDiameter - 8) * dpiScale);
+                        // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
+                        int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
                         int centerX = (btn.Width - centerDiameter) / 2;
                         int centerY = (btn.Height - centerDiameter) / 2;
                         e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
@@ -463,7 +501,6 @@ namespace TbEinkSuperFlushTurbo
             
             var lblInfo = new Label() { Left = 30, Top = 510, Width = 1600, Height = 80, Text = "Status: Stopped", Font = new Font(this.Font.FontFamily, 12f) };
             // 日志字体大小调整为5号字体（比之前小3个字号）
-            float dpiScale = GetDpiForWindow(this.Handle) / 96f;
             float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
             var listBox = new ListBox() { Left = 50, Top = 600, Width = 1700, Height = 420, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 优化布局：左右对称留白，左侧50px，右侧50px，宽度1700px居中显示
 
@@ -480,6 +517,7 @@ namespace TbEinkSuperFlushTurbo
             Controls.Add(lblPixelDelta);
             Controls.Add(trackPixelDelta);
             Controls.Add(lblPixelDeltaValue);
+            Controls.Add(btnHelpPixelDelta);
             Controls.Add(lblPollInterval);
             Controls.Add(trackPollInterval);
             Controls.Add(lblPollIntervalValue);
@@ -493,8 +531,10 @@ namespace TbEinkSuperFlushTurbo
 
             // 添加鼠标悬停提示 - 多行详细说明
             var toolTip = new ToolTip();
-            toolTip.SetToolTip(lblPixelDelta, "Pixel Color Diff:\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(trackPixelDelta, "Pixel Color Diff:\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(lblPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(trackPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            // 移除悬停提示，改为点击显示弹窗
+            // toolTip.SetToolTip(btnHelpPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
             
             // Block Size 提示 - 已隐藏，注释掉相关提示
             // toolTip.SetToolTip(lblTileSize, "Block Size (pixels):\n\nSets the pixel dimensions of each detection block.\n• Smaller values (8-16): More precise detection but higher CPU usage\n• Larger values (32-64): Less CPU usage but coarser detection\n\nExample: 8 means 8×8 pixel blocks (64 pixels total)\nRecommended: Start with 8 for good balance.");
@@ -548,7 +588,21 @@ namespace TbEinkSuperFlushTurbo
             //     SaveConfig();
             // };
 
-            // 问号按钮暂时注释掉，相关事件处理也注释掉
+            // 问号按钮点击事件 - 显示详细信息弹窗
+            btnHelpPixelDelta.Click += (s, e) => {
+                string helpText = "Pixel Color Diff (像素颜色差异):\n\n" +
+                    "控制检测对每个区块内单个像素各颜色通道亮度变化的敏感程度。\n" +
+                    "• 较低值(2-8): 适合浅色主题，检测细微变化\n" +
+                    "• 较高值(15-25): 适合高对比度主题，忽略微小变化\n\n" +
+                    "推荐: 从10开始，根据您的主题进行调整。\n\n" +
+                    "English:\n" +
+                    "Controls sensitivity to brightness changes within each tile's individual pixels across all color channels.\n" +
+                    "• Lower values (2-8): Better for light themes, detects subtle changes\n" +
+                    "• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\n" +
+                    "Recommended: Start with 10 and adjust based on your theme.";
+                
+                MessageBox.Show(helpText, "Pixel Color Diff - 详细说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
 
             _trayIcon = new NotifyIcon() { Icon = SystemIcons.Application, Text = "EInk Ghost Reducer", Visible = true };
             _trayIcon.Click += (s, e) => { this.Show(); this.WindowState = FormWindowState.Normal; this.Activate(); };
