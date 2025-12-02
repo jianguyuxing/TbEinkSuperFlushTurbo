@@ -15,6 +15,184 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Media;
 
+    // 本地化资源类
+    public static class Localization
+    {
+        public enum Language
+        {
+            English,
+            ChineseSimplified,
+            ChineseTraditional
+        }
+
+        private static Language _currentLanguage = Language.English;
+        private static readonly Dictionary<string, Dictionary<Language, string>> _resources = new()
+        {
+            // 窗口标题
+            ["WindowTitle"] = new()
+            {
+                [Language.English] = "EInk Kaleido Ghost Reducer (GPU)",
+                [Language.ChineseSimplified] = "EInk Kaleido 残影清除器 (GPU)",
+                [Language.ChineseTraditional] = "EInk Kaleido 殘影清除器 (GPU)"
+            },
+            
+            // 按钮文本
+            ["Start"] = new()
+            {
+                [Language.English] = "Start",
+                [Language.ChineseSimplified] = "开始",
+                [Language.ChineseTraditional] = "開始"
+            },
+            
+            ["Stop"] = new()
+            {
+                [Language.English] = "Stop",
+                [Language.ChineseSimplified] = "停止",
+                [Language.ChineseTraditional] = "停止"
+            },
+            
+            // 标签文本
+            ["PixelColorDiff"] = new()
+            {
+                [Language.English] = "Pixel Color Diff:",
+                [Language.ChineseSimplified] = "像素颜色差异：",
+                [Language.ChineseTraditional] = "像素顏色差異："
+            },
+            
+            ["DetectInterval"] = new()
+            {
+                [Language.English] = "Detect Interval:",
+                [Language.ChineseSimplified] = "检测间隔：",
+                [Language.ChineseTraditional] = "檢測間隔："
+            },
+            
+            ["ToggleHotkey"] = new()
+            {
+                [Language.English] = "Toggle Hotkey:",
+                [Language.ChineseSimplified] = "切换热键：",
+                [Language.ChineseTraditional] = "切換熱鍵："
+            },
+            
+            // 单位
+            ["Milliseconds"] = new()
+            {
+                [Language.English] = "ms",
+                [Language.ChineseSimplified] = "毫秒",
+                [Language.ChineseTraditional] = "毫秒"
+            },
+            
+            ["Pixels"] = new()
+            {
+                [Language.English] = "px",
+                [Language.ChineseSimplified] = "像素",
+                [Language.ChineseTraditional] = "像素"
+            },
+            
+            // 状态文本
+            ["StatusStopped"] = new()
+            {
+                [Language.English] = "Status: Stopped",
+                [Language.ChineseSimplified] = "状态：已停止",
+                [Language.ChineseTraditional] = "狀態：已停止"
+            },
+            
+            ["StatusRunning"] = new()
+            {
+                [Language.English] = "Status: Running",
+                [Language.ChineseSimplified] = "状态：运行中",
+                [Language.ChineseTraditional] = "狀態：運行中"
+            },
+            
+            ["StatusInitializing"] = new()
+            {
+                [Language.English] = "Status: Initializing GPU capture...",
+                [Language.ChineseSimplified] = "状态：正在初始化GPU捕获...",
+                [Language.ChineseTraditional] = "狀態：正在初始化GPU捕獲..."
+            },
+            
+            ["StatusFailed"] = new()
+            {
+                [Language.English] = "Status: Failed",
+                [Language.ChineseSimplified] = "状态：失败",
+                [Language.ChineseTraditional] = "狀態：失敗"
+            },
+            
+            // 热键相关
+            ["ClickButtonToSet"] = new()
+            {
+                [Language.English] = "click button to set",
+                [Language.ChineseSimplified] = "点击按钮设置",
+                [Language.ChineseTraditional] = "點擊按鈕設置"
+            },
+            
+            ["PressHotkeyCombination"] = new()
+            {
+                [Language.English] = "Press hotkey combination...",
+                [Language.ChineseSimplified] = "按下热键组合...",
+                [Language.ChineseTraditional] = "按下熱鍵組合..."
+            },
+            
+            // 问号按钮
+            ["QuestionMark"] = new()
+            {
+                [Language.English] = "?",
+                [Language.ChineseSimplified] = "？",
+                [Language.ChineseTraditional] = "？"
+            },
+            
+            // 托盘图标
+            ["TrayIconText"] = new()
+            {
+                [Language.English] = "EInk Ghost Reducer",
+                [Language.ChineseSimplified] = "EInk 残影清除器",
+                [Language.ChineseTraditional] = "EInk 殘影清除器"
+            }
+        };
+
+        // 检测系统语言并设置当前语言
+        public static void DetectAndSetLanguage()
+        {
+            CultureInfo currentCulture = CultureInfo.CurrentCulture;
+            string cultureName = currentCulture.Name.ToLower();
+            
+            if (cultureName.StartsWith("zh"))
+            {
+                if (cultureName.Contains("hant") || cultureName.Contains("tw") || cultureName.Contains("hk") || cultureName.Contains("mo"))
+                {
+                    _currentLanguage = Language.ChineseTraditional;
+                }
+                else
+                {
+                    _currentLanguage = Language.ChineseSimplified;
+                }
+            }
+            else
+            {
+                _currentLanguage = Language.English;
+            }
+        }
+
+        // 获取本地化文本
+        public static string GetText(string key)
+        {
+            if (_resources.ContainsKey(key) && _resources[key].ContainsKey(_currentLanguage))
+            {
+                return _resources[key][_currentLanguage];
+            }
+            
+            // 如果找不到对应的语言，返回英文
+            if (_resources.ContainsKey(key) && _resources[key].ContainsKey(Language.English))
+            {
+                return _resources[key][Language.English];
+            }
+            
+            return key; // 如果都找不到，返回key本身
+        }
+
+        // 获取当前语言
+        public static Language CurrentLanguage => _currentLanguage;
+    }
+
 namespace TbEinkSuperFlushTurbo
 {
     public partial class MainForm : Form
@@ -101,6 +279,9 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
+                // 检测并设置系统语言
+                Localization.DetectAndSetLanguage();
+                
                 LoadConfig();
                 InitLogFile();
                 InitUI();
@@ -257,7 +438,7 @@ namespace TbEinkSuperFlushTurbo
             if (_pollTimer?.Enabled == true)
             {
                 // Simulate stop button click
-                var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Stop");
+                var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == Localization.GetText("Stop"));
                 btnStop?.PerformClick();
             }
         }
@@ -351,7 +532,7 @@ namespace TbEinkSuperFlushTurbo
             
             _overlayForm = null;
 
-            Text = "EInk Kaleido Ghost Reducer (GPU)";
+            Text = Localization.GetText("WindowTitle");
             Width = 1770; // 减少30px宽度到1770
             Height = 1100;  // 进一步扩大窗口高度
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -364,19 +545,19 @@ namespace TbEinkSuperFlushTurbo
             int sliderWidth = 700;  // 大幅增加滑动条宽度适应高DPI
             int valueWidth = 150;   // 增加数值显示宽度适应高DPI
             
-            var btnStart = new Button() { Text = "Start", Left = 60, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
-            var btnStop = new Button() { Text = "Stop", Left = 250, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
+            var btnStart = new Button() { Text = Localization.GetText("Start"), Left = 60, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
+            var btnStop = new Button() { Text = Localization.GetText("Stop"), Left = 250, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
             
             // DPI缩放因子 - 提前声明用于问号按钮
             float dpiScale = GetDpiForWindow(this.Handle) / 96f;
             
             // 设置项放在单独一行 - Color Channel Changes (增加垂直间距)
-            var lblPixelDelta = new Label() { Text = "Pixel Color Diff:", Left = 60, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPixelDelta = new Label() { Text = Localization.GetText("PixelColorDiff"), Left = 60, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPixelDelta = new TrackBar() { Left = 650, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
             var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1360, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 问号按钮 - DPI自适应，增大尺寸和字体，改为点击显示弹窗，优化悬停效果
-            var btnHelpPixelDelta = new Button() { Text = "?", Left = 1520, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 12, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 像素差异问号按钮右移40px，确保4位数也能显示，字体加大到12号
+            var btnHelpPixelDelta = new Button() { Text = Localization.GetText("QuestionMark"), Left = 1520, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 12, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 像素差异问号按钮右移40px，确保4位数也能显示，字体加大到12号
             btnHelpPixelDelta.TextAlign = ContentAlignment.MiddleCenter;
             // 设置圆形区域（宽高相同保持正圆）
             System.Drawing.Drawing2D.GraphicsPath pathHelp = new System.Drawing.Drawing2D.GraphicsPath();
@@ -412,10 +593,10 @@ namespace TbEinkSuperFlushTurbo
             };
             
             // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
-            var lblPollInterval = new Label() { Text = "Detect Interval:", Left = 60, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollInterval = new Label() { Text = Localization.GetText("DetectInterval"), Left = 60, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPollInterval = new TrackBar() { Left = 650, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = 500, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
             var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1360, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
-            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1520, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1520, Top = 230, Width = 40, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 设置项放在单独一行 - Block Size (区块尺寸设置) - 已隐藏，默认值为8
             // var lblTileSize = new Label() { Text = "Block Size (pixels):", Left = 30, Top = 340, Width = labelWidth, Height = 100, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
@@ -424,7 +605,7 @@ namespace TbEinkSuperFlushTurbo
             // var lblTileSizeUnit = new Label() { Text = "px", Left = 1490, Top = 350, Width = 80, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 问号按钮 - 仅悬停提示 (增大高度和宽度保持圆形)
-            var btnHelp = new Button() { Text = "?", Left = 1645, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 问号按钮再向右移动30px（总计45px）
+            var btnHelp = new Button() { Text = Localization.GetText("QuestionMark"), Left = 1645, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 问号按钮再向右移动30px（总计45px）
             btnHelp.TextAlign = ContentAlignment.MiddleCenter;
             // 设置圆形区域（宽高相同保持正圆）
             System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
@@ -432,7 +613,7 @@ namespace TbEinkSuperFlushTurbo
             btnHelp.Region = new Region(path);
 
             // 快捷键设置项 - 切换运行状态
-            var lblToggleHotkey = new Label() { Text = "Toggle Hotkey:", Left = 60, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblToggleHotkey = new Label() { Text = Localization.GetText("ToggleHotkey"), Left = 60, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             _txtToggleHotkey = new TextBox() { Left = 650, Top = 350, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
             _btnToggleRecord = new Button() { Text = "●", Left = 1380, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
             _btnToggleRecord.BackColor = Color.White;
@@ -518,10 +699,10 @@ namespace TbEinkSuperFlushTurbo
             // 如果快捷键为None，确保显示"click button to set"
             if (_toggleHotkey == Keys.None)
             {
-                _txtToggleHotkey.Text = "click button to set";
+                _txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
             }
             
-            var lblInfo = new Label() { Left = 60, Top = 460, Width = 1600, Height = 60, Text = "Status: Stopped", Font = new Font(this.Font.FontFamily, 12f) };
+            var lblInfo = new Label() { Left = 60, Top = 460, Width = 1600, Height = 60, Text = Localization.GetText("StatusStopped"), Font = new Font(this.Font.FontFamily, 12f) };
             // 日志字体大小调整为5号字体（比之前小3个字号）
             float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
             var listBox = new ListBox() { Left = 70, Top = 530, Width = 1595, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 宽度减少15px到1595px
@@ -614,18 +795,32 @@ namespace TbEinkSuperFlushTurbo
 
             // 问号按钮点击事件 - 显示详细信息弹窗
             btnHelpPixelDelta.Click += (s, e) => {
-                string helpText = "Pixel Color Diff Threshold (像素颜色差异阈值):\n\n" +
-                    "控制区块内每个颜色通道(R/G/B)亮度变化的敏感度。\n" +
-                    "• 较低值(2-8): 适合默认浅色主题，检测细微变化。（区分白色和浅灰色及浅亮度彩色）\n" +
-                    "• 较高值(15-25): 适合高对比度主题，忽略微小变化\n\n" +
-                    "推荐: 从10开始，根据您的主题进行调整。\n\n" +
-                    "English:\n" +
-                    "Controls the sensitivity to luminance changes in individual color channels (R/G/B) for each tile.\n" +
-                    "• Lower values (2-8): Better for default light themes, detects subtle changes. (Distinguishes white from light gray and low-brightness colors)\n" +
-                    "• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\n" +
-                    "Recommended: Start with 10 and adjust based on your theme.";
+                string helpText;
+                string title;
                 
-                MessageBox.Show(helpText, "Pixel Color Diff Threshold - 详细说明", MessageBoxButtons.OK, MessageBoxIcon.None);
+                // 根据当前语言显示相应语言的帮助内容
+                if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
+                {
+                    helpText = "像素颜色差异阈值说明:\n\n" +
+                        "控制区块内每个颜色通道(R/G/B)亮度变化的敏感度。\n\n" +
+                        "• 较低值(2-8): 适合默认浅色主题，检测细微变化\n" +
+                        "  （区分白色和浅灰色及浅亮度彩色）\n\n" +
+                        "• 较高值(15-25): 适合高对比度主题，忽略微小变化\n\n" +
+                        "推荐: 从10开始，根据您的主题进行调整。";
+                    title = "像素颜色差异阈值 - 详细说明";
+                }
+                else
+                {
+                    helpText = "Pixel Color Diff Threshold:\n\n" +
+                        "Controls the sensitivity to luminance changes in individual color channels (R/G/B) for each tile.\n\n" +
+                        "• Lower values (2-8): Better for default light themes, detects subtle changes\n" +
+                        "  (Distinguishes white from light gray and low-brightness colors)\n\n" +
+                        "• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\n" +
+                        "Recommended: Start with 10 and adjust based on your theme.";
+                    title = "Pixel Color Diff Threshold - Help";
+                }
+                
+                MessageBox.Show(helpText, title, MessageBoxButtons.OK, MessageBoxIcon.None);
             };
 
             _trayIcon = new NotifyIcon() { Icon = SystemIcons.Application, Text = "EInk Ghost Reducer", Visible = true };
@@ -706,7 +901,7 @@ namespace TbEinkSuperFlushTurbo
                     // 获取系统缩放比例
                     float dpiScale = GetDpiForWindow(this.Handle) / 96f;
                     int scalePercent = (int)(dpiScale * 100);
-                    lblInfo.Text = $"Status: Running (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
+                    lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
                     btnStop.Enabled = true;
                     Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels");
                 }
@@ -733,7 +928,7 @@ namespace TbEinkSuperFlushTurbo
                 _d3d?.Dispose();
                 _d3d = null;
 
-                lblInfo.Text = "Status: Stopped";
+                lblInfo.Text = Localization.GetText("StatusStopped");
                 btnStart.Enabled = true;
                 btnStop.Enabled = false;
                 
@@ -762,7 +957,7 @@ namespace TbEinkSuperFlushTurbo
                     _btnToggleRecord.BackColor = Color.White;
                     
                     // 如果文本框显示的是提示文字，说明用户没有输入任何按键
-                    if (_txtToggleHotkey!.Text == "Press hotkey combination...")
+                    if (_txtToggleHotkey!.Text == Localization.GetText("PressHotkeyCombination"))
                     {
                         // 用户没有输入任何按键，清空快捷键
                         CancelHotkeyRecording();
@@ -791,7 +986,7 @@ namespace TbEinkSuperFlushTurbo
                 _btnToggleRecord.Text = "■";
                 _btnToggleRecord.ForeColor = Color.Black;
                 _btnToggleRecord.BackColor = Color.White;
-                _txtToggleHotkey!.Text = "Press hotkey combination...";
+                _txtToggleHotkey!.Text = Localization.GetText("PressHotkeyCombination");
                 
                 // 开始录制时临时注销当前快捷键，避免冲突
                 if (_isHotkeyRegistered)
@@ -988,7 +1183,7 @@ namespace TbEinkSuperFlushTurbo
                 // 当前正在运行，停止它
                 Log($"Hotkey triggered: Stop capture");
                 ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture stopped", ToolTipIcon.None);
-                var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Stop");
+                var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == Localization.GetText("Stop"));
                 btnStop?.PerformClick();
             }
             else
@@ -996,7 +1191,7 @@ namespace TbEinkSuperFlushTurbo
                 // 当前已停止，开始运行
                 Log($"Hotkey triggered: Start capture");
                 ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture started", ToolTipIcon.None);
-                var btnStart = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Start");
+                var btnStart = Controls.OfType<Button>().FirstOrDefault(b => b.Text == Localization.GetText("Start"));
                 btnStart?.PerformClick();
             }
         }
