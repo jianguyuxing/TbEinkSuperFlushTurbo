@@ -553,8 +553,9 @@ namespace TbEinkSuperFlushTurbo
 
             // 添加鼠标悬停提示 - 多行详细说明
             var toolTip = new ToolTip();
-            toolTip.SetToolTip(lblPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(trackPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            // Pixel Color Diff 提示已移除
+            // toolTip.SetToolTip(lblPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            // toolTip.SetToolTip(trackPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
             // 移除悬停提示，改为点击显示弹窗
             // toolTip.SetToolTip(btnHelpPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
             
@@ -565,7 +566,8 @@ namespace TbEinkSuperFlushTurbo
             // 检测间隔提示暂时注释掉
             // toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
             // toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            toolTip.SetToolTip(trackPixelDelta, "Color Channel Changes:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
+            // trackPixelDelta 提示已移除
+            // toolTip.SetToolTip(trackPixelDelta, "Color Channel Changes:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
             // 检测间隔提示暂时注释掉
             // toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
             // toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
@@ -855,7 +857,7 @@ namespace TbEinkSuperFlushTurbo
         {
             base.OnLoad(e);
             // RegisterHotKey(this.Handle, HOTKEY_ID, MOD_NONE, VK_F6);
-            ShowForceNotification("EInk Ghost Reducer", "Application started. Click tray icon to show panel.", ToolTipIcon.Info);
+            // 启动通知已移除
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
