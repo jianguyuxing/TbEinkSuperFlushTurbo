@@ -382,17 +382,64 @@ namespace TbEinkSuperFlushTurbo
             _btnToggleRecord = new Button() { Text = "●", Left = 1350, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
             _btnToggleRecord.BackColor = Color.White;
             _btnToggleRecord.ForeColor = Color.Red;
+            _btnToggleRecord.FlatStyle = FlatStyle.Flat; // 关键：移除按钮边框
+            _btnToggleRecord.FlatAppearance.BorderSize = 0; // 无边框
             _btnToggleRecord.Paint += (sender, e) => {
                 var btn = (Button)sender;
                 var text = btn.Text;
+                
+                // 绘制背景
+                e.Graphics.Clear(btn.BackColor);
+                
+                // 绘制黑色边框
+                using (var borderPen = new Pen(Color.Black, 2))
+                {
+                    e.Graphics.DrawRectangle(borderPen, 1, 1, btn.Width - 2, btn.Height - 2);
+                }
+                
+                // 根据文本内容选择不同的绘制方式，确保都基于中心对齐
                 using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
                 using (var brush = new SolidBrush(btn.ForeColor))
+                using (var borderBrush = new SolidBrush(Color.Black))
                 {
-                    var textSize = e.Graphics.MeasureString(text, font);
-                    var x = (btn.Width - textSize.Width) / 2;
-                    var y = (btn.Height - textSize.Height) / 2;
-                    e.Graphics.Clear(btn.BackColor); // 清除背景，防止重影
-                    e.Graphics.DrawString(text, font, brush, x, y);
+                    if (text == "●") // 圆点 - 改为圆环+内部小圆点
+                    {
+                        // 绘制圆环
+                        int outerDiameter = Math.Min(btn.Width, btn.Height) - 30; // 缩小尺寸
+                        int ringThickness = 3;
+                        int x = (btn.Width - outerDiameter) / 2;
+                        int y = (btn.Height - outerDiameter) / 2;
+                        
+                        // 绘制外圆环
+                        e.Graphics.FillEllipse(borderBrush, x, y, outerDiameter, outerDiameter);
+                        
+                        // 绘制内圆（白色背景，形成圆环效果）
+                        int innerDiameter = outerDiameter - (ringThickness * 2);
+                        int innerX = x + ringThickness;
+                        int innerY = y + ringThickness;
+                        e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
+                        
+                        // 绘制中心小圆点
+                        int centerDiameter = innerDiameter - 6;
+                        int centerX = (btn.Width - centerDiameter) / 2;
+                        int centerY = (btn.Height - centerDiameter) / 2;
+                        e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
+                    }
+                    else if (text == "■") // 方点
+                    {
+                        // 绘制一个较小的实心方形，基于中心点
+                        int size = Math.Min(btn.Width, btn.Height) - 35; // 缩小尺寸
+                        int x = (btn.Width - size) / 2;
+                        int y = (btn.Height - size) / 2;
+                        e.Graphics.FillRectangle(brush, x, y, size, size);
+                    }
+                    else // 其他字符，使用文本绘制
+                    {
+                        var textSize = e.Graphics.MeasureString(text, font);
+                        var x = (btn.Width - textSize.Width) / 2;
+                        var y = (btn.Height - textSize.Height) / 2;
+                        e.Graphics.DrawString(text, font, brush, x, y);
+                    }
                 }
             };
 
