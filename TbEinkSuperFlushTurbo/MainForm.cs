@@ -376,7 +376,7 @@ namespace TbEinkSuperFlushTurbo
             var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1360, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 问号按钮 - DPI自适应，增大尺寸和字体，改为点击显示弹窗，优化悬停效果
-            var btnHelpPixelDelta = new Button() { Text = "?", Left = 1510, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 10, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 像素差异问号按钮右移30px
+            var btnHelpPixelDelta = new Button() { Text = "?", Left = 1520, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 12, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 像素差异问号按钮右移40px，确保4位数也能显示，字体加大到12号
             btnHelpPixelDelta.TextAlign = ContentAlignment.MiddleCenter;
             // 设置圆形区域（宽高相同保持正圆）
             System.Drawing.Drawing2D.GraphicsPath pathHelp = new System.Drawing.Drawing2D.GraphicsPath();
@@ -394,8 +394,8 @@ namespace TbEinkSuperFlushTurbo
                 {
                     // 精确测量文本尺寸
                     var textSize = e.Graphics.MeasureString("?", font);
-                    // 计算精确位置实现完美居中
-                    var x = (btn.Width - textSize.Width) / 2;
+                    // 计算精确位置实现完美居中，并在圆圈内右移2个像素
+                    var x = (btn.Width - textSize.Width) / 2 + 2;
                     var y = (btn.Height - textSize.Height) / 2;
                     e.Graphics.DrawString("?", font, brush, x, y);
                 }
