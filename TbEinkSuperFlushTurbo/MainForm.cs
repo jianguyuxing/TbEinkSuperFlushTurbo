@@ -521,10 +521,10 @@ namespace TbEinkSuperFlushTurbo
                 _txtToggleHotkey.Text = "click button to set";
             }
             
-            var lblInfo = new Label() { Left = 30, Top = 510, Width = 1600, Height = 80, Text = "Status: Stopped", Font = new Font(this.Font.FontFamily, 12f) };
+            var lblInfo = new Label() { Left = 30, Top = 460, Width = 1600, Height = 60, Text = "Status: Stopped", Font = new Font(this.Font.FontFamily, 12f) };
             // 日志字体大小调整为5号字体（比之前小3个字号）
             float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
-            var listBox = new ListBox() { Left = 50, Top = 600, Width = 1700, Height = 420, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 优化布局：左右对称留白，左侧50px，右侧50px，宽度1700px居中显示
+            var listBox = new ListBox() { Left = 50, Top = 530, Width = 1660, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 再次微调：下移20px，右侧增加20px留白（总共40px）
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
