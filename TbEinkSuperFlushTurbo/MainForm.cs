@@ -172,9 +172,17 @@ namespace TbEinkSuperFlushTurbo
                 else
                 {
                     // 默认快捷键
-                    _toggleHotkey = Keys.F6;
-                    if (_txtToggleHotkey != null)
-                        _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+                _toggleHotkey = Keys.F6;
+                if (_txtToggleHotkey != null)
+                    _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+                else
+                {
+                    // 如果控件还未初始化，延迟设置文本
+                    this.Load += (s, e) => {
+                        if (_txtToggleHotkey != null)
+                            _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+                    };
+                }
                 }
             }
             catch (Exception ex)
@@ -183,6 +191,14 @@ namespace TbEinkSuperFlushTurbo
                 _toggleHotkey = Keys.F6;
                 if (_txtToggleHotkey != null)
                     _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+                else
+                {
+                    // 如果控件还未初始化，延迟设置文本
+                    this.Load += (s, e) => {
+                        if (_txtToggleHotkey != null)
+                            _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+                    };
+                }
             }
         }
 
@@ -295,7 +311,7 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to create log file: {ex.Message}", "Logging Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Failed to create log file: {ex.Message}", "Logging Error", MessageBoxButtons.OK, MessageBoxIcon.None);
             }
         }
 
@@ -396,7 +412,7 @@ namespace TbEinkSuperFlushTurbo
             };
             
             // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
-            var lblPollInterval = new Label() { Text = "Detection Interval:", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollInterval = new Label() { Text = "Detect Interval:", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPollInterval = new TrackBar() { Left = 620, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = 500, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
             var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1330, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1490, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
@@ -454,7 +470,7 @@ namespace TbEinkSuperFlushTurbo
                     {
                         // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
                         int baseSize = Math.Min(btn.Width, btn.Height);
-                        int outerDiameter = baseSize - 36; // 再放大圆环，从-40改为-36
+                        int outerDiameter = baseSize - 32; // 再放大圆环，从-36改为-32
                         int ringThickness = 2; // 固定环厚度，不再DPI缩放
                         int x = (btn.Width - outerDiameter) / 2;
                         int y = (btn.Height - outerDiameter) / 2;
@@ -499,6 +515,12 @@ namespace TbEinkSuperFlushTurbo
             // 初始化快捷键显示
             _txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
             
+            // 如果快捷键为None，确保显示"click button to set"
+            if (_toggleHotkey == Keys.None)
+            {
+                _txtToggleHotkey.Text = "click button to set";
+            }
+            
             var lblInfo = new Label() { Left = 30, Top = 510, Width = 1600, Height = 80, Text = "Status: Stopped", Font = new Font(this.Font.FontFamily, 12f) };
             // 日志字体大小调整为5号字体（比之前小3个字号）
             float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
@@ -531,8 +553,8 @@ namespace TbEinkSuperFlushTurbo
 
             // 添加鼠标悬停提示 - 多行详细说明
             var toolTip = new ToolTip();
-            toolTip.SetToolTip(lblPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(trackPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(lblPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(trackPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
             // 移除悬停提示，改为点击显示弹窗
             // toolTip.SetToolTip(btnHelpPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
             
@@ -590,18 +612,18 @@ namespace TbEinkSuperFlushTurbo
 
             // 问号按钮点击事件 - 显示详细信息弹窗
             btnHelpPixelDelta.Click += (s, e) => {
-                string helpText = "Pixel Color Diff (像素颜色差异):\n\n" +
-                    "控制检测对每个区块内单个像素各颜色通道亮度变化的敏感程度。\n" +
-                    "• 较低值(2-8): 适合浅色主题，检测细微变化\n" +
+                string helpText = "Pixel Color Diff Threshold (像素颜色差异阈值):\n\n" +
+                    "控制区块内每个颜色通道(R/G/B)亮度变化的敏感度。\n" +
+                    "• 较低值(2-8): 适合默认浅色主题，检测细微变化。（区分白色和浅灰色及浅亮度彩色）\n" +
                     "• 较高值(15-25): 适合高对比度主题，忽略微小变化\n\n" +
                     "推荐: 从10开始，根据您的主题进行调整。\n\n" +
                     "English:\n" +
-                    "Controls sensitivity to brightness changes within each tile's individual pixels across all color channels.\n" +
-                    "• Lower values (2-8): Better for light themes, detects subtle changes\n" +
+                    "Controls the sensitivity to luminance changes in individual color channels (R/G/B) for each tile.\n" +
+                    "• Lower values (2-8): Better for default light themes, detects subtle changes. (Distinguishes white from light gray and low-brightness colors)\n" +
                     "• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\n" +
                     "Recommended: Start with 10 and adjust based on your theme.";
                 
-                MessageBox.Show(helpText, "Pixel Color Diff - 详细说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(helpText, "Pixel Color Diff Threshold - 详细说明", MessageBoxButtons.OK, MessageBoxIcon.None);
             };
 
             _trayIcon = new NotifyIcon() { Icon = SystemIcons.Application, Text = "EInk Ghost Reducer", Visible = true };
@@ -619,7 +641,7 @@ namespace TbEinkSuperFlushTurbo
                 // 检查是否正在录制快捷键
                 if (_isRecordingHotkey)
                 {
-                    MessageBox.Show("Cannot start capture while recording hotkey. Please complete hotkey recording first.", "Hotkey Recording in Progress", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Cannot start capture while recording hotkey. Please complete hotkey recording first.", "Hotkey Recording in Progress", MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
                 
@@ -758,7 +780,7 @@ namespace TbEinkSuperFlushTurbo
                     // 如果不在录制状态，检查是否正在运行
                     if (_pollTimer != null && _pollTimer.Enabled)
                     {
-                        MessageBox.Show("Cannot modify hotkey while capture is running. Please stop capture first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Cannot modify hotkey while capture is running. Please stop capture first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.None);
                         return;
                     }
                     
@@ -934,19 +956,19 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 显示强制通知（气泡提示+提示音）
-        private void ShowForceNotification(string title, string message, ToolTipIcon icon = ToolTipIcon.Info)
+        // 显示强制通知（静默模式，无声音）
+        private void ShowForceNotification(string title, string message, ToolTipIcon icon = ToolTipIcon.None)
         {
             try
             {
                 // 确保托盘图标可见
                 if (_trayIcon != null) _trayIcon.Visible = true;
                 
-                // 显示气泡提示
-                _trayIcon?.ShowBalloonTip(3000, title, message, icon);
+                // 显示气泡提示（无图标，无声音）
+                _trayIcon?.ShowBalloonTip(3000, title, message, ToolTipIcon.None);
                 
-                // 播放提示音
-                PlayNotificationSound();
+                // 不播放提示音
+                // PlayNotificationSound();
                 
                 Log($"Notification shown: {title} - {message}");
             }
@@ -963,7 +985,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 当前正在运行，停止它
                 Log($"Hotkey triggered: Stop capture");
-                ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture stopped", ToolTipIcon.Info);
+                ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture stopped", ToolTipIcon.None);
                 var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Stop");
                 btnStop?.PerformClick();
             }
@@ -971,7 +993,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 当前已停止，开始运行
                 Log($"Hotkey triggered: Start capture");
-                ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture started", ToolTipIcon.Info);
+                ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture started", ToolTipIcon.None);
                 var btnStart = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Start");
                 btnStart?.PerformClick();
             }
@@ -1011,7 +1033,7 @@ namespace TbEinkSuperFlushTurbo
             catch (Exception ex)
             {
                 Log($"Failed to save hotkey: {ex.Message}");
-                MessageBox.Show($"Failed to save hotkey: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Failed to save hotkey: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.None);
             }
         }
 
@@ -1059,7 +1081,7 @@ namespace TbEinkSuperFlushTurbo
             // 如果没有设置任何快捷键，显示提示文本
             if (parts.Count == 0)
             {
-                return "click Btn to set";
+                return "click button to set ";
             }
             
             return string.Join(" + ", parts);

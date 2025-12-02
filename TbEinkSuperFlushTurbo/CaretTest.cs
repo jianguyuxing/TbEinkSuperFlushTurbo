@@ -151,7 +151,7 @@ namespace TbEinkSuperFlushTurbo
             try
             {
                 // 尝试使用MessageBox显示结果
-                MessageBox.Show(message, "光标检测测试结果", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(message, "光标检测测试结果", MessageBoxButtons.OK, MessageBoxIcon.None);
             }
             catch
             {
