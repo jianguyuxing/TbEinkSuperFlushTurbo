@@ -596,7 +596,7 @@ namespace TbEinkSuperFlushTurbo
             var lblPollInterval = new Label() { Text = Localization.GetText("DetectInterval"), Left = 60, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPollInterval = new TrackBar() { Left = 650, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = 500, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
             var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1360, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
-            var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1520, Top = 230, Width = 40, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollIntervalUnit = new Label() { Text = "毫秒", Left = 1520, Top = 230, Width = 120, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 设置项放在单独一行 - Block Size (区块尺寸设置) - 已隐藏，默认值为8
             // var lblTileSize = new Label() { Text = "Block Size (pixels):", Left = 30, Top = 340, Width = labelWidth, Height = 100, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
