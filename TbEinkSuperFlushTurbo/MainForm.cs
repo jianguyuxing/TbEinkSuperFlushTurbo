@@ -300,7 +300,7 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}";
+                string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]:  {message}";
                 _logWriter?.WriteLine(logEntry);
                 System.Diagnostics.Debug.WriteLine(logEntry);
             }
@@ -348,13 +348,13 @@ namespace TbEinkSuperFlushTurbo
             var btnStart = new Button() { Text = "Start", Left = 30, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
             var btnStop = new Button() { Text = "Stop", Left = 220, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
             
-            // 设置项放在单独一行 - Per-Pixel Brightness Threshold (增加垂直间距)
-            var lblPixelDelta = new Label() { Text = "Brightness Diff Delta:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            // 设置项放在单独一行 - Color Channel Changes (增加垂直间距)
+            var lblPixelDelta = new Label() { Text = "Color Channel Changes:", Left = 30, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPixelDelta = new TrackBar() { Left = 620, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
             var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1330, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
-            var lblPollInterval = new Label() { Text = "Detection Interval (ms):", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            var lblPollInterval = new Label() { Text = "Detection Interval:", Left = 30, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             var trackPollInterval = new TrackBar() { Left = 620, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = 500, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
             var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1330, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             var lblPollIntervalUnit = new Label() { Text = "ms", Left = 1490, Top = 230, Width = 80, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
@@ -374,21 +374,21 @@ namespace TbEinkSuperFlushTurbo
             btnHelp.Region = new Region(path);
 
             // 快捷键设置项 - 切换运行状态
-            var lblToggleHotkey = new Label() { Text = "切换运行状态:", Left = 30, Top = 420, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            _txtToggleHotkey = new TextBox() { Left = 620, Top = 430, Width = 200, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            _btnToggleRecord = new Button() { Text = "●", Left = 840, Top = 430, Width = 40, Height = 40, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
-            _btnToggleRecord.BackColor = Color.LightCoral;
-            _btnToggleSave = new Button() { Text = "保存", Left = 890, Top = 430, Width = 80, Height = 40, Font = new Font(this.Font.FontFamily, 10f) };
+            var lblToggleHotkey = new Label() { Text = "Toggle Hotkey:", Left = 30, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            _txtToggleHotkey = new TextBox() { Left = 620, Top = 360, Width = sliderWidth, Height = 40, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
+            _btnToggleRecord = new Button() { Text = "●", Left = 1340, Top = 360, Width = 60, Height = 50, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
+            _btnToggleRecord.BackColor = Color.Red;
+            _btnToggleSave = new Button() { Text = "Save", Left = 1410, Top = 360, Width = 120, Height = 50, Font = new Font(this.Font.FontFamily, 11f) };
             _btnToggleSave.Enabled = false;
             
             // 初始化快捷键显示
             _txtToggleHotkey.Text = _toggleHotkey.ToString();
             
-            var lblInfo = new Label() { Left = 30, Top = 580, Width = 1600, Height = 80, Text = "Status: stopped", Font = new Font(this.Font.FontFamily, 12f) };
-            // 日志字体大小与设置项保持一致（9号字体）
+            var lblInfo = new Label() { Left = 30, Top = 510, Width = 1600, Height = 80, Text = "Status: Stopped", Font = new Font(this.Font.FontFamily, 12f) };
+            // 日志字体大小调整为5号字体（比之前小3个字号）
             float dpiScale = GetDpiForWindow(this.Handle) / 96f;
-            float logFontSize = 9f * dpiScale; // 与设置项相同的9号字体大小
-            var listBox = new ListBox() { Left = 50, Top = 670, Width = 1700, Height = 350, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 优化布局：左右对称留白，左侧50px，右侧50px，宽度1700px居中显示
+            float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
+            var listBox = new ListBox() { Left = 50, Top = 600, Width = 1700, Height = 420, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 优化布局：左右对称留白，左侧50px，右侧50px，宽度1700px居中显示
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
@@ -416,8 +416,8 @@ namespace TbEinkSuperFlushTurbo
 
             // 添加鼠标悬停提示 - 多行详细说明
             var toolTip = new ToolTip();
-            toolTip.SetToolTip(lblPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes within each block.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each pixel within a block.\nRecommended: Start with 10 and adjust based on your theme.");
-            toolTip.SetToolTip(trackPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes within each block.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each pixel within a block.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(lblPixelDelta, "Color Channel Changes:\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(trackPixelDelta, "Color Channel Changes:\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
             
             // Block Size 提示 - 已隐藏，注释掉相关提示
             // toolTip.SetToolTip(lblTileSize, "Block Size (pixels):\n\nSets the pixel dimensions of each detection block.\n• Smaller values (8-16): More precise detection but higher CPU usage\n• Larger values (32-64): Less CPU usage but coarser detection\n\nExample: 8 means 8×8 pixel blocks (64 pixels total)\nRecommended: Start with 8 for good balance.");
@@ -426,7 +426,7 @@ namespace TbEinkSuperFlushTurbo
             // 检测间隔提示暂时注释掉
             // toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
             // toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            toolTip.SetToolTip(trackPixelDelta, "Brightness Diff Delta:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
+            toolTip.SetToolTip(trackPixelDelta, "Color Channel Changes:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
             // 检测间隔提示暂时注释掉
             // toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
             // toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
@@ -494,7 +494,7 @@ namespace TbEinkSuperFlushTurbo
                 trackPollInterval.Enabled = false;
                 // trackTileSize.Enabled = false; // 已隐藏
 
-                lblInfo.Text = "Status: initializing GPU capture...";
+                lblInfo.Text = "Status: Initializing GPU capture...";
                 Log("Initializing GPU capture...");
                 try
                 {
@@ -532,7 +532,7 @@ namespace TbEinkSuperFlushTurbo
                                 Log($"Tiles to refresh: {tilesToRefresh.Count}");
                                 this.Invoke(new Action(() =>
                                 {
-                                    listBox.Items.Insert(0, $"{DateTime.Now:HH:mm:ss.fff} tiles: {tilesToRefresh.Count}");
+                                    listBox.Items.Insert(0, $"{DateTime.Now:HH:mm:ss.fff}:  tiles: {tilesToRefresh.Count}");
                                     if (listBox.Items.Count > 200) listBox.Items.RemoveAt(listBox.Items.Count - 1);
                                 }));
                                 ShowTemporaryOverlay(tilesToRefresh, brightnessData);
@@ -544,7 +544,7 @@ namespace TbEinkSuperFlushTurbo
                     // 获取系统缩放比例
                     float dpiScale = GetDpiForWindow(this.Handle) / 96f;
                     int scalePercent = (int)(dpiScale * 100);
-                    lblInfo.Text = $"Status: running (screen {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, scale: {scalePercent}%)";
+                    lblInfo.Text = $"Status: Running (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%)";
                     btnStop.Enabled = true;
                     Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%");
                 }
@@ -554,7 +554,7 @@ namespace TbEinkSuperFlushTurbo
                     Log(errorMessage + "\n" + ex.StackTrace);
                     MessageBox.Show(errorMessage);
                     btnStart.Enabled = true;
-                    lblInfo.Text = "Status: failed";
+                    lblInfo.Text = "Status: Failed";
                     _cts?.Cancel();
                     _cts?.Dispose();
                     _cts = null;
@@ -571,7 +571,7 @@ namespace TbEinkSuperFlushTurbo
                 _d3d?.Dispose();
                 _d3d = null;
 
-                lblInfo.Text = "Status: stopped";
+                lblInfo.Text = "Status: Stopped";
                 btnStart.Enabled = true;
                 btnStop.Enabled = false;
                 
@@ -590,6 +590,13 @@ namespace TbEinkSuperFlushTurbo
             // 快捷键录制按钮事件处理
             _btnToggleRecord!.Click += (s, e) =>
             {
+                // 如果正在运行，不允许修改快捷键
+                if (_pollTimer != null && _pollTimer.Enabled)
+                {
+                    MessageBox.Show("Cannot modify hotkey while capture is running. Please stop capture first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 if (_isRecordingHotkey)
                 {
                     // 停止录制
@@ -597,7 +604,7 @@ namespace TbEinkSuperFlushTurbo
                     _btnToggleRecord.Text = "●";
                     _btnToggleRecord.BackColor = Color.LightCoral;
                     _btnToggleSave!.Enabled = false;
-                    Log("快捷键录制已停止");
+                    Log("Hotkey recording stopped");
                 }
                 else
                 {
@@ -605,9 +612,9 @@ namespace TbEinkSuperFlushTurbo
                     _isRecordingHotkey = true;
                     _btnToggleRecord.Text = "■";
                     _btnToggleRecord.BackColor = Color.Red;
-                    _txtToggleHotkey!.Text = "请按下快捷键...";
+                    _txtToggleHotkey!.Text = "Press hotkey combination...";
                     _btnToggleSave!.Enabled = false;
-                    Log("开始录制快捷键，请按下您想要的快捷键组合");
+                    Log("Recording hotkey - press your desired key combination");
                 }
             };
 
@@ -731,7 +738,7 @@ namespace TbEinkSuperFlushTurbo
                 _btnToggleRecord.BackColor = Color.LightCoral;
                 _btnToggleSave!.Enabled = true;
                 
-                Log($"快捷键录制完成: {FormatShortcut(keyCombo)}");
+                Log($"Hotkey recording completed: {FormatShortcut(keyCombo)}");
             }
             else if (e.KeyData == _toggleHotkey && _isHotkeyRegistered)
             {
@@ -748,14 +755,16 @@ namespace TbEinkSuperFlushTurbo
             if (_cts?.IsCancellationRequested == false && _pollTimer?.Enabled == true)
             {
                 // 当前正在运行，停止它
-                Log($"快捷键触发: 停止捕获");
+                Log($"Hotkey triggered: Stop capture");
+                _trayIcon?.ShowBalloonTip(3000, "EInk Ghost Reducer", "Screen refresh capture stopped", ToolTipIcon.Info);
                 var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Stop");
                 btnStop?.PerformClick();
             }
             else
             {
                 // 当前已停止，开始运行
-                Log($"快捷键触发: 开始捕获");
+                Log($"Hotkey triggered: Start capture");
+                _trayIcon?.ShowBalloonTip(3000, "EInk Ghost Reducer", "Screen refresh capture started", ToolTipIcon.Info);
                 var btnStart = Controls.OfType<Button>().FirstOrDefault(b => b.Text == "Start");
                 btnStart?.PerformClick();
             }
@@ -784,19 +793,19 @@ namespace TbEinkSuperFlushTurbo
                     _isHotkeyRegistered = true;
                     _btnToggleSave!.Enabled = false;
                     SaveConfig(); // 保存到配置文件
-                    Log($"快捷键设置成功: {FormatShortcut(_toggleHotkey)}");
-                    MessageBox.Show($"快捷键设置成功: {FormatShortcut(_toggleHotkey)}", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Log($"Hotkey set successfully: {FormatShortcut(_toggleHotkey)}");
+                    MessageBox.Show($"Hotkey set successfully: {FormatShortcut(_toggleHotkey)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
-                    Log($"快捷键注册失败: {FormatShortcut(_toggleHotkey)}");
-                    MessageBox.Show($"快捷键注册失败，可能被其他程序占用: {FormatShortcut(_toggleHotkey)}", "失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Log($"Hotkey registration failed: {FormatShortcut(_toggleHotkey)}");
+                    MessageBox.Show($"Hotkey registration failed, may be occupied by another program: {FormatShortcut(_toggleHotkey)}", "Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
             catch (Exception ex)
             {
-                Log($"保存快捷键失败: {ex.Message}");
-                MessageBox.Show($"保存快捷键失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Log($"Failed to save hotkey: {ex.Message}");
+                MessageBox.Show($"Failed to save hotkey: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -808,7 +817,7 @@ namespace TbEinkSuperFlushTurbo
             _btnToggleRecord.BackColor = Color.LightCoral;
             _txtToggleHotkey!.Text = FormatShortcut(_toggleHotkey);
             _btnToggleSave!.Enabled = false;
-            Log("快捷键录制已取消");
+            Log("Hotkey recording cancelled");
         }
 
         // 格式化快捷键显示
@@ -867,16 +876,16 @@ namespace TbEinkSuperFlushTurbo
                 if (success)
                 {
                     _isHotkeyRegistered = true;
-                    Log($"快捷键注册成功: {FormatShortcut(_toggleHotkey)}");
+                    Log($"Hotkey registered successfully: {FormatShortcut(_toggleHotkey)}");
                 }
                 else
                 {
-                    Log($"快捷键注册失败: {FormatShortcut(_toggleHotkey)}");
+                    Log($"Hotkey registration failed: {FormatShortcut(_toggleHotkey)}");
                 }
             }
             catch (Exception ex)
             {
-                Log($"注册快捷键失败: {ex.Message}");
+                Log($"Failed to register hotkey: {ex.Message}");
             }
         }
     }
