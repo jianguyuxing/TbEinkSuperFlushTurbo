@@ -16,184 +16,6 @@ using System.Text.Json.Nodes;
 using System.Media;
 using System.ComponentModel;
 
-    // 本地化资源类
-    public static class Localization
-    {
-        public enum Language
-        {
-            English,
-            ChineseSimplified,
-            ChineseTraditional
-        }
-
-        private static Language _currentLanguage = Language.English;
-        private static readonly Dictionary<string, Dictionary<Language, string>> _resources = new()
-        {
-            // 窗口标题
-            ["WindowTitle"] = new()
-            {
-                [Language.English] = "EInk Kaleido Ghost Reducer (GPU)",
-                [Language.ChineseSimplified] = "EInk Kaleido 残影清除器 (GPU)",
-                [Language.ChineseTraditional] = "EInk Kaleido 殘影清除器 (GPU)"
-            },
-            
-            // 按钮文本
-            ["Start"] = new()
-            {
-                [Language.English] = "Start",
-                [Language.ChineseSimplified] = "开始",
-                [Language.ChineseTraditional] = "開始"
-            },
-            
-            ["Stop"] = new()
-            {
-                [Language.English] = "Stop",
-                [Language.ChineseSimplified] = "停止",
-                [Language.ChineseTraditional] = "停止"
-            },
-            
-            // 标签文本
-            ["PixelColorDiff"] = new()
-            {
-                [Language.English] = "Pixel Color Diff:",
-                [Language.ChineseSimplified] = "像素颜色差异：",
-                [Language.ChineseTraditional] = "像素顏色差異："
-            },
-            
-            ["DetectInterval"] = new()
-            {
-                [Language.English] = "Detect Interval:",
-                [Language.ChineseSimplified] = "检测间隔：",
-                [Language.ChineseTraditional] = "檢測間隔："
-            },
-            
-            ["ToggleHotkey"] = new()
-            {
-                [Language.English] = "Toggle Hotkey:",
-                [Language.ChineseSimplified] = "切换热键：",
-                [Language.ChineseTraditional] = "切換熱鍵："
-            },
-            
-            // 单位
-            ["Milliseconds"] = new()
-            {
-                [Language.English] = "ms",
-                [Language.ChineseSimplified] = "毫秒",
-                [Language.ChineseTraditional] = "毫秒"
-            },
-            
-            ["Pixels"] = new()
-            {
-                [Language.English] = "px",
-                [Language.ChineseSimplified] = "像素",
-                [Language.ChineseTraditional] = "像素"
-            },
-            
-            // 状态文本
-            ["StatusStopped"] = new()
-            {
-                [Language.English] = "Status: Stopped",
-                [Language.ChineseSimplified] = "状态：已停止",
-                [Language.ChineseTraditional] = "狀態：已停止"
-            },
-            
-            ["StatusRunning"] = new()
-            {
-                [Language.English] = "Status: Running",
-                [Language.ChineseSimplified] = "状态：运行中",
-                [Language.ChineseTraditional] = "狀態：運行中"
-            },
-            
-            ["StatusInitializing"] = new()
-            {
-                [Language.English] = "Status: Initializing GPU capture...",
-                [Language.ChineseSimplified] = "状态：正在初始化GPU捕获...",
-                [Language.ChineseTraditional] = "狀態：正在初始化GPU捕獲..."
-            },
-            
-            ["StatusFailed"] = new()
-            {
-                [Language.English] = "Status: Failed",
-                [Language.ChineseSimplified] = "状态：失败",
-                [Language.ChineseTraditional] = "狀態：失敗"
-            },
-            
-            // 热键相关
-            ["ClickButtonToSet"] = new()
-            {
-                [Language.English] = "click button to set",
-                [Language.ChineseSimplified] = "点击按钮设置",
-                [Language.ChineseTraditional] = "點擊按鈕設置"
-            },
-            
-            ["PressHotkeyCombination"] = new()
-            {
-                [Language.English] = "Press hotkey combination...",
-                [Language.ChineseSimplified] = "按下热键组合...",
-                [Language.ChineseTraditional] = "按下熱鍵組合..."
-            },
-            
-            // 问号按钮
-            ["QuestionMark"] = new()
-            {
-                [Language.English] = "?",
-                [Language.ChineseSimplified] = "？",
-                [Language.ChineseTraditional] = "？"
-            },
-            
-            // 托盘图标
-            ["TrayIconText"] = new()
-            {
-                [Language.English] = "EInk Ghost Reducer",
-                [Language.ChineseSimplified] = "EInk 残影清除器",
-                [Language.ChineseTraditional] = "EInk 殘影清除器"
-            }
-        };
-
-        // 检测系统语言并设置当前语言
-        public static void DetectAndSetLanguage()
-        {
-            CultureInfo currentCulture = CultureInfo.CurrentCulture;
-            string cultureName = currentCulture.Name.ToLower();
-            
-            if (cultureName.StartsWith("zh"))
-            {
-                if (cultureName.Contains("hant") || cultureName.Contains("tw") || cultureName.Contains("hk") || cultureName.Contains("mo"))
-                {
-                    _currentLanguage = Language.ChineseTraditional;
-                }
-                else
-                {
-                    _currentLanguage = Language.ChineseSimplified;
-                }
-            }
-            else
-            {
-                _currentLanguage = Language.English;
-            }
-        }
-
-        // 获取本地化文本
-        public static string GetText(string key)
-        {
-            if (_resources.ContainsKey(key) && _resources[key].ContainsKey(_currentLanguage))
-            {
-                return _resources[key][_currentLanguage];
-            }
-            
-            // 如果找不到对应的语言，返回英文
-            if (_resources.ContainsKey(key) && _resources[key].ContainsKey(Language.English))
-            {
-                return _resources[key][Language.English];
-            }
-            
-            return key; // 如果都找不到，返回key本身
-        }
-
-        // 获取当前语言
-        public static Language CurrentLanguage => _currentLanguage;
-    }
-
 namespace TbEinkSuperFlushTurbo
 {
     public partial class MainForm : Form
@@ -232,7 +54,6 @@ namespace TbEinkSuperFlushTurbo
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / 500) + ADDITIONAL_COOLDOWN_FRAMES; // Use default 500ms for protection calculation
 
         private const double RESET_THRESHOLD_PERCENT = 95;
-        private NotifyIcon? _trayIcon;
         private bool _forceDirectXCapture = false;
 
         public bool ForceDirectXCapture
@@ -249,22 +70,7 @@ namespace TbEinkSuperFlushTurbo
         private Keys _toggleHotkey = Keys.F6; // 默认快捷键
         private bool _isRecordingHotkey = false;
         private bool _isHotkeyRegistered = false;
-        
-        // 自适应布局控件字段
-        // Designer controls - btnStart和btnStop改为局部变量，不需要字段
-        private Label? lblPollInterval;
-        private TrackBar? trackPollInterval;
-        private Label? lblPollIntervalValue;
-        private Label? lblPollIntervalUnit;
-        private Label? lblPixelDelta;
-        private TrackBar? trackPixelDelta;
-        private Label? lblPixelDeltaValue;
-        private Button? btnHelpPixelDelta;
-        private Label? lblToggleHotkey;
-        private TextBox? txtToggleHotkey;
-        private Button? btnToggleRecord;
-        private Label? lblInfo;
-        private ListBox? listBox;
+
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")]
@@ -289,8 +95,6 @@ namespace TbEinkSuperFlushTurbo
         private const string OVERLAY_BORDER_COLOR = "64,64,64";
         private const int OVERLAY_BORDER_WIDTH = 0;
         private const int OVERLAY_BORDER_ALPHA = 100;
-        
-        private System.Windows.Forms.Timer? _displayChangeTimer;
 
         public MainForm()
         {
@@ -301,7 +105,9 @@ namespace TbEinkSuperFlushTurbo
                 
                 LoadConfig();
                 InitLogFile();
-                InitUI();
+                
+                // Designer会自动调用InitializeComponent()
+                InitializeComponent();
                 
                 try
                 {
@@ -314,9 +120,6 @@ namespace TbEinkSuperFlushTurbo
                 
                 SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
                 
-                _displayChangeTimer = new System.Windows.Forms.Timer();
-                _displayChangeTimer.Interval = 2000; // Check every 2 seconds
-                _displayChangeTimer.Tick += OnDisplayChangeTimerTick;
                 _displayChangeTimer.Start();
                 
                 // 注册快捷键
@@ -328,6 +131,9 @@ namespace TbEinkSuperFlushTurbo
                 this.MinimizeBox = true;
                 this.DoubleBuffered = true;
                 this.SetStyle(ControlStyles.ResizeRedraw, true);
+                
+                // 初始化托盘图标菜单
+                _trayIcon.ContextMenuStrip = contextMenuStrip1;
             }
             catch (Exception ex)
             {
@@ -370,40 +176,17 @@ namespace TbEinkSuperFlushTurbo
                     if (root.TryGetProperty("ToggleHotkey", out JsonElement hotkeyElement))
                     {
                         _toggleHotkey = (Keys)hotkeyElement.GetInt32();
-                        if (txtToggleHotkey != null)
-                            txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
                     }
                 }
                 else
                 {
-                    // 默认快捷键
-                _toggleHotkey = Keys.F6;
-                if (txtToggleHotkey != null)
-                    txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
-                else
-                {
-                    // 如果控件还未初始化，延迟设置文本
-                    this.Load += (s, e) => {
-                        if (txtToggleHotkey != null)
-                            txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
-                    };
-                }
+                    _toggleHotkey = Keys.F6;
                 }
             }
             catch (Exception ex)
             {
                 Log($"Failed to load config: {ex.Message}");
                 _toggleHotkey = Keys.F6;
-                if (txtToggleHotkey != null)
-                    txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
-                else
-                {
-                    // 如果控件还未初始化，延迟设置文本
-                    this.Load += (s, e) => {
-                        if (txtToggleHotkey != null)
-                            txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
-                    };
-                }
             }
         }
 
@@ -430,65 +213,6 @@ namespace TbEinkSuperFlushTurbo
             {
                 Log($"Failed to save config: {ex.Message}");
             }
-        }
-
-        private void OnDisplaySettingsChanged(object? sender, EventArgs e)
-        {
-            Log("Display settings changed, stopping capture.");
-            StopCapture();
-        }
-
-        private void OnDisplayChangeTimerTick(object? sender, EventArgs e)
-        {
-            if (_d3d != null)
-            {
-                double refreshRate = _d3d.GetCurrentPrimaryDisplayRefreshRate();
-                if (refreshRate >= 59.0)
-                {
-                    Log($"High refresh rate detected ({refreshRate}Hz), stopping capture.");
-                    StopCapture();
-                }
-            }
-        }
-
-        private void StopCapture()
-        {
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action(StopCapture));
-                return;
-            }
-
-            if (_pollTimer?.Enabled == true)
-            {
-                // Simulate stop button click
-                var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == Localization.GetText("Stop"));
-                btnStop?.PerformClick();
-            }
-        }
-
-        protected override void WndProc(ref Message m)
-        {
-            const int WM_DISPLAYCHANGE = 0x007E;
-            const int WM_DPICHANGED = 0x02E0;
-            const int WM_HOTKEY = 0x0312;
-
-            if (m.Msg == WM_DISPLAYCHANGE || m.Msg == WM_DPICHANGED)
-            {
-                Log("Display settings changed (WM_DISPLAYCHANGE or WM_DPICHANGED), stopping capture.");
-                StopCapture();
-            }
-            else if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == TOGGLE_HOTKEY_ID)
-            {
-                // 全局快捷键触发（仅在非录制状态下响应）
-                if (!_isRecordingHotkey)
-                {
-                    ToggleCaptureState();
-                }
-                return;
-            }
-
-            base.WndProc(ref m);
         }
 
         private void InitLogFile()
@@ -549,585 +273,50 @@ namespace TbEinkSuperFlushTurbo
             catch { /* Ignore cleanup errors */ }
         }
 
-        private void InitUI()
+        private void OnDisplaySettingsChanged(object? sender, EventArgs e)
         {
-            this.AutoScaleMode = AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new SizeF(96F, 96F);
-            
-            _overlayForm = null;
+            Log("Display settings changed, stopping capture.");
+            StopCapture();
+        }
 
-            Text = Localization.GetText("WindowTitle");
-            Width = 1770; // 减少30px宽度到1770
-            Height = 1100;  // 进一步扩大窗口高度
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-
-            int buttonWidth = 180;  // 增加按钮宽度适应高DPI
-            int buttonHeight = 60;  // 增加按钮高度适应高DPI
-            int labelWidth = 550;   // 大幅增加标签宽度，确保长文本完整显示
-            int sliderWidth = 700;  // 大幅增加滑动条宽度适应高DPI
-            int valueWidth = 150;   // 增加数值显示宽度适应高DPI
-            
-            var btnStart = new Button() { Text = Localization.GetText("Start"), Left = 60, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold) };
-            var btnStop = new Button() { Text = Localization.GetText("Stop"), Left = 250, Top = 30, Width = buttonWidth, Height = buttonHeight, Font = new Font(this.Font.FontFamily, 12f, FontStyle.Bold), Enabled = false };
-            
-            // DPI缩放因子 - 提前声明用于问号按钮
-            float dpiScale = GetDpiForWindow(this.Handle) / 96f;
-            
-            // 设置项放在单独一行 - Color Channel Changes (增加垂直间距)
-            lblPixelDelta = new Label() { Text = Localization.GetText("PixelColorDiff"), Left = 60, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            trackPixelDelta = new TrackBar() { Left = 650, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
-            lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1360, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
-            
-            // 问号按钮 - DPI自适应，增大尺寸和字体，改为点击显示弹窗，优化悬停效果
-            btnHelpPixelDelta = new Button() { Text = Localization.GetText("QuestionMark"), Left = 1520, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 12, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 像素差异问号按钮右移40px，确保4位数也能显示，字体加大到12号
-            btnHelpPixelDelta.TextAlign = ContentAlignment.MiddleCenter;
-            // 设置圆形区域（宽高相同保持正圆）
-            System.Drawing.Drawing2D.GraphicsPath pathHelp = new System.Drawing.Drawing2D.GraphicsPath();
-            pathHelp.AddEllipse(0, 0, btnHelpPixelDelta.Width, btnHelpPixelDelta.Height);
-            btnHelpPixelDelta.Region = new Region(pathHelp);
-            
-            // 自定义绘制确保问号完全居中
-            btnHelpPixelDelta.Paint += (sender, e) => {
-                var btn = sender as Button;
-                if (btn == null) return;
-                e.Graphics.Clear(btn.BackColor);
-                
-                using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
-                // 根据按钮状态选择颜色：悬停时为白色，正常时为前景色
-                using (var brush = new SolidBrush(btn.BackColor == Color.FromArgb(135, 206, 235) ? Color.White : btn.ForeColor))
-                {
-                    // 精确测量文本尺寸
-                    var textSize = e.Graphics.MeasureString("?", font);
-                    // 计算精确位置实现完美居中，并在圆圈内右移2个像素
-                    var x = (btn.Width - textSize.Width) / 2 + 2;
-                    var y = (btn.Height - textSize.Height) / 2;
-                    e.Graphics.DrawString("?", font, brush, x, y);
-                }
-            };
-            
-            // 添加鼠标悬停效果 - 使用亮度变化而非颜色变化
-            btnHelpPixelDelta.MouseEnter += (s, e) => {
-                btnHelpPixelDelta.BackColor = Color.FromArgb(135, 206, 235); // 稍微暗一点的淡蓝色
-                btnHelpPixelDelta.Cursor = Cursors.Hand;
-            };
-            btnHelpPixelDelta.MouseLeave += (s, e) => {
-                btnHelpPixelDelta.BackColor = Color.LightBlue;
-                btnHelpPixelDelta.Cursor = Cursors.Default;
-            };
-            
-            // 设置项放在单独一行 - Detection Interval (使用相对布局实现自适应)
-            int formWidthLocal = this.ClientSize.Width;
-            int leftMarginLocal = (int)(formWidthLocal * 0.04); // 4% 左边距
-            int rightMarginLocal = (int)(formWidthLocal * 0.04); // 4% 右边距
-            int controlHeightLocal = 60;
-            int topPositionLocal = 240;
-            
-            // 计算各个区域的宽度比例
-            int labelWidthLocal = (int)(formWidthLocal * 0.25); // 标签占25%
-            int sliderWidthLocal = (int)(formWidthLocal * 0.35); // 滑块占35% 
-            int valueWidthLocal = (int)(formWidthLocal * 0.08); // 数值显示占8%
-            int unitWidthLocal = (int)(formWidthLocal * 0.1); // 单位占10%
-            
-            lblPollInterval = new Label() { 
-                Text = Localization.GetText("DetectInterval"), 
-                Left = leftMarginLocal, 
-                Top = topPositionLocal, 
-                Width = labelWidthLocal, 
-                Height = controlHeightLocal, 
-                TextAlign = ContentAlignment.MiddleLeft, 
-                Font = new Font(this.Font.FontFamily, 12f),
-                Anchor = AnchorStyles.Left | AnchorStyles.Top
-            };
-            
-            int sliderLeft = leftMarginLocal + labelWidthLocal + 20; // 标签右侧20px
-            trackPollInterval = new TrackBar() { 
-                Left = sliderLeft, 
-                Top = topPositionLocal + 17, // 垂直居中调整
-                Width = sliderWidthLocal, 
-                Height = 56, 
-                Minimum = 200, 
-                Maximum = 5000, 
-                Value = 500, 
-                TickFrequency = 500, 
-                SmallChange = 50, 
-                LargeChange = 500,
-                Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right
-            };
-            
-            int valueLeft = sliderLeft + sliderWidthLocal + 20; // 滑块右侧20px
-            lblPollIntervalValue = new Label() { 
-                Text = _pollInterval.ToString(), 
-                Left = valueLeft, 
-                Top = topPositionLocal, 
-                Width = valueWidthLocal, 
-                Height = controlHeightLocal, 
-                TextAlign = ContentAlignment.MiddleCenter, 
-                Font = new Font(this.Font.FontFamily, 12f),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            
-            int unitLeft = valueLeft + valueWidthLocal + 10; // 数值右侧10px
-            lblPollIntervalUnit = new Label() { 
-                Text = Localization.GetText("Milliseconds"), 
-                Left = unitLeft, 
-                Top = topPositionLocal, 
-                Width = unitWidthLocal, 
-                Height = controlHeightLocal, 
-                TextAlign = ContentAlignment.MiddleLeft, 
-                Font = new Font(this.Font.FontFamily, 12f),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            
-            // 设置项放在单独一行 - Block Size (区块尺寸设置) - 已隐藏，默认值为8
-            // var lblTileSize = new Label() { Text = "Block Size (pixels):", Left = 30, Top = 340, Width = labelWidth, Height = 100, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            // var trackTileSize = new TrackBar() { Left = 620, Top = 357, Width = sliderWidth, Height = 70, Minimum = 8, Maximum = 64, Value = _tileSize, TickFrequency = 8, SmallChange = 1, LargeChange = 8 };
-            // var lblTileSizeValue = new Label() { Text = _tileSize.ToString(), Left = 1330, Top = 350, Width = valueWidth, Height = 80, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
-            // var lblTileSizeUnit = new Label() { Text = "px", Left = 1490, Top = 350, Width = 80, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            
-            // 问号按钮 - 仅悬停提示 (增大高度和宽度保持圆形)
-            var btnHelp = new Button() { Text = Localization.GetText("QuestionMark"), Left = 1645, Top = 220, Width = 80, Height = 80, Font = new Font("Segoe UI", 18f, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 问号按钮再向右移动30px（总计45px）
-            btnHelp.TextAlign = ContentAlignment.MiddleCenter;
-            // 设置圆形区域（宽高相同保持正圆）
-            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
-            path.AddEllipse(0, 0, 80, 80);
-            btnHelp.Region = new Region(path);
-
-            // 快捷键设置项 - 切换运行状态
-            lblToggleHotkey = new Label() { Text = Localization.GetText("ToggleHotkey"), Left = 60, Top = 320, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            txtToggleHotkey = new TextBox() { Left = 650, Top = 320, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            btnToggleRecord = new Button() { Text = "●", Left = 1380, Top = 310, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
-            btnToggleRecord.BackColor = Color.White;
-            btnToggleRecord.ForeColor = Color.Red;
-            btnToggleRecord.FlatStyle = FlatStyle.Flat; // 关键：移除按钮边框
-            btnToggleRecord.FlatAppearance.BorderSize = 0; // 无边框
-            btnToggleRecord.Cursor = Cursors.Hand; // 鼠标悬停时显示手型光标
-            
-            // 添加鼠标悬停效果
-            btnToggleRecord.MouseEnter += (s, e) => {
-                btnToggleRecord.BackColor = Color.LightGray; // 悬停时背景变灰
-            };
-            btnToggleRecord.MouseLeave += (s, e) => {
-                btnToggleRecord.BackColor = Color.White; // 离开时恢复白色
-            };
-            btnToggleRecord.Paint += (sender, e) => {
-                var btn = sender as Button;
-                if (btn == null) return;
-                var text = btn.Text;
-                
-                // 绘制背景
-                e.Graphics.Clear(btn.BackColor);
-                
-                // 绘制黑色边框
-                using (var borderPen = new Pen(Color.Black, 2))
-                {
-                    e.Graphics.DrawRectangle(borderPen, 1, 1, btn.Width - 2, btn.Height - 2);
-                }
-                
-                // 根据文本内容选择不同的绘制方式，确保都基于中心对齐
-                using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
-                using (var brush = new SolidBrush(btn.ForeColor))
-                using (var borderBrush = new SolidBrush(Color.Black))
-                {
-                    if (text == "●") // 圆点 - 改为圆环+内部小圆点
-                    {
-                        // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
-                        int baseSize = Math.Min(btn.Width, btn.Height);
-                        int outerDiameter = baseSize - 32; // 再放大圆环，从-36改为-32
-                        int ringThickness = 2; // 固定环厚度，不再DPI缩放
-                        int x = (btn.Width - outerDiameter) / 2;
-                        int y = (btn.Height - outerDiameter) / 2;
-                        
-                        // 绘制外圆环（红色）
-                        using (var redBrush = new SolidBrush(Color.Red))
-                        {
-                            e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
-                        }
-                        
-                        // 绘制内圆（白色背景，形成圆环效果）
-                        int innerDiameter = outerDiameter - (ringThickness * 2);
-                        int innerX = x + ringThickness;
-                        int innerY = y + ringThickness;
-                        e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
-                        
-                        // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
-                        int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
-                        int centerX = (btn.Width - centerDiameter) / 2;
-                        int centerY = (btn.Height - centerDiameter) / 2;
-                        e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
-                    }
-                    else if (text == "■") // 方点
-                    {
-                        // 绘制一个较小的实心方形，基于中心点
-                        int size = Math.Min(btn.Width, btn.Height) - 42; // 再小一点
-                        int x = (btn.Width - size) / 2;
-                        int y = (btn.Height - size) / 2;
-                        e.Graphics.FillRectangle(brush, x, y, size, size);
-                    }
-                    else // 其他字符，使用文本绘制
-                    {
-                        var textSize = e.Graphics.MeasureString(text, font);
-                        var x = (btn.Width - textSize.Width) / 2;
-                        var y = (btn.Height - textSize.Height) / 2;
-                        e.Graphics.DrawString(text, font, brush, x, y);
-                    }
-                }
-            };
-
-            
-            // 初始化快捷键显示
-            txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
-            
-            // 如果快捷键为None，确保显示"click button to set"
-            if (_toggleHotkey == Keys.None)
+        private void StopCapture()
+        {
+            if (this.InvokeRequired)
             {
-                txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
+                this.Invoke(new Action(StopCapture));
+                return;
             }
-            
-            lblInfo = new Label() { Left = 60, Top = 380, Width = 1600, Height = 60, Text = Localization.GetText("StatusStopped"), Font = new Font(this.Font.FontFamily, 12f) };
-            // 日志字体大小调整为5号字体（比之前小3个字号）
-            float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
-            listBox = new ListBox() { Left = 70, Top = 450, Width = 1595, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 宽度减少15px到1595px
 
-            this.Font = new Font(this.Font.FontFamily, 9f);
-
-            // 控件引用已在上面创建，无需重复赋值
-            
-            Controls.Add(btnStart);
-            Controls.Add(btnStop);
-            Controls.Add(lblToggleHotkey);
-            Controls.Add(txtToggleHotkey);
-            Controls.Add(btnToggleRecord);
-
-            Controls.Add(lblInfo);
-            Controls.Add(listBox);
-            Controls.Add(lblPixelDelta);
-            Controls.Add(trackPixelDelta);
-            Controls.Add(lblPixelDeltaValue);
-            Controls.Add(btnHelpPixelDelta);
-            Controls.Add(lblPollInterval);
-            Controls.Add(trackPollInterval);
-            Controls.Add(lblPollIntervalValue);
-            Controls.Add(lblPollIntervalUnit);
-            // 区块尺寸设置项已隐藏，默认值为8
-            // Controls.Add(lblTileSize);
-            // Controls.Add(trackTileSize);
-            // Controls.Add(lblTileSizeValue);
-            // Controls.Add(lblTileSizeUnit);
-            // Controls.Add(btnHelp); // 问号按钮暂时注释掉，未来可以视情况恢复
-
-            // 窗口大小改变事件处理 - 实现自适应布局
-            this.Resize += (s, e) => {
-                if (this.WindowState != FormWindowState.Minimized) {
-                    UpdateAdaptiveLayout();
-                }
-            };
-            
-            // 初始化时执行一次自适应布局
-            this.Load += (s, e) => {
-                UpdateAdaptiveLayout();
-                SetupEventHandlers();
-            };
-            
-            // 添加鼠标悬停提示 - 多行详细说明
-            var toolTip = new ToolTip();
-            // Pixel Color Diff 提示已移除
-            // toolTip.SetToolTip(lblPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
-            // toolTip.SetToolTip(trackPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
-            // 移除悬停提示，改为点击显示弹窗
-            // toolTip.SetToolTip(btnHelpPixelDelta, "Pixel Color Diff:\n\nThis is the brightness difference threshold for each pixel and each color channel (R, G, B).\n\nControls how sensitive the detection is to pixel brightness changes within each color channel.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nThis threshold applies to each color channel (R,G,B) of every pixel.\nRecommended: Start with 10 and adjust based on your theme.");
-            
-            // Block Size 提示 - 已隐藏，注释掉相关提示
-            // toolTip.SetToolTip(lblTileSize, "Block Size (pixels):\n\nSets the pixel dimensions of each detection block.\n• Smaller values (8-16): More precise detection but higher CPU usage\n• Larger values (32-64): Less CPU usage but coarser detection\n\nExample: 8 means 8×8 pixel blocks (64 pixels total)\nRecommended: Start with 8 for good balance.");
-            // toolTip.SetToolTip(trackTileSize, "Block Size (pixels):\n\nSets the pixel dimensions of each detection block.\n• Smaller values (8-16): More precise detection but higher CPU usage\n• Larger values (32-64): Less CPU usage but coarser detection\n\nExample: 8 means 8×8 pixel blocks (64 pixels total)\nRecommended: Start with 8 for good balance.");
-            
-            // 检测间隔提示暂时注释掉
-            // toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            // toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            // trackPixelDelta 提示已移除
-            // toolTip.SetToolTip(trackPixelDelta, "Color Channel Changes:\n\nControls how sensitive the detection is to pixel brightness changes.\n• Lower values (2-8): Better for light themes, detects subtle changes\n• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.");
-            // 检测间隔提示暂时注释掉
-            // toolTip.SetToolTip(lblPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            // toolTip.SetToolTip(trackPollInterval, "Detection Interval (ms):\n\nSets how often the screen is checked for changes.\n• Lower values (200-500ms): More responsive but higher CPU usage\n• Higher values (1000-5000ms): Less CPU usage but slower response\n\nRecommended: 500ms for balanced performance.");
-            
-            // 问号按钮提示暂时注释掉
-            /*
-            var helpToolTip = new ToolTip();
-            helpToolTip.ToolTipTitle = "Settings Help";
-            helpToolTip.UseFading = true;
-            helpToolTip.UseAnimation = true;
-            helpToolTip.IsBalloon = false;
-            helpToolTip.BackColor = Color.FromArgb(240, 240, 240);
-            helpToolTip.ForeColor = Color.Black;
-            helpToolTip.AutoPopDelay = 15000; // 15秒显示时间
-            helpToolTip.InitialDelay = 200;   // 0.2秒延迟
-            helpToolTip.ReshowDelay = 100;     // 0.1秒重新显示延迟
-            helpToolTip.SetToolTip(btnHelp, "Brightness Diff Delta:\nControls sensitivity to pixel changes.\nHigher values need larger differences.\n\nDetection Interval:\nTime between screen checks (ms).\nLower = more responsive but higher CPU.");
-            */
-
-            // 滑动条事件处理
-            trackPixelDelta.ValueChanged += (s, e) => {
-                _pixelDelta = trackPixelDelta.Value;
-                lblPixelDeltaValue.Text = _pixelDelta.ToString();
-                SaveConfig();
-            };
-
-            trackPollInterval.ValueChanged += (s, e) => {
-                _pollInterval = trackPollInterval.Value;
-                lblPollIntervalValue.Text = _pollInterval.ToString();
-                SaveConfig();
-                // 更新定时器间隔
-                if (_pollTimer != null)
-                {
-                    _pollTimer.Interval = _pollInterval;
-                }
-            };
-
-            // trackTileSize.ValueChanged += (s, e) => {
-            //     // 注意：tile Size 改变需要重启才能生效（当前值会在下次启动时应用）
-            //     _tileSize = trackTileSize.Value;
-            //     lblTileSizeValue.Text = _tileSize.ToString();
-            //     SaveConfig();
-            // };
-
-            // 问号按钮点击事件 - 显示详细信息弹窗
-            btnHelpPixelDelta.Click += (s, e) => {
-                string helpText;
-                string title;
-                
-                // 根据当前语言显示相应语言的帮助内容
-                if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
-                {
-                    helpText = "像素颜色差异阈值说明:\n\n" +
-                        "控制区块内每个颜色通道(R/G/B)亮度变化的敏感度。\n\n" +
-                        "• 较低值(2-8): 适合默认浅色主题，检测细微变化\n" +
-                        "  （区分白色和浅灰色及浅亮度彩色）\n\n" +
-                        "• 较高值(15-25): 适合高对比度主题，忽略微小变化\n\n" +
-                        "推荐: 从10开始，根据您的主题进行调整。";
-                    title = "像素颜色差异阈值 - 详细说明";
-                }
-                else
-                {
-                    helpText = "Pixel Color Diff Threshold:\n\n" +
-                        "Controls the sensitivity to luminance changes in individual color channels (R/G/B) for each tile.\n\n" +
-                        "• Lower values (2-8): Better for default light themes, detects subtle changes\n" +
-                        "  (Distinguishes white from light gray and low-brightness colors)\n\n" +
-                        "• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\n" +
-                        "Recommended: Start with 10 and adjust based on your theme.";
-                    title = "Pixel Color Diff Threshold - Help";
-                }
-                
-                MessageBox.Show(helpText, title, MessageBoxButtons.OK, MessageBoxIcon.None);
-            };
-
-            _trayIcon = new NotifyIcon() { Icon = SystemIcons.Application, Text = "EInk Ghost Reducer", Visible = true };
-            _trayIcon.Click += (s, e) => { this.Show(); this.WindowState = FormWindowState.Normal; this.Activate(); };
-            _trayIcon.DoubleClick += (s, e) => ManualRefresh();
-            
-            var exitMenu = new ToolStripMenuItem("Exit");
-            exitMenu.Click += (s, e) => this.Close();
-            var menu = new ContextMenuStrip();
-            menu.Items.Add(exitMenu);
-            _trayIcon.ContextMenuStrip = menu;
-
-            btnStart.Click += (s, e) =>
+            if (_pollTimer?.Enabled == true)
             {
-                // 检查是否正在录制快捷键
-                if (_isRecordingHotkey)
-                {
-                    MessageBox.Show("Cannot start capture while recording hotkey. Please complete hotkey recording first.", "Hotkey Recording in Progress", MessageBoxButtons.OK, MessageBoxIcon.None);
-                    return;
-                }
-                
-                btnStart.Enabled = false;
-                _cts = new CancellationTokenSource();
-                _frameCounter = 0; // Reset frame counter on start
-
-                // 禁用设置项修改
-                trackPixelDelta.Enabled = false;
-                trackPollInterval.Enabled = false;
-                // trackTileSize.Enabled = false; // 已隐藏
-
-                lblInfo.Text = "Status: Initializing GPU capture...";
-                Log("Initializing GPU capture...");
-                try
-                {
-                    _d3d = new D3DCaptureAndCompute(DebugLogger, _tileSize, _pixelDelta, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
-                        new BoundingAreaConfig(
-                            BOUNDING_AREA_WIDTH,
-                            BOUNDING_AREA_HEIGHT,
-                            BOUNDING_AREA_HISTORY_FRAMES,
-                            BOUNDING_AREA_CHANGE_THRESHOLD,
-                            BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture, ProtectionFrames);
-
-                    _pollTimer = new System.Windows.Forms.Timer
-                    {
-                        Interval = _pollInterval
-                    };
-                    _pollTimer.Tick += async (ss, ee) =>
-                    {
-                        if (_cts.Token.IsCancellationRequested || _d3d == null) return;
-
-                        _frameCounter++; // Increment frame counter
-                        
-                        // Capture screen and compute differences
-                        var (tilesToRefresh, brightnessData) = await _d3d.CaptureAndComputeOnceAsync(_frameCounter, _cts.Token);
-                        if (_cts.Token.IsCancellationRequested) return;
-
-                        if (tilesToRefresh.Count > 0)
-                        {
-                            double refreshRatio = (double)tilesToRefresh.Count / (_d3d.TilesX * _d3d.TilesY);
-                            if (refreshRatio >= RESET_THRESHOLD_PERCENT / 100.0)
-                            {
-                                Log($"System-wide refresh detected ({refreshRatio:P1}), skipping overlay.");
-                            }
-                            else
-                            {
-                                Log($"Tiles to refresh: {tilesToRefresh.Count}");
-                                this.Invoke(new Action(() =>
-                                {
-                                    listBox.Items.Insert(0, $"{DateTime.Now:HH:mm:ss.fff}:  tiles: {tilesToRefresh.Count}");
-                                    if (listBox.Items.Count > 200) listBox.Items.RemoveAt(listBox.Items.Count - 1);
-                                }));
-                                ShowTemporaryOverlay(tilesToRefresh, brightnessData);
-                            }
-                        }
-                    };
-                    _pollTimer.Start();
-
-                    // 获取系统缩放比例 - 使用更准确的DPI检测
-                    float dpiScale = GetSystemDpiScale();
-                    int scalePercent = (int)(dpiScale * 100);
-                    lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
-                    btnStop.Enabled = true;
-                    Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels");
-                }
-                catch (Exception ex)
-                {
-                    string errorMessage = $"Initialization failed: {ex.Message}";
-                    Log(errorMessage + "\n" + ex.StackTrace);
-                    MessageBox.Show(errorMessage);
-                    btnStart.Enabled = true;
-                    lblInfo.Text = "Status: Failed";
-                    _cts?.Cancel();
-                    _cts?.Dispose();
-                    _cts = null;
-                }
-            };
-
-            btnStop.Click += (s, e) =>
-            {
-                Log("Stopping GPU capture...");
-                _cts?.Cancel();
-                _pollTimer?.Stop();
-                _pollTimer?.Dispose();
-                _pollTimer = null;
-                _d3d?.Dispose();
-                _d3d = null;
-
-                lblInfo.Text = Localization.GetText("StatusStopped");
-                btnStart.Enabled = true;
-                btnStop.Enabled = false;
-                
-                // 重新启用设置项修改
-                trackPixelDelta.Enabled = true;
-                trackPollInterval.Enabled = true;
-                // trackTileSize.Enabled = true; // 已隐藏
-                
-                _cts?.Dispose();
-                _cts = null;
-                
-                _overlayForm?.HideOverlay();
-                Log("GPU capture stopped");
-            };
-
-            // 窗体按键事件处理（用于录制快捷键）
-            this.KeyPreview = true;
-            this.KeyDown += MainForm_KeyDown;
-        }
-
-        void ShowTemporaryOverlay(List<(int bx, int by)>? tiles, float[]? brightnessData)
-        {
-            if (_cts?.IsCancellationRequested == true || _d3d == null || tiles == null || tiles.Count == 0) return;
-
-            if (_overlayForm == null)
-            {
-                Color overlayBaseColor = Color.FromName(OVERLAY_BASE_COLOR);
-                string[] rgbParts = OVERLAY_BORDER_COLOR.Split(',');
-                Color borderColor = Color.FromArgb(OVERLAY_BORDER_ALPHA, int.Parse(rgbParts[0].Trim()), int.Parse(rgbParts[1].Trim()), int.Parse(rgbParts[2].Trim()));
-                
-                _overlayForm = new OverlayForm(_d3d.TileSize, _d3d.ScreenWidth, _d3d.ScreenHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log)
-                {
-                    ShowInTaskbar = false,
-                    FormBorderStyle = FormBorderStyle.None,
-                    TopMost = true,
-                    Size = new Size(_d3d.ScreenWidth, _d3d.ScreenHeight)
-                };
-                _overlayForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
-                _overlayForm.Location = new Point(0, 0);
-                
-                _overlayForm.Show();
+                btnStop?.PerformClick();
             }
-            
-            _overlayForm?.UpdateContent(tiles, brightnessData);
         }
 
-        // Setup event handlers for controls
-        private void SetupEventHandlers()
+        protected override void WndProc(ref Message m)
         {
-            // 快捷键录制按钮事件处理
-            btnToggleRecord!.Click += (s, e) =>
+            const int WM_DISPLAYCHANGE = 0x007E;
+            const int WM_DPICHANGED = 0x02E0;
+            const int WM_HOTKEY = 0x0312;
+
+            if (m.Msg == WM_DISPLAYCHANGE || m.Msg == WM_DPICHANGED)
             {
-                if (_isRecordingHotkey)
+                Log("Display settings changed (WM_DISPLAYCHANGE or WM_DPICHANGED), stopping capture.");
+                StopCapture();
+            }
+            else if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == TOGGLE_HOTKEY_ID)
+            {
+                // 全局快捷键触发（仅在非录制状态下响应）
+                if (!_isRecordingHotkey)
                 {
-                    // 如果正在录制，优先处理录制逻辑
-                    // 停止录制，如果没有输入任何按键则清空快捷键
-                    _isRecordingHotkey = false;
-                    btnToggleRecord.Text = "●";
-                    btnToggleRecord.ForeColor = Color.Red;
-                    btnToggleRecord.BackColor = Color.White;
-                    
-                    // 如果文本框显示的是提示文字，说明用户没有输入任何按键
-                    if (txtToggleHotkey!.Text == Localization.GetText("PressHotkeyCombination"))
-                    {
-                        // 用户没有输入任何按键，清空快捷键
-                        CancelHotkeyRecording();
-                    }
-                    else
-                    {
-                        // 用户输入了按键，保存快捷键
-                        SaveToggleHotkey();
-                    }
+                    ToggleCaptureState();
                 }
-                else
-                {
-                    // 如果不在录制状态，检查是否正在运行
-                    if (_pollTimer != null && _pollTimer.Enabled)
-                    {
-                        MessageBox.Show("Cannot modify hotkey while capture is running. Please stop capture first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.None);
-                        return;
-                    }
-                    
-                    // 开始录制
-                    _isRecordingHotkey = true;
-                    btnToggleRecord.Text = "■";
-                    btnToggleRecord.ForeColor = Color.Black;
-                    btnToggleRecord.BackColor = Color.White;
-                    txtToggleHotkey!.Text = Localization.GetText("PressHotkeyCombination");
-                
-                    // 开始录制时临时注销当前快捷键，避免冲突
-                    if (_isHotkeyRegistered)
-                    {
-                        NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
-                        _isHotkeyRegistered = false;
-                    }
-                
-                    // 开始录制时清空临时变量，确保每次录制都是全新的开始
-                    _toggleHotkey = Keys.None;
-                }
-            };
+                return;
+            }
+
+            base.WndProc(ref m);
         }
+
         private float GetSystemDpiScale()
         {
             try
@@ -1184,7 +373,176 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 快捷键捕获事件处理
+        void ShowTemporaryOverlay(List<(int bx, int by)>? tiles, float[]? brightnessData)
+        {
+            if (_cts?.IsCancellationRequested == true || _d3d == null || tiles == null || tiles.Count == 0) return;
+
+            if (_overlayForm == null)
+            {
+                Color overlayBaseColor = Color.FromName(OVERLAY_BASE_COLOR);
+                string[] rgbParts = OVERLAY_BORDER_COLOR.Split(',');
+                Color borderColor = Color.FromArgb(OVERLAY_BORDER_ALPHA, int.Parse(rgbParts[0].Trim()), int.Parse(rgbParts[1].Trim()), int.Parse(rgbParts[2].Trim()));
+                
+                _overlayForm = new OverlayForm(_d3d.TileSize, _d3d.ScreenWidth, _d3d.ScreenHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log)
+                {
+                    ShowInTaskbar = false,
+                    FormBorderStyle = FormBorderStyle.None,
+                    TopMost = true,
+                    Size = new Size(_d3d.ScreenWidth, _d3d.ScreenHeight)
+                };
+                _overlayForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
+                _overlayForm.Location = new Point(0, 0);
+                
+                _overlayForm.Show();
+            }
+            
+            _overlayForm?.UpdateContent(tiles, brightnessData);
+        }
+
+        private float GetDpiScale()
+        {
+            return GetDpiForWindow(this.Handle) / 96f;
+        }
+
+        private string FormatShortcut(Keys keys)
+        {
+            var parts = new List<string>();
+            
+            if ((keys & Keys.Control) == Keys.Control) parts.Add("Ctrl");
+            if ((keys & Keys.Alt) == Keys.Alt) parts.Add("Alt");
+            if ((keys & Keys.Shift) == Keys.Shift) parts.Add("Shift");
+            
+            var keyCode = keys & Keys.KeyCode;
+            if (keyCode != Keys.None)
+            {
+                parts.Add(keyCode.ToString());
+            }
+            
+            return string.Join(" + ", parts);
+        }
+
+        private void RegisterToggleHotkey()
+        {
+            try
+            {
+                uint modifiers = GetModifiers(_toggleHotkey);
+                uint virtualKey = (uint)GetKeyCode(_toggleHotkey);
+                
+                if (NativeMethods.RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modifiers, virtualKey))
+                {
+                    _isHotkeyRegistered = true;
+                    Log($"Hotkey registered: {FormatShortcut(_toggleHotkey)}");
+                }
+                else
+                {
+                    Log($"Failed to register hotkey: {FormatShortcut(_toggleHotkey)}");
+                    _isHotkeyRegistered = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error registering hotkey: {ex.Message}");
+                _isHotkeyRegistered = false;
+            }
+        }
+
+        private void UnregisterToggleHotkey()
+        {
+            if (_isHotkeyRegistered)
+            {
+                NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
+                _isHotkeyRegistered = false;
+                Log("Hotkey unregistered");
+            }
+        }
+
+        private uint GetModifiers(Keys keys)
+        {
+            uint modifiers = 0;
+            if ((keys & Keys.Control) == Keys.Control) modifiers |= 0x0002; // MOD_CONTROL
+            if ((keys & Keys.Alt) == Keys.Alt) modifiers |= 0x0001; // MOD_ALT
+            if ((keys & Keys.Shift) == Keys.Shift) modifiers |= 0x0004; // MOD_SHIFT
+            return modifiers;
+        }
+
+        private Keys GetKeyCode(Keys keys)
+        {
+            return keys & Keys.KeyCode;
+        }
+
+        private void SaveToggleHotkey()
+        {
+            SaveConfig();
+            RegisterToggleHotkey();
+        }
+
+        private void CancelHotkeyRecording()
+        {
+            _isRecordingHotkey = false;
+            _toggleHotkey = Keys.None;
+            txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
+            btnToggleRecord.Text = "●";
+            btnToggleRecord.ForeColor = Color.Red;
+            btnToggleRecord.BackColor = Color.White;
+            
+            Log("Hotkey recording cancelled");
+        }
+
+        private void ToggleCaptureState()
+        {
+            if (_pollTimer?.Enabled == true)
+            {
+                btnStop?.PerformClick();
+            }
+            else
+            {
+                btnStart?.PerformClick();
+            }
+        }
+
+        private void UpdateAdaptiveLayout()
+        {
+            // 根据窗口大小动态调整控件位置和大小
+            float scaleX = (float)this.ClientSize.Width / 1770f;
+            float scaleY = (float)this.ClientSize.Height / 1100f;
+            float scale = Math.Min(scaleX, scaleY);
+            
+            // 更新字体大小
+            float baseFontSize = 9f;
+            this.Font = new Font(this.Font.FontFamily, baseFontSize * scale);
+            
+            // 可以在这里添加更多的自适应布局逻辑
+        }
+
+        // ==================== Designer Event Handlers ====================
+
+        private void MainForm_Load(object? sender, EventArgs e)
+        {
+            // 更新控件文本为本地化文本
+            UpdateLocalizedTexts();
+            
+            // 更新控件值
+            trackPixelDelta.Value = _pixelDelta;
+            lblPixelDeltaValue.Text = _pixelDelta.ToString();
+            trackPollInterval.Value = _pollInterval;
+            lblPollIntervalValue.Text = _pollInterval.ToString();
+            txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+            
+            // 设置初始按钮状态
+            lblInfo.Text = Localization.GetText("StatusStopped");
+            
+            // 执行自适应布局
+            UpdateAdaptiveLayout();
+        }
+
+        private void MainForm_Resize(object? sender, EventArgs e)
+        {
+            if (this.WindowState != FormWindowState.Minimized)
+            {
+                UpdateAdaptiveLayout();
+            }
+        }
+
         private void MainForm_KeyDown(object? sender, KeyEventArgs e)
         {
             if (_isRecordingHotkey)
@@ -1209,23 +567,12 @@ namespace TbEinkSuperFlushTurbo
                 // 获取按键组合
                 Keys keyCombo = e.KeyData;
                 
-                // 在录制模式下，任何有效的按键组合都应该立即更新显示
-                // 不再区分"相同快捷键"和"新快捷键"，只要按下按键就更新显示
-                
                 // 更新内部变量和显示
                 _toggleHotkey = keyCombo;
                 string formattedShortcut = FormatShortcut(keyCombo);
-                txtToggleHotkey!.Text = formattedShortcut;
-                
-                // 强制立即刷新UI，确保用户能看到回显
-                txtToggleHotkey!.Invalidate();
-                txtToggleHotkey!.Update();
-                txtToggleHotkey!.Refresh();
-                Application.DoEvents(); // 处理所有挂起的Windows消息
+                txtToggleHotkey.Text = formattedShortcut;
                 
                 Log($"Hotkey recorded: {formattedShortcut} - continue recording");
-                
-                // Log($"Hotkey recording completed and saved: {FormatShortcut(keyCombo)}"); // 移除录制提示
             }
             else if (e.KeyData == _toggleHotkey && _isHotkeyRegistered && !_isRecordingHotkey)
             {
@@ -1236,702 +583,763 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 播放提示音
-        private void PlayNotificationSound()
+        private void btnStart_Click(object? sender, EventArgs e)
         {
+            // 检查是否正在录制快捷键
+            if (_isRecordingHotkey)
+            {
+                MessageBox.Show("Cannot start capture while recording hotkey. Please complete hotkey recording first.", "Hotkey Recording in Progress", MessageBoxButtons.OK, MessageBoxIcon.None);
+                return;
+            }
+            
+            btnStart.Enabled = false;
+            _cts = new CancellationTokenSource();
+            _frameCounter = 0; // Reset frame counter on start
+
+            // 禁用设置项修改
+            trackPixelDelta.Enabled = false;
+            trackPollInterval.Enabled = false;
+
+            lblInfo.Text = "Status: Initializing GPU capture...";
+            Log("Initializing GPU capture...");
             try
             {
-                SystemSounds.Asterisk.Play();
+                _d3d = new D3DCaptureAndCompute(DebugLogger, _tileSize, _pixelDelta, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
+                    new BoundingAreaConfig(
+                        BOUNDING_AREA_WIDTH,
+                        BOUNDING_AREA_HEIGHT,
+                        BOUNDING_AREA_HISTORY_FRAMES,
+                        BOUNDING_AREA_CHANGE_THRESHOLD,
+                        BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture, ProtectionFrames);
+
+                _pollTimer = new System.Windows.Forms.Timer
+                {
+                    Interval = _pollInterval
+                };
+                _pollTimer.Tick += async (ss, ee) =>
+                {
+                    if (_cts.Token.IsCancellationRequested || _d3d == null) return;
+
+                    _frameCounter++; // Increment frame counter
+                    
+                    // Capture screen and compute differences
+                    var (tilesToRefresh, brightnessData) = await _d3d.CaptureAndComputeOnceAsync(_frameCounter, _cts.Token);
+                    if (_cts.Token.IsCancellationRequested) return;
+
+                    if (tilesToRefresh.Count > 0)
+                    {
+                        double refreshRatio = (double)tilesToRefresh.Count / (_d3d.TilesX * _d3d.TilesY);
+                        if (refreshRatio >= RESET_THRESHOLD_PERCENT / 100.0)
+                        {
+                            Log($"System-wide refresh detected ({refreshRatio:P1}), skipping overlay.");
+                        }
+                        else
+                        {
+                            Log($"Tiles to refresh: {tilesToRefresh.Count}");
+                            this.Invoke(new Action(() =>
+                            {
+                                listBox.Items.Insert(0, $"{DateTime.Now:HH:mm:ss.fff}:  tiles: {tilesToRefresh.Count}");
+                                if (listBox.Items.Count > 200) listBox.Items.RemoveAt(listBox.Items.Count - 1);
+                            }));
+                            ShowTemporaryOverlay(tilesToRefresh, brightnessData);
+                        }
+                    }
+                };
+                _pollTimer.Start();
+
+                // 获取系统缩放比例 - 使用更准确的DPI检测
+                float dpiScale = GetSystemDpiScale();
+                int scalePercent = (int)(dpiScale * 100);
+                lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
+                btnStop.Enabled = true;
+                Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels");
             }
             catch (Exception ex)
             {
-                Log($"Failed to play notification sound: {ex.Message}");
+                string errorMessage = $"Initialization failed: {ex.Message}";
+                Log(errorMessage + "\n" + ex.StackTrace);
+                MessageBox.Show(errorMessage);
+                btnStart.Enabled = true;
+                lblInfo.Text = "Status: Failed";
+                _cts?.Cancel();
+                _cts?.Dispose();
+                _cts = null;
             }
         }
 
-        // 显示强制通知（静默模式，无声音）
-        private void ShowForceNotification(string title, string message, ToolTipIcon icon = ToolTipIcon.None)
+        private void btnStop_Click(object? sender, EventArgs e)
         {
-            try
+            Log("Stopping GPU capture...");
+            _cts?.Cancel();
+            _pollTimer?.Stop();
+            _pollTimer?.Dispose();
+            _pollTimer = null;
+            _d3d?.Dispose();
+            _d3d = null;
+
+            lblInfo.Text = Localization.GetText("StatusStopped");
+            btnStart.Enabled = true;
+            btnStop.Enabled = false;
+            
+            // 重新启用设置项修改
+            trackPixelDelta.Enabled = true;
+            trackPollInterval.Enabled = true;
+            
+            _cts?.Dispose();
+            _cts = null;
+            
+            _overlayForm?.HideOverlay();
+            Log("GPU capture stopped");
+        }
+
+        private void trackPixelDelta_ValueChanged(object? sender, EventArgs e)
+        {
+            _pixelDelta = trackPixelDelta.Value;
+            lblPixelDeltaValue.Text = _pixelDelta.ToString();
+            SaveConfig();
+        }
+
+        private void trackPollInterval_ValueChanged(object? sender, EventArgs e)
+        {
+            _pollInterval = trackPollInterval.Value;
+            lblPollIntervalValue.Text = _pollInterval.ToString();
+            SaveConfig();
+            // 更新定时器间隔
+            if (_pollTimer != null)
             {
-                // 确保托盘图标可见
-                if (_trayIcon != null) _trayIcon.Visible = true;
-                
-                // 显示气泡提示（无图标，无声音）
-                _trayIcon?.ShowBalloonTip(3000, title, message, ToolTipIcon.None);
-                
-                // 不播放提示音
-                // PlayNotificationSound();
-                
-                Log($"Notification shown: {title} - {message}");
-            }
-            catch (Exception ex)
-            {
-                Log($"Failed to show notification: {ex.Message}");
+                _pollTimer.Interval = _pollInterval;
             }
         }
 
-        // 切换捕获状态
-        private void ToggleCaptureState()
+        private void btnHelpPixelDelta_Click(object? sender, EventArgs e)
         {
-            if (_cts?.IsCancellationRequested == false && _pollTimer?.Enabled == true)
+            string helpText;
+            string title;
+            
+            // 根据当前语言显示相应语言的帮助内容
+            if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
             {
-                // 当前正在运行，停止它
-                Log($"Hotkey triggered: Stop capture");
-                ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture stopped", ToolTipIcon.None);
-                var btnStop = Controls.OfType<Button>().FirstOrDefault(b => b.Text == Localization.GetText("Stop"));
-                btnStop?.PerformClick();
+                helpText = "像素颜色差异阈值说明:\n\n" +
+                    "控制区块内每个颜色通道(R/G/B)亮度变化的敏感度。\n\n" +
+                    "• 较低值(2-8): 适合默认浅色主题，检测细微变化\n" +
+                    "  （区分白色和浅灰色及浅亮度彩色）\n\n" +
+                    "• 较高值(15-25): 适合高对比度主题，忽略微小变化\n\n" +
+                    "推荐: 从10开始，根据您的主题进行调整。";
+                title = "像素颜色差异阈值 - 详细说明";
             }
             else
             {
-                // 当前已停止，开始运行
-                Log($"Hotkey triggered: Start capture");
-                ShowForceNotification("EInk Ghost Reducer", "Screen refresh capture started", ToolTipIcon.None);
-                var btnStart = Controls.OfType<Button>().FirstOrDefault(b => b.Text == Localization.GetText("Start"));
-                btnStart?.PerformClick();
+                helpText = "Pixel Color Diff Threshold:\n\n" +
+                    "Controls the sensitivity to luminance changes in individual color channels (R/G/B) for each tile.\n\n" +
+                    "• Lower values (2-8): Better for default light themes, detects subtle changes\n" +
+                    "  (Distinguishes white from light gray and low-brightness colors)\n\n" +
+                    "• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\n" +
+                    "Recommended: Start with 10 and adjust based on your theme.";
+                title = "Pixel Color Diff Threshold - Help";
+            }
+            
+            MessageBox.Show(helpText, title, MessageBoxButtons.OK, MessageBoxIcon.None);
+        }
+
+        private void btnHelpPixelDelta_Paint(object? sender, PaintEventArgs e)
+        {
+            var btn = sender as Button;
+            if (btn == null) return;
+            
+            e.Graphics.Clear(btn.BackColor);
+            
+            using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
+            using (var brush = new SolidBrush(btn.BackColor == Color.FromArgb(135, 206, 235) ? Color.White : btn.ForeColor))
+            {
+                // 精确测量文本尺寸
+                var textSize = e.Graphics.MeasureString("?", font);
+                // 计算精确位置实现完美居中，并在圆圈内右移2个像素
+                var x = (btn.Width - textSize.Width) / 2 + 2;
+                var y = (btn.Height - textSize.Height) / 2;
+                e.Graphics.DrawString("?", font, brush, x, y);
             }
         }
 
-        // 保存快捷键
-        private void SaveToggleHotkey()
+        private void btnHelpPixelDelta_MouseEnter(object? sender, EventArgs e)
         {
-            try
+            if (sender is Button btn)
             {
-                // 注销旧快捷键
+                btn.BackColor = Color.FromArgb(135, 206, 235); // 稍微暗一点的淡蓝色
+                btn.Cursor = Cursors.Hand;
+            }
+        }
+
+        private void btnHelpPixelDelta_MouseLeave(object? sender, EventArgs e)
+        {
+            if (sender is Button btn)
+            {
+                btn.BackColor = Color.LightBlue;
+                btn.Cursor = Cursors.Default;
+            }
+        }
+
+        private void btnToggleRecord_Click(object? sender, EventArgs e)
+        {
+            if (_isRecordingHotkey)
+            {
+                // 如果正在录制，优先处理录制逻辑
+                // 停止录制，如果没有输入任何按键则清空快捷键
+                _isRecordingHotkey = false;
+                btnToggleRecord.Text = "●";
+                btnToggleRecord.ForeColor = Color.Red;
+                btnToggleRecord.BackColor = Color.White;
+                
+                // 如果文本框显示的是提示文字，说明用户没有输入任何按键
+                if (txtToggleHotkey.Text == Localization.GetText("PressHotkeyCombination"))
+                {
+                    // 用户没有输入任何按键，清空快捷键
+                    CancelHotkeyRecording();
+                }
+                else
+                {
+                    // 用户输入了按键，保存快捷键
+                    SaveToggleHotkey();
+                }
+            }
+            else
+            {
+                // 如果不在录制状态，检查是否正在运行
+                if (_pollTimer != null && _pollTimer.Enabled)
+                {
+                    MessageBox.Show("Cannot modify hotkey while capture is running. Please stop capture first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.None);
+                    return;
+                }
+                
+                // 开始录制
+                _isRecordingHotkey = true;
+                btnToggleRecord.Text = "■";
+                btnToggleRecord.ForeColor = Color.Black;
+                btnToggleRecord.BackColor = Color.White;
+                txtToggleHotkey.Text = Localization.GetText("PressHotkeyCombination");
+            
+                // 开始录制时临时注销当前快捷键，避免冲突
                 if (_isHotkeyRegistered)
                 {
                     NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
                     _isHotkeyRegistered = false;
                 }
-                
-                // 注册新快捷键
-                uint modifiers = GetModifiers(_toggleHotkey);
-                Keys keyCode = GetKeyCode(_toggleHotkey);
-                
-                bool success = NativeMethods.RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modifiers, (uint)keyCode);
-                
-                if (success)
-                {
-                    _isHotkeyRegistered = true;
-                    SaveConfig(); // 保存到配置文件
-                    Log($"Hotkey set successfully: {FormatShortcut(_toggleHotkey)}");
-                    // 静默更新，不显示弹框
-                }
-                else
-                {
-                    Log($"Hotkey registration failed: {FormatShortcut(_toggleHotkey)}");
-                    // 静默失败，不显示弹框
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Failed to save hotkey: {ex.Message}");
-                MessageBox.Show($"Failed to save hotkey: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.None);
+            
+                // 开始录制时清空临时变量，确保每次录制都是全新的开始
+                _toggleHotkey = Keys.None;
             }
         }
 
-        // 取消快捷键录制
-        private void CancelHotkeyRecording()
+        private void btnToggleRecord_Paint(object? sender, PaintEventArgs e)
         {
-            _isRecordingHotkey = false;
-            btnToggleRecord!.Text = "●";
-            btnToggleRecord.ForeColor = Color.Red;
-            btnToggleRecord.BackColor = Color.White;
+            var btn = sender as Button;
+            if (btn == null) return;
+            var text = btn.Text;
             
-            // 清空快捷键而不是保留上一次的
-            _toggleHotkey = Keys.None;
-            txtToggleHotkey!.Text = "";
+            // 绘制背景
+            e.Graphics.Clear(btn.BackColor);
             
-            // 取消注册当前快捷键
-            if (_isHotkeyRegistered)
+            // 绘制黑色边框
+            using (var borderPen = new Pen(Color.Black, 2))
             {
-                NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
-                _isHotkeyRegistered = false;
+                e.Graphics.DrawRectangle(borderPen, 1, 1, btn.Width - 2, btn.Height - 2);
             }
             
-            SaveConfig();
-            Log("Hotkey recording cancelled and cleared");
+            // 根据文本内容选择不同的绘制方式，确保都基于中心对齐
+            using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
+            using (var brush = new SolidBrush(btn.ForeColor))
+            {
+                if (text == "●") // 圆点 - 改为圆环+内部小圆点
+                {
+                    // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
+                    int baseSize = Math.Min(btn.Width, btn.Height);
+                    int outerDiameter = baseSize - 32; // 再放大圆环，从-36改为-32
+                    int ringThickness = 2; // 固定环厚度，不再DPI缩放
+                    int x = (btn.Width - outerDiameter) / 2;
+                    int y = (btn.Height - outerDiameter) / 2;
+                    
+                    // 绘制外圆环（红色）
+                    using (var redBrush = new SolidBrush(Color.Red))
+                    {
+                        e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
+                    }
+                    
+                    // 绘制内圆（白色背景，形成圆环效果）
+                    int innerDiameter = outerDiameter - (ringThickness * 2);
+                    int innerX = x + ringThickness;
+                    int innerY = y + ringThickness;
+                    e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
+                    
+                    // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
+                    int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
+                    int centerX = (btn.Width - centerDiameter) / 2;
+                    int centerY = (btn.Height - centerDiameter) / 2;
+                    e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
+                }
+                else if (text == "■") // 方点
+                {
+                    // 绘制一个较小的实心方形，基于中心点
+                    int size = Math.Min(btn.Width, btn.Height) - 42; // 再小一点
+                    int x = (btn.Width - size) / 2;
+                    int y = (btn.Height - size) / 2;
+                    e.Graphics.FillRectangle(brush, x, y, size, size);
+                }
+                else // 其他字符，使用文本绘制
+                {
+                    var textSize = e.Graphics.MeasureString(text, font);
+                    var x = (btn.Width - textSize.Width) / 2;
+                    var y = (btn.Height - textSize.Height) / 2;
+                    e.Graphics.DrawString(text, font, brush, x, y);
+                }
+            }
         }
 
-        // 格式化快捷键显示
-        private string FormatShortcut(Keys keys)
+        private void btnToggleRecord_MouseEnter(object? sender, EventArgs e)
         {
-            List<string> parts = new List<string>();
-            
-            if ((keys & Keys.Control) == Keys.Control)
-                parts.Add("Ctrl");
-            if ((keys & Keys.Shift) == Keys.Shift)
-                parts.Add("Shift");
-            if ((keys & Keys.Alt) == Keys.Alt)
-                parts.Add("Alt");
-            
-            Keys keyCode = keys & Keys.KeyCode;
-            if (keyCode != Keys.ControlKey && keyCode != Keys.ShiftKey && keyCode != Keys.Menu)
+            if (sender is Button btn)
             {
-                parts.Add(keyCode.ToString());
+                btn.BackColor = Color.LightGray; // 悬停时背景变灰
             }
-            
-            // 如果没有设置任何快捷键，显示提示文本
-            if (parts.Count == 0)
-            {
-                return "click button to set ";
-            }
-            
-            return string.Join(" + ", parts);
         }
 
-        // 获取修饰键
-        private uint GetModifiers(Keys keys)
+        private void btnToggleRecord_MouseLeave(object? sender, EventArgs e)
         {
-            uint modifiers = 0;
-            if ((keys & Keys.Control) == Keys.Control) modifiers |= 0x0002; // MOD_CONTROL
-            if ((keys & Keys.Shift) == Keys.Shift) modifiers |= 0x0004;     // MOD_SHIFT
-            if ((keys & Keys.Alt) == Keys.Alt) modifiers |= 0x0001;       // MOD_ALT
-            return modifiers;
+            if (sender is Button btn)
+            {
+                btn.BackColor = Color.White; // 离开时恢复白色
+            }
         }
 
-        // 获取键码
-        private Keys GetKeyCode(Keys keys)
+        private void _displayChangeTimer_Tick(object? sender, EventArgs e)
         {
-            return keys & Keys.KeyCode;
+            if (_d3d != null)
+            {
+                double refreshRate = _d3d.GetCurrentPrimaryDisplayRefreshRate();
+                if (refreshRate >= 59.0)
+                {
+                    Log($"High refresh rate detected ({refreshRate}Hz), stopping capture.");
+                    StopCapture();
+                }
+            }
         }
 
-        // 注册快捷键
-        private void RegisterToggleHotkey()
+        private void _trayIcon_Click(object? sender, EventArgs e)
         {
-            try
+            this.Show();
+            this.WindowState = FormWindowState.Normal;
+            this.Activate();
+        }
+
+        private void _trayIcon_DoubleClick(object? sender, EventArgs e)
+        {
+            ManualRefresh();
+        }
+
+        private void exitToolStripMenuItem_Click(object? sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void UpdateLocalizedTexts()
+        {
+            this.Text = Localization.GetText("WindowTitle");
+            btnStart.Text = Localization.GetText("Start");
+            btnStop.Text = Localization.GetText("Stop");
+            lblPixelDelta.Text = Localization.GetText("PixelColorDiff");
+            lblPollInterval.Text = Localization.GetText("DetectInterval");
+            lblPollIntervalUnit.Text = Localization.GetText("Milliseconds");
+            lblToggleHotkey.Text = Localization.GetText("ToggleHotkey");
+            btnHelpPixelDelta.Text = Localization.GetText("QuestionMark");
+            
+            // 设置帮助按钮为圆形
+            SetCircularButton(btnHelpPixelDelta);
+            
+            // 如果快捷键为None，确保显示"click button to set"
+            if (_toggleHotkey == Keys.None)
             {
-                if (_isHotkeyRegistered)
-                {
-                    NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
-                    _isHotkeyRegistered = false;
-                }
-                
-                uint modifiers = GetModifiers(_toggleHotkey);
-                Keys keyCode = GetKeyCode(_toggleHotkey);
-                
-                bool success = NativeMethods.RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modifiers, (uint)keyCode);
-                
-                if (success)
-                {
-                    _isHotkeyRegistered = true;
-                    Log($"Hotkey registered successfully: {FormatShortcut(_toggleHotkey)}");
-                }
-                else
-                {
-                    Log($"Hotkey registration failed: {FormatShortcut(_toggleHotkey)}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Failed to register hotkey: {ex.Message}");
+                txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
             }
         }
-        
-        // 自适应布局更新方法
-        private void UpdateAdaptiveLayout()
+
+        private void SetCircularButton(Button button)
         {
-            int formWidth = this.ClientSize.Width;
-            int formHeight = this.ClientSize.Height;
-            
-            // 设置最小尺寸限制 - 调整为支持800x600分辨率
-            if (formWidth < 800 || formHeight < 600) return; // 最小高度改为600px
-            
-            // 计算各个区域的宽度比例
-            int leftMargin = (int)(formWidth * 0.04); // 4% 左边距
-            int labelWidth = (int)(formWidth * 0.25); // 标签占25%
-            int sliderWidth = (int)(formWidth * 0.35); // 滑块占35% 
-            int valueWidth = (int)(formWidth * 0.08); // 数值显示占8%
-            int unitWidth = (int)(formWidth * 0.1); // 单位占10%
-            
-            // 更新检测间隔行的布局
-            if (lblPollInterval != null)
-            {
-                lblPollInterval.Left = leftMargin;
-                lblPollInterval.Width = labelWidth;
-            }
-            
-            if (trackPollInterval != null)
-            {
-                trackPollInterval.Left = leftMargin + labelWidth + 20;
-                trackPollInterval.Width = sliderWidth;
-            }
-            
-            if (lblPollIntervalValue != null)
-            {
-                lblPollIntervalValue.Left = leftMargin + labelWidth + 20 + sliderWidth + 20;
-                lblPollIntervalValue.Width = valueWidth;
-            }
-            
-            if (lblPollIntervalUnit != null)
-            {
-                lblPollIntervalUnit.Left = leftMargin + labelWidth + 20 + sliderWidth + 20 + valueWidth + 10;
-                lblPollIntervalUnit.Width = unitWidth;
-            }
-            
-            // 更新像素颜色差异行的布局
-            if (lblPixelDelta != null)
-            {
-                lblPixelDelta.Left = leftMargin;
-                lblPixelDelta.Width = labelWidth;
-            }
-            
-            if (trackPixelDelta != null)
-            {
-                trackPixelDelta.Left = leftMargin + labelWidth + 20;
-                trackPixelDelta.Width = sliderWidth;
-            }
-            
-            if (lblPixelDeltaValue != null)
-            {
-                lblPixelDeltaValue.Left = leftMargin + labelWidth + 20 + sliderWidth + 20;
-                lblPixelDeltaValue.Width = valueWidth;
-            }
-            
-            if (btnHelpPixelDelta != null)
-            {
-                btnHelpPixelDelta.Left = leftMargin + labelWidth + 20 + sliderWidth + 20 + valueWidth + 10;
-            }
-            
-            // 更新切换热键行的布局
-            if (lblToggleHotkey != null)
-            {
-                lblToggleHotkey.Left = leftMargin;
-                lblToggleHotkey.Width = labelWidth;
-            }
-            
-            if (txtToggleHotkey != null)
-            {
-                txtToggleHotkey.Left = leftMargin + labelWidth + 20;
-                txtToggleHotkey.Width = sliderWidth;
-            }
-            
-            if (btnToggleRecord != null)
-            {
-                btnToggleRecord.Left = leftMargin + labelWidth + 20 + sliderWidth + 20;
-            }
-            
-            // 更新日志栏的布局（支持高度自适应和字体大小调整）
-            int logMargin = (int)(formWidth * 0.04); // 4% 边距
-            int logWidth = formWidth - logMargin * 2 - 10; // 减去10px的微调
-            
-            // 计算可用高度（从顶部控件到底部）
-            int topControlsHeight = formHeight < 700 ? 320 : 380; // 小屏幕使用更小的顶部高度
-            int bottomMargin = (int)(formHeight * 0.02); // 2% 底部边距
-            int availableHeight = formHeight - topControlsHeight - bottomMargin;
-            
-            // 确保日志栏高度合理（根据屏幕大小动态调整）
-            int logHeight = Math.Max(80, Math.Min(availableHeight, formHeight * 1 / 4)); // 最小80px，最大占窗口高度的25%，进一步缩短纵向长度
-            int logTop = formHeight - logHeight - bottomMargin; // 从底部向上定位，移除额外的100px下移
-            
-            if (lblInfo != null)
-            {
-                lblInfo.Left = logMargin;
-                lblInfo.Width = logWidth;
-                lblInfo.Top = logTop - 70; // 状态标签在日志栏上方70px
-            }
-            
-            if (listBox != null)
-            {
-                listBox.Left = logMargin + 10; // 稍微右移一点
-                listBox.Width = logWidth - 10; // 相应减少宽度
-                listBox.Top = logTop;
-                listBox.Height = logHeight;
-                
-                // 根据DPI缩放和窗口大小调整字体大小
-                float dpiScale = GetSystemDpiScale();
-                float baseFontSize = 9f; // 基础字体大小
-                
-                // 在小屏幕上使用更大的字体比例
-                if (formHeight < 800)
-                {
-                    baseFontSize = 11f; // 小屏幕使用更大字体以提高可读性
-                }
-                
-                // 在高DPI缩放情况下（如250%缩放），减小字体大小
-                if (dpiScale > 2.0f) // 250%缩放约为2.5
-                {
-                    baseFontSize = Math.Max(6f, baseFontSize - 3f); // 减小3个字号，最小6pt
-                }
-                
-                float adjustedFontSize = baseFontSize * dpiScale;
-                listBox.Font = new Font(this.Font.FontFamily, adjustedFontSize);
-            }
+            // 设置圆形区域（宽高相同保持正圆）
+            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddEllipse(0, 0, button.Width, button.Height);
+            button.Region = new Region(path);
         }
-        
-        // Windows热键API
-        private static class NativeMethods
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            [DllImport("user32.dll", SetLastError = true)]
-            public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+            UnregisterToggleHotkey();
+            _overlayForm?.HideOverlay();
+            _displayChangeTimer?.Stop();
             
-            [DllImport("user32.dll", SetLastError = true)]
-            public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+            base.OnFormClosing(e);
         }
     }
 
     class OverlayForm : Form
-    {
-        [DllImport("user32.dll")]
-        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-        [DllImport("user32.dll")]
-        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-        [DllImport("user32.dll")]
-        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-        
-        private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
-        private const uint SWP_SHOWWINDOW = 0x0040;
-        private const uint SWP_NOACTIVATE = 0x0010;
-
-        private readonly Action<string> Logger;
-        // 使用Dictionary存储瓦片，提高查找效率，键为(bx,by)元组，值为亮度数据
-        readonly Dictionary<(int bx, int by), float> _tiles = new Dictionary<(int bx, int by), float>();
-        readonly List<(int bx, int by)> _expiredTiles = new List<(int bx, int by)>(); // 用于当前绘制周期的过期瓦片
-        readonly List<CancellationTokenSource> _batchCancellationTokenSources = new List<CancellationTokenSource>(); // 记录每批瓦片的取消令牌
-        Bitmap? _overlayBitmap; // 累积位图
-        private readonly object _bitmapLock = new object(); // 用于同步访问_bitmap的锁
-        private bool _isDisplaying = false; // 标记是否正在显示刷新色
-        public int TileCount => _tiles.Count;
-        readonly int _tileSize, _screenW, _screenH, _noiseDensity, _noisePointInterval, _borderWidth;
-        readonly Color _baseColor, _borderColor;
-
-        public bool IsDisplaying => _isDisplaying;
-        
-        public void UpdateContent(List<(int bx, int by)> tiles, float[]? brightnessData = null)
         {
-            bool addedNewTiles = false;
-            
-            // 添加新瓦片到现有Dictionary中，使用ContainsKey提高查找效率(O(1))
-            foreach (var tile in tiles)
+            [DllImport("user32.dll")]
+            private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+            [DllImport("user32.dll")]
+            private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+            [DllImport("user32.dll")]
+            private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+            private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+            private const uint SWP_SHOWWINDOW = 0x0040;
+            private const uint SWP_NOACTIVATE = 0x0010;
+
+            private readonly Action<string> Logger;
+            // 使用Dictionary存储瓦片，提高查找效率，键为(bx,by)元组，值为亮度数据
+            readonly Dictionary<(int bx, int by), float> _tiles = new Dictionary<(int bx, int by), float>();
+            readonly List<(int bx, int by)> _expiredTiles = new List<(int bx, int by)>(); // 用于当前绘制周期的过期瓦片
+            readonly List<CancellationTokenSource> _batchCancellationTokenSources = new List<CancellationTokenSource>(); // 记录每批瓦片的取消令牌
+            Bitmap? _overlayBitmap; // 累积位图
+            private readonly object _bitmapLock = new object(); // 用于同步访问_bitmap的锁
+            private bool _isDisplaying = false; // 标记是否正在显示刷新色
+            public int TileCount => _tiles.Count;
+            readonly int _tileSize, _screenW, _screenH, _noiseDensity, _noisePointInterval, _borderWidth;
+            readonly Color _baseColor, _borderColor;
+
+            public bool IsDisplaying => _isDisplaying;
+
+            public void UpdateContent(List<(int bx, int by)> tiles, float[]? brightnessData = null)
             {
-                // 计算瓦片索引
-                int tilesX = (_screenW + _tileSize - 1) / _tileSize;
-                int tileIdx = tile.by * tilesX + tile.bx;
-                
-                // 获取该瓦片的亮度值
-                float brightness = 0.5f; // 默认亮度
-                if (brightnessData != null && tileIdx < brightnessData.Length)
+                bool addedNewTiles = false;
+
+                // 添加新瓦片到现有Dictionary中，使用ContainsKey提高查找效率(O(1))
+                foreach (var tile in tiles)
                 {
-                    brightness = brightnessData[tileIdx];
-                }
-                
-                // 检查瓦片是否已经在显示列表中，使用Dictionary的ContainsKey方法，O(1)复杂度
-                if (!_tiles.ContainsKey(tile))
-                {
-                    _tiles[tile] = brightness;
-                    addedNewTiles = true;
-                }
-            }
-            
-            // 为当前批次的瓦片创建一个统一的定时器，无论是否有新瓦片添加
-            // 确保每次调用都为这批瓦片设置过期时间
-            if (tiles.Count > 0)
-            {
-                // 为这批新的瓦片创建一个统一的定时器
-                CancellationTokenSource cts = new CancellationTokenSource();
-                _batchCancellationTokenSources.Add(cts);
-                
-                // 启动统一的定时器来清除这批瓦片
-                _ = Task.Run(async () => {
-                    try 
+                    // 计算瓦片索引
+                    int tilesX = (_screenW + _tileSize - 1) / _tileSize;
+                    int tileIdx = tile.by * tilesX + tile.bx;
+
+                    // 获取该瓦片的亮度值
+                    float brightness = 0.5f; // 默认亮度
+                    if (brightnessData != null && tileIdx < brightnessData.Length)
                     {
-                        await Task.Delay(MainForm.OVERLAY_DISPLAY_TIME, cts.Token);
-                        // 时间到了，标记这批瓦片为过期
-                        MarkTilesAsExpired(tiles, cts);
+                        brightness = brightnessData[tileIdx];
                     }
-                    catch (OperationCanceledException)
-                    {
-                        // 任务被取消，正常情况
-                    }
-                });
-            }
-            
-            // 更新显示（累积模式，不清除之前的显示）
-            UpdateVisuals();
-            if (!_isDisplaying)
-            {
-                _isDisplaying = true;
-            }
-            if (addedNewTiles)
-            {
-                Logger?.Invoke($"DEBUG: 刷新色显示开始，将显示{MainForm.OVERLAY_DISPLAY_TIME}ms，当前瓦片数: {_tiles.Count}");
-            }
-        }
-    
-        // 从UI线程安全地标记一批瓦片为过期
-        private void MarkTilesAsExpired(List<(int bx, int by)> tiles, CancellationTokenSource cts)
-        {
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action(() => MarkTilesAsExpiredInternal(tiles, cts)));
-            }
-            else
-            {
-                MarkTilesAsExpiredInternal(tiles, cts);
-            }
-        }
-    
-        private void MarkTilesAsExpiredInternal(List<(int bx, int by)> tiles, CancellationTokenSource cts)
-        {
-            // 将这些瓦片标记为过期
-            int expiredCount = 0;
-            foreach (var tile in tiles)
-            {
-                // 使用Dictionary的Remove方法，O(1)复杂度
-                if (_tiles.Remove(tile))
-                {
-                    _expiredTiles.Add(tile);
-                    expiredCount++;
-                }
-            }
-            
-            // 从位图上擦除过期的瓦片
-            ClearExpiredTilesFromBitmap();
-            
-            // 从取消令牌列表中移除这个令牌
-            _batchCancellationTokenSources.Remove(cts);
-            cts.Dispose();
-            
-            // 更新显示以清除过期的瓦片
-            UpdateVisuals();
-            
-            Logger?.Invoke($"DEBUG: 部分刷新色过期，本次过期瓦片数: {expiredCount}，剩余瓦片数: {_tiles.Count}，过期瓦片数: {_expiredTiles.Count}");
-            // 清理临时过期瓦片列表，为下一轮刷新做准备
-            _expiredTiles.Clear();
-        }
-    
-        public void HideOverlay()
-        {
-            // 取消所有正在进行的定时器
-            foreach (var cts in _batchCancellationTokenSources)
-            {
-                cts.Cancel();
-            }
-            
-            // 清理所有数据
-            _tiles.Clear();
-            _expiredTiles.Clear();
-            foreach (var cts in _batchCancellationTokenSources)
-            {
-                cts.Dispose();
-            }
-            _batchCancellationTokenSources.Clear();
-            
-            // 清理位图资源
-            lock (_bitmapLock)
-            {
-                _overlayBitmap?.Dispose();
-                _overlayBitmap = null;
-            }
-            _isDisplaying = false;
-            UpdateVisuals();
-            Logger?.Invoke("DEBUG: 刷新色强制隐藏");
-        }
 
-        // 从位图上清除过期的瓦片
-        private void ClearExpiredTilesFromBitmap()
-        {
-            lock (_bitmapLock)
-            {
-                if (_overlayBitmap == null) return;
-                
-                using (Graphics g = Graphics.FromImage(_overlayBitmap))
-                {
-                    g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
-                    
-                    foreach (var tile in _expiredTiles)
+                    // 检查瓦片是否已经在显示列表中，使用Dictionary的ContainsKey方法，O(1)复杂度
+                    if (!_tiles.ContainsKey(tile))
                     {
-                        int sx = tile.bx * _tileSize;
-                        int sy = tile.by * _tileSize;
-                        int w = Math.Min(_tileSize, _screenW - sx);
-                        int h = Math.Min(_tileSize, _screenH - sy);
-                        
-                        // 使用透明色清除过期的瓦片区域
-                        using (var brush = new SolidBrush(Color.Transparent))
-                            g.FillRectangle(brush, sx, sy, w, h);
+                        _tiles[tile] = brightness;
+                        addedNewTiles = true;
                     }
                 }
-            }
-        }
 
-        public OverlayForm(int tileSize, int screenW, int screenH, int noiseDensity, int noisePointInterval, Color baseColor, Color borderColor, int borderWidth, Action<string> log)
-        {
-            _tileSize = tileSize;
-            _screenW = screenW; 
-            _screenH = screenH;
-            _noiseDensity = noiseDensity;
-            _noisePointInterval = noisePointInterval;
-            _baseColor = baseColor;
-            _borderColor = borderColor;
-            _borderWidth = borderWidth;
-            Logger = log;
-            
-            // 初始化位图
-            lock (_bitmapLock)
-            {
-                _overlayBitmap = new Bitmap(screenW, screenH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            }
-            
-            FormBorderStyle = FormBorderStyle.None;
-            StartPosition = FormStartPosition.Manual;
-            ShowInTaskbar = false;
-            TopMost = true;
-            Location = new Point(0, 0);
-            Size = new Size(screenW, screenH);
-            
-            // 设置 WS_EX_LAYERED 扩展样式
-            int exStyle = GetWindowLong(this.Handle, -20); // GWL_EXSTYLE = -20
-            SetWindowLong(this.Handle, -20, exStyle | 0x00080000); // WS_EX_LAYERED = 0x00080000
-        }
-
-        protected override CreateParams CreateParams
-        {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x00000020 | 0x00000080 | 0x00080000; // WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_LAYERED
-                return cp;
-            }
-        }
-
-        public void UpdateVisuals()
-        {
-            // 确保窗口可见且置顶
-            if (!this.Visible)
-                this.Show();
-            
-            // 使用SetWindowPos确保窗口在最顶层且位置正确
-            SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, _screenW, _screenH, SWP_SHOWWINDOW | SWP_NOACTIVATE);
-            
-            // 在位图上绘制内容
-            DrawOverlayBitmap();
-            
-            // 使用UpdateLayeredWindow更新窗口
-            UpdateLayeredWindowFromBitmap();
-        }
-    
-        private void DrawOverlayBitmap()
-        {
-            lock (_bitmapLock)
-            {
-                // 只在没有位图或尺寸不匹配时重新创建，避免频繁重建位图
-                if (_overlayBitmap == null || _overlayBitmap.Width != _screenW || _overlayBitmap.Height != _screenH)
+                // 为当前批次的瓦片创建一个统一的定时器，无论是否有新瓦片添加
+                // 确保每次调用都为这批瓦片设置过期时间
+                if (tiles.Count > 0)
                 {
-                    // 释放旧位图
-                    _overlayBitmap?.Dispose();
-                    // 创建新位图
-                    _overlayBitmap = new Bitmap(_screenW, _screenH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    // 为这批新的瓦片创建一个统一的定时器
+                    CancellationTokenSource cts = new CancellationTokenSource();
+                    _batchCancellationTokenSources.Add(cts);
+
+                    // 启动统一的定时器来清除这批瓦片
+                    _ = Task.Run(async () => {
+                        try
+                        {
+                            await Task.Delay(MainForm.OVERLAY_DISPLAY_TIME, cts.Token);
+                            // 时间到了，标记这批瓦片为过期
+                            MarkTilesAsExpired(tiles, cts);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // 任务被取消，正常情况
+                        }
+                    });
+                }
+
+                // 更新显示（累积模式，不清除之前的显示）
+                UpdateVisuals();
+                if (!_isDisplaying)
+                {
+                    _isDisplaying = true;
+                }
+                if (addedNewTiles)
+                {
+                    Logger?.Invoke($"DEBUG: 刷新色显示开始，将显示{MainForm.OVERLAY_DISPLAY_TIME}ms，当前瓦片数: {_tiles.Count}");
+                }
+            }
+
+            // 从UI线程安全地标记一批瓦片为过期
+            private void MarkTilesAsExpired(List<(int bx, int by)> tiles, CancellationTokenSource cts)
+            {
+                if (this.InvokeRequired)
+                {
+                    this.Invoke(new Action(() => MarkTilesAsExpiredInternal(tiles, cts)));
                 }
                 else
                 {
-                    // 不清空位图，实现累积显示效果，避免闪烁 （目前实测这个是否注释影响不大）
-                    // using (Graphics g = Graphics.FromImage(_overlayBitmap))
-                    // {
-                    //     // 使用透明色清空位图
-                    //     g.Clear(Color.Transparent);
-                    // }
+                    MarkTilesAsExpiredInternal(tiles, cts);
                 }
-                
-                using (Graphics g = Graphics.FromImage(_overlayBitmap))
-                {
-                    g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
-                    
-                    // 只在刷新区域绘制亮度反向的半透明白/黑色覆盖
-                    foreach (var tile in _tiles.Keys)
-                    {
-                        // 从Dictionary中获取亮度数据
-                        float brightness = _tiles[tile];
-                        int bx = tile.bx;
-                        int by = tile.by;
-                        
-                        int sx = bx * _tileSize;
-                        int sy = by * _tileSize;
-                        int w = Math.Min(_tileSize, _screenW - sx);
-                        int h = Math.Min(_tileSize, _screenH - sy);
-                        
-                        // 根据亮度值决定显示黑色还是白色（反向显示）
-                        Color overlayColor;
-                        // 亮度 > 0.5 显示黑色，亮度 <= 0.5 显示白色（反向）
-                        if (brightness > 0.5f)
-                        {
-                            overlayColor = Color.FromArgb(85, 0, 0, 0); // 半透明黑色
-                        }
-                        else
-                        {
-                            overlayColor = Color.FromArgb(85, 255, 255, 255); // 半透明白色
-                        }
+            }
 
-                        // 在刷新区域绘制反向亮度颜色的半透明方块
-                        using (var br = new SolidBrush(overlayColor))
-                            g.FillRectangle(br, sx, sy, w, h);
-                        
-                        // 只有当边框宽度大于等于1时才绘制边框
-                        if (_borderWidth >= 1)
+            private void MarkTilesAsExpiredInternal(List<(int bx, int by)> tiles, CancellationTokenSource cts)
+            {
+                // 将这些瓦片标记为过期
+                int expiredCount = 0;
+                foreach (var tile in tiles)
+                {
+                    // 使用Dictionary的Remove方法，O(1)复杂度
+                    if (_tiles.Remove(tile))
+                    {
+                        _expiredTiles.Add(tile);
+                        expiredCount++;
+                    }
+                }
+
+                // 从位图上擦除过期的瓦片
+                ClearExpiredTilesFromBitmap();
+
+                // 从取消令牌列表中移除这个令牌
+                _batchCancellationTokenSources.Remove(cts);
+                cts.Dispose();
+
+                // 更新显示以清除过期的瓦片
+                UpdateVisuals();
+
+                Logger?.Invoke($"DEBUG: 部分刷新色过期，本次过期瓦片数: {expiredCount}，剩余瓦片数: {_tiles.Count}，过期瓦片数: {_expiredTiles.Count}");
+                // 清理临时过期瓦片列表，为下一轮刷新做准备
+                _expiredTiles.Clear();
+            }
+
+            public void HideOverlay()
+            {
+                // 取消所有正在进行的定时器
+                foreach (var cts in _batchCancellationTokenSources)
+                {
+                    cts.Cancel();
+                }
+
+                // 清理所有数据
+                _tiles.Clear();
+                _expiredTiles.Clear();
+                foreach (var cts in _batchCancellationTokenSources)
+                {
+                    cts.Dispose();
+                }
+                _batchCancellationTokenSources.Clear();
+
+                // 清理位图资源
+                lock (_bitmapLock)
+                {
+                    _overlayBitmap?.Dispose();
+                    _overlayBitmap = null;
+                }
+                _isDisplaying = false;
+                UpdateVisuals();
+                Logger?.Invoke("DEBUG: 刷新色强制隐藏");
+            }
+
+            // 从位图上清除过期的瓦片
+            private void ClearExpiredTilesFromBitmap()
+            {
+                lock (_bitmapLock)
+                {
+                    if (_overlayBitmap == null) return;
+
+                    using (Graphics g = Graphics.FromImage(_overlayBitmap))
+                    {
+                        g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+
+                        foreach (var tile in _expiredTiles)
                         {
-                            // 添加边框，颜色与填充颜色相反
-                            Color borderColor;
-                            if (brightness > 0.5f)
-                            {
-                                borderColor = Color.FromArgb(180, 255, 255, 255); // 白色边框（与黑色填充相反）
-                            }
-                            else
-                            {
-                                borderColor = Color.FromArgb(180, 0, 0, 0); // 黑色边框（与白色填充相反）
-                            }
-                            using (var pen = new Pen(borderColor, _borderWidth))
-                                g.DrawRectangle(pen, sx, sy, w-1, h-1);
+                            int sx = tile.bx * _tileSize;
+                            int sy = tile.by * _tileSize;
+                            int w = Math.Min(_tileSize, _screenW - sx);
+                            int h = Math.Min(_tileSize, _screenH - sy);
+
+                            // 使用透明色清除过期的瓦片区域
+                            using (var brush = new SolidBrush(Color.Transparent))
+                                g.FillRectangle(brush, sx, sy, w, h);
                         }
                     }
                 }
-                
-                // 注意：不要在这里清理_expiredTiles列表，因为在MarkTilesAsExpiredInternal方法中还需要使用它
-                // _expiredTiles.Clear();
             }
-        }
-    
-        private void UpdateLayeredWindowFromBitmap()
-        {
-            lock (_bitmapLock)
+
+            public OverlayForm(int tileSize, int screenW, int screenH, int noiseDensity, int noisePointInterval, Color baseColor, Color borderColor, int borderWidth, Action<string> log)
             {
-                // 检查位图是否存在
-                if (_overlayBitmap == null) return;
-                
-                IntPtr hdcScreen = GetDC(IntPtr.Zero);
-                IntPtr hdcMem = CreateCompatibleDC(hdcScreen);
-                IntPtr hBitmap = _overlayBitmap.GetHbitmap(Color.FromArgb(0, 0, 0, 0));
-                IntPtr hOld = SelectObject(hdcMem, hBitmap);
+                _tileSize = tileSize;
+                _screenW = screenW;
+                _screenH = screenH;
+                _noiseDensity = noiseDensity;
+                _noisePointInterval = noisePointInterval;
+                _baseColor = baseColor;
+                _borderColor = borderColor;
+                _borderWidth = borderWidth;
+                Logger = log;
 
-                Win32Point ptSrc = new Win32Point(0, 0);
-                Win32Size sz = new Win32Size(_screenW, _screenH);
-                Win32Point ptDest = new Win32Point(0, 0);
-                
-                BLENDFUNCTION blend = new BLENDFUNCTION
+                // 初始化位图
+                lock (_bitmapLock)
                 {
-                    BlendOp = 0, // AC_SRC_OVER
-                    BlendFlags = 0,
-                    SourceConstantAlpha = 255, // 255 = fully opaque
-                    AlphaFormat = 1 // AC_SRC_ALPHA
-                };
+                    _overlayBitmap = new Bitmap(screenW, screenH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                }
 
-                UpdateLayeredWindow(this.Handle, hdcScreen, ref ptDest, ref sz, hdcMem, ref ptSrc, 0, ref blend, 2);
+                FormBorderStyle = FormBorderStyle.None;
+                StartPosition = FormStartPosition.Manual;
+                ShowInTaskbar = false;
+                TopMost = true;
+                Location = new Point(0, 0);
+                Size = new Size(screenW, screenH);
 
-                SelectObject(hdcMem, hOld);
-                DeleteObject(hBitmap);
-                DeleteDC(hdcMem);
-                ReleaseDC(IntPtr.Zero, hdcScreen);
+                // 设置 WS_EX_LAYERED 扩展样式
+                int exStyle = GetWindowLong(this.Handle, -20); // GWL_EXSTYLE = -20
+                SetWindowLong(this.Handle, -20, exStyle | 0x00080000); // WS_EX_LAYERED = 0x00080000
             }
+
+            protected override CreateParams CreateParams
+            {
+                get
+                {
+                    CreateParams cp = base.CreateParams;
+                    cp.ExStyle |= 0x00000020 | 0x00000080 | 0x00080000; // WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_LAYERED
+                    return cp;
+                }
+            }
+
+            public void UpdateVisuals()
+            {
+                // 确保窗口可见且置顶
+                if (!this.Visible)
+                    this.Show();
+
+                // 使用SetWindowPos确保窗口在最顶层且位置正确
+                SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, _screenW, _screenH, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+                // 在位图上绘制内容
+                DrawOverlayBitmap();
+
+                // 使用UpdateLayeredWindow更新窗口
+                UpdateLayeredWindowFromBitmap();
+            }
+
+            private void DrawOverlayBitmap()
+            {
+                lock (_bitmapLock)
+                {
+                    // 只在没有位图或尺寸不匹配时重新创建，避免频繁重建位图
+                    if (_overlayBitmap == null || _overlayBitmap.Width != _screenW || _overlayBitmap.Height != _screenH)
+                    {
+                        // 释放旧位图
+                        _overlayBitmap?.Dispose();
+                        // 创建新位图
+                        _overlayBitmap = new Bitmap(_screenW, _screenH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    }
+                    else
+                    {
+                        // 不清空位图，实现累积显示效果，避免闪烁 （目前实测这个是否注释影响不大）
+                        // using (Graphics g = Graphics.FromImage(_overlayBitmap))
+                        // {
+                        //     // 使用透明色清空位图
+                        //     g.Clear(Color.Transparent);
+                        // }
+                    }
+
+                    using (Graphics g = Graphics.FromImage(_overlayBitmap))
+                    {
+                        g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+
+                        // 只在刷新区域绘制亮度反向的半透明白/黑色覆盖
+                        foreach (var tile in _tiles.Keys)
+                        {
+                            // 从Dictionary中获取亮度数据
+                            float brightness = _tiles[tile];
+                            int bx = tile.bx;
+                            int by = tile.by;
+
+                            int sx = bx * _tileSize;
+                            int sy = by * _tileSize;
+                            int w = Math.Min(_tileSize, _screenW - sx);
+                            int h = Math.Min(_tileSize, _screenH - sy);
+
+                            // 根据亮度值决定显示黑色还是白色（反向显示）
+                            Color overlayColor;
+                            // 亮度 > 0.5 显示黑色，亮度 <= 0.5 显示白色（反向）
+                            if (brightness > 0.5f)
+                            {
+                                overlayColor = Color.FromArgb(85, 0, 0, 0); // 半透明黑色
+                            }
+                            else
+                            {
+                                overlayColor = Color.FromArgb(85, 255, 255, 255); // 半透明白色
+                            }
+
+                            // 在刷新区域绘制反向亮度颜色的半透明方块
+                            using (var br = new SolidBrush(overlayColor))
+                                g.FillRectangle(br, sx, sy, w, h);
+
+                            // 只有当边框宽度大于等于1时才绘制边框
+                            if (_borderWidth >= 1)
+                            {
+                                // 添加边框，颜色与填充颜色相反
+                                Color borderColor;
+                                if (brightness > 0.5f)
+                                {
+                                    borderColor = Color.FromArgb(180, 255, 255, 255); // 白色边框（与黑色填充相反）
+                                }
+                                else
+                                {
+                                    borderColor = Color.FromArgb(180, 0, 0, 0); // 黑色边框（与白色填充相反）
+                                }
+                                using (var pen = new Pen(borderColor, _borderWidth))
+                                    g.DrawRectangle(pen, sx, sy, w-1, h-1);
+                            }
+                        }
+                    }
+
+                    // 注意：不要在这里清理_expiredTiles列表，因为在MarkTilesAsExpiredInternal方法中还需要使用它
+                    // _expiredTiles.Clear();
+                }
+            }
+
+            private void UpdateLayeredWindowFromBitmap()
+            {
+                lock (_bitmapLock)
+                {
+                    // 检查位图是否存在
+                    if (_overlayBitmap == null) return;
+
+                    IntPtr hdcScreen = GetDC(IntPtr.Zero);
+                    IntPtr hdcMem = CreateCompatibleDC(hdcScreen);
+                    IntPtr hBitmap = _overlayBitmap.GetHbitmap(Color.FromArgb(0, 0, 0, 0));
+                    IntPtr hOld = SelectObject(hdcMem, hBitmap);
+
+                    Win32Point ptSrc = new Win32Point(0, 0);
+                    Win32Size sz = new Win32Size(_screenW, _screenH);
+                    Win32Point ptDest = new Win32Point(0, 0);
+
+                    BLENDFUNCTION blend = new BLENDFUNCTION
+                    {
+                        BlendOp = 0, // AC_SRC_OVER
+                        BlendFlags = 0,
+                        SourceConstantAlpha = 255, // 255 = fully opaque
+                        AlphaFormat = 1 // AC_SRC_ALPHA
+                    };
+
+                    UpdateLayeredWindow(this.Handle, hdcScreen, ref ptDest, ref sz, hdcMem, ref ptSrc, 0, ref blend, 2);
+
+                    SelectObject(hdcMem, hOld);
+                    DeleteObject(hBitmap);
+                    DeleteDC(hdcMem);
+                    ReleaseDC(IntPtr.Zero, hdcScreen);
+                }
+            }
+
+            [DllImport("user32.dll")] private static extern bool UpdateLayeredWindow(IntPtr hwnd, IntPtr hdcDst, ref Win32Point pptDst, ref Win32Size psize, IntPtr hdcSrc, ref Win32Point pptSrc, uint crKey, ref BLENDFUNCTION pblend, uint dwFlags);
+            [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hWnd);
+            [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+            [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleDC(IntPtr hDC);
+            [DllImport("gdi32.dll")] private static extern bool DeleteDC(IntPtr hdc);
+            [DllImport("gdi32.dll")] private static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
+            [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr hObject);
+
+            [StructLayout(LayoutKind.Sequential)] private struct Win32Point { public int X, Y; public Win32Point(int x, int y) { X = x; Y = y; } }
+            [StructLayout(LayoutKind.Sequential)] private struct Win32Size { public int cx, cy; public Win32Size(int cx, int cy) { this.cx = cx; this.cy = cy; } }
+            [StructLayout(LayoutKind.Sequential)] private struct BLENDFUNCTION { public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat; }
         }
-    
-        [DllImport("user32.dll")] private static extern bool UpdateLayeredWindow(IntPtr hwnd, IntPtr hdcDst, ref Win32Point pptDst, ref Win32Size psize, IntPtr hdcSrc, ref Win32Point pptSrc, uint crKey, ref BLENDFUNCTION pblend, uint dwFlags);
-        [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hWnd);
-        [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
-        [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleDC(IntPtr hDC);
-        [DllImport("gdi32.dll")] private static extern bool DeleteDC(IntPtr hdc);
-        [DllImport("gdi32.dll")] private static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
-        [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr hObject);
-        
-        [StructLayout(LayoutKind.Sequential)] private struct Win32Point { public int X, Y; public Win32Point(int x, int y) { X = x; Y = y; } }
-        [StructLayout(LayoutKind.Sequential)] private struct Win32Size { public int cx, cy; public Win32Size(int cx, int cy) { this.cx = cx; this.cy = cy; } }
-        [StructLayout(LayoutKind.Sequential)] private struct BLENDFUNCTION { public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat; }
-    }
 }

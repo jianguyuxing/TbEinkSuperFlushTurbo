@@ -1653,6 +1653,12 @@ namespace TbEinkSuperFlushTurbo
                         return 0.0;
                     }
 
+                    if (adapter == null)
+                    {
+                        _debugLogger?.Invoke("ERROR: GetCurrentPrimaryDisplayRefreshRate - Adapter is null after enumeration.");
+                        return 0.0;
+                    }
+
                     using (adapter)
                     {
                         var outputResult = adapter.EnumOutputs(0, out var output);

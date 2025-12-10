@@ -8,6 +8,8 @@
 		<Platforms>AnyCPU;x64</Platforms>
 		<!-- 若使用 unsafe 可在此打开 -->
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<!-- 参考 https://github.com/dotnet/winforms/blob/main/docs/designer/designer-high-dpi-mode.md  -->
+		<ForceDesignerDpiUnaware>true</ForceDesignerDpiUnaware>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -23,9 +25,4 @@
 		</None>
 	</ItemGroup>
 
-	<!-- 排除 oldGood 目录 -->
-	<ItemGroup>
-		<Compile Remove="oldGood\**" />
-		<None Remove="oldGood\**" />
-	</ItemGroup>
 </Project>
