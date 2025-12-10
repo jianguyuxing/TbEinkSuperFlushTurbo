@@ -1647,7 +1647,7 @@ namespace TbEinkSuperFlushTurbo
                 using (factory)
                 {
                     var adapterResult = factory.EnumAdapters1(0, out var adapter);
-                    if (adapterResult.Failure)
+                    if (adapterResult.Failure || adapter == null)
                     {
                         _debugLogger?.Invoke("ERROR: GetCurrentPrimaryDisplayRefreshRate - Failed to enumerate primary adapter.");
                         return 0.0;
