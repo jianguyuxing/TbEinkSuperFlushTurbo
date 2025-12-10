@@ -804,8 +804,7 @@ namespace TbEinkSuperFlushTurbo
 
                 // 开始录制
                 _isRecordingHotkey = true;
-                btnToggleRecord.Text = "■";
-                btnToggleRecord.ForeColor = Color.Black;
+                btnToggleRecord.Text = "✓"; // 改为对勾符号
                 btnToggleRecord.BackColor = Color.White;
                 txtToggleHotkey.Text = Localization.GetText("PressHotkeyCombination");
 
@@ -838,53 +837,105 @@ namespace TbEinkSuperFlushTurbo
 
             // 根据文本内容选择不同的绘制方式，确保都基于中心对齐
             using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
-            using (var brush = new SolidBrush(btn.ForeColor))
             {
                 if (text == "●") // 圆点 - 改为圆环+内部小圆点
                 {
-                    // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
-                    int baseSize = Math.Min(btn.Width, btn.Height);
-                    int outerDiameter = baseSize - 32; // 再放大圆环，从-36改为-32
-                    int ringThickness = 2; // 固定环厚度，不再DPI缩放
-                    int x = (btn.Width - outerDiameter) / 2;
-                    int y = (btn.Height - outerDiameter) / 2;
-
-                    // 绘制外圆环（红色）
-                    using (var redBrush = new SolidBrush(Color.Red))
+                    using (var brush = new SolidBrush(btn.ForeColor))
                     {
-                        e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
+                        // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
+                        int baseSize = Math.Min(btn.Width, btn.Height);
+                        int outerDiameter = baseSize - 32; // 再放大圆环，从-36改为-32
+                        int ringThickness = 2; // 固定环厚度，不再DPI缩放
+                        int x = (btn.Width - outerDiameter) / 2;
+                        int y = (btn.Height - outerDiameter) / 2;
+
+                        // 绘制外圆环（红色）
+                        using (var redBrush = new SolidBrush(Color.Red))
+                        {
+                            e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
+                        }
+
+                        // 绘制内圆（白色背景，形成圆环效果）
+                        int innerDiameter = outerDiameter - (ringThickness * 2);
+                        int innerX = x + ringThickness;
+                        int innerY = y + ringThickness;
+                        e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
+
+                        // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
+                        int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
+                        int centerX = (btn.Width - centerDiameter) / 2;
+                        int centerY = (btn.Height - centerDiameter) / 2;
+                        e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
                     }
-
-                    // 绘制内圆（白色背景，形成圆环效果）
-                    int innerDiameter = outerDiameter - (ringThickness * 2);
-                    int innerX = x + ringThickness;
-                    int innerY = y + ringThickness;
-                    e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
-
-                    // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
-                    int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
-                    int centerX = (btn.Width - centerDiameter) / 2;
-                    int centerY = (btn.Height - centerDiameter) / 2;
-                    e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
                 }
-                else if (text == "■") // 方点
+                else if (text == "✓") // 对勾符号
                 {
-                    // 绘制一个较小的实心方形，基于中心点
-                    int size = Math.Min(btn.Width, btn.Height) - 42; // 再小一点
-                    int x = (btn.Width - size) / 2;
-                    int y = (btn.Height - size) / 2;
-                    e.Graphics.FillRectangle(brush, x, y, size, size);
+                    // 绘制绿色对勾图像而不是文字
+                    DrawGreenCheckmark(e.Graphics, btn.Width, btn.Height);
                 }
                 else // 其他字符，使用文本绘制
                 {
-                    var textSize = e.Graphics.MeasureString(text, font);
-                    var x = (btn.Width - textSize.Width) / 2;
-                    var y = (btn.Height - textSize.Height) / 2;
-                    e.Graphics.DrawString(text, font, brush, x, y);
+                    using (var brush = new SolidBrush(btn.ForeColor))
+                    {
+                        var textSize = e.Graphics.MeasureString(text, font);
+                        var x = (btn.Width - textSize.Width) / 2;
+                        var y = (btn.Height - textSize.Height) / 2;
+                        e.Graphics.DrawString(text, font, brush, x, y);
+                    }
                 }
             }
         }
 
+        private void DrawGreenCheckmark(Graphics g, int width, int height)
+        {
+            // 首先尝试加载自定义图片
+            try
+            {
+                string imagePath = Path.Combine(Application.StartupPath, "Resources", "checkmark.png");
+                if (File.Exists(imagePath))
+                {
+                    using (var image = Image.FromFile(imagePath))
+                    {
+                        // 计算居中位置
+                        int x = (width - image.Width) / 2;
+                        int y = (height - image.Height) / 2;
+                        
+                        // 确保图片不会超出按钮边界
+                        if (image.Width <= width && image.Height <= height)
+                        {
+                            g.DrawImage(image, x, y, image.Width, image.Height);
+                        }
+                        else
+                        {
+                            // 如果图片太大，则按比例缩放
+                            float scale = Math.Min((float)width / image.Width, (float)height / image.Height) * 0.8f;
+                            int scaledWidth = (int)(image.Width * scale);
+                            int scaledHeight = (int)(image.Height * scale);
+                            x = (width - scaledWidth) / 2;
+                            y = (height - scaledHeight) / 2;
+                            g.DrawImage(image, x, y, scaledWidth, scaledHeight);
+                        }
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 如果加载图片失败，继续使用绘制的绿色方块
+                System.Diagnostics.Debug.WriteLine($"Failed to load checkmark image: {ex.Message}");
+            }
+            
+            // 如果没有找到图片或加载失败，使用绿色方块作为备选
+            using (var brush = new SolidBrush(Color.Green))
+            {
+                // 绘制一个居中的绿色方块
+                int squareSize = Math.Min(width, height) / 2;
+                int x = (width - squareSize) / 2;
+                int y = (height - squareSize) / 2;
+                g.FillRectangle(brush, x, y, squareSize, squareSize);
+            }
+        }
+        
         private void btnToggleRecord_MouseEnter(object? sender, EventArgs e)
         {
             if (sender is Button btn)
@@ -892,7 +943,7 @@ namespace TbEinkSuperFlushTurbo
                 btn.BackColor = Color.LightGray; // 悬停时背景变灰
             }
         }
-
+        
         private void btnToggleRecord_MouseLeave(object? sender, EventArgs e)
         {
             if (sender is Button btn)

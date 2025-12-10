@@ -1674,9 +1674,13 @@ namespace TbEinkSuperFlushTurbo
                             if (displayModeList != null && displayModeList.Any())
                             {
                                 var currentMode = displayModeList[0];
-                                double refreshRate = (double)currentMode.RefreshRate.Numerator / currentMode.RefreshRate.Denominator;
-                                _debugLogger?.Invoke($"DEBUG: Current primary display refresh rate: {refreshRate}Hz");
-                                return refreshRate;
+                                // 添加空值检查以消除CS8602警告
+                                if (currentMode.RefreshRate.Denominator != 0 && currentMode.RefreshRate.Numerator != 0)
+                                {
+                                    double refreshRate = (double)currentMode.RefreshRate.Numerator / currentMode.RefreshRate.Denominator;
+                                    _debugLogger?.Invoke($"DEBUG: Current primary display refresh rate: {refreshRate}Hz");
+                                    return refreshRate;
+                                }
                             }
                         }
                     }
