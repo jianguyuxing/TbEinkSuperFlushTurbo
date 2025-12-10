@@ -84,7 +84,7 @@ namespace TbEinkSuperFlushTurbo
 
         private const int CARET_CHECK_INTERVAL = 400;
         private const int IME_CHECK_INTERVAL = 400;
-        
+
         private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
         private const uint SWP_SHOWWINDOW = 0x0040;
         private const uint SWP_NOACTIVATE = 0x0010;
@@ -102,13 +102,13 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 检测并设置系统语言
                 Localization.DetectAndSetLanguage();
-                
+
                 LoadConfig();
                 InitLogFile();
-                
+
                 // Designer会自动调用InitializeComponent()
                 InitializeComponent();
-                
+
                 try
                 {
                     TestBrightness.TestBrightnessCalculation();
@@ -117,21 +117,21 @@ namespace TbEinkSuperFlushTurbo
                 {
                     Log($"Brightness test failed: {ex.Message}");
                 }
-                
+
                 SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
-                
+
                 _displayChangeTimer.Start();
-                
+
                 // 注册快捷键
                 RegisterToggleHotkey();
-                
+
                 // 设置窗口属性以支持拖动边框缩放
                 this.FormBorderStyle = FormBorderStyle.Sizable;
                 this.MaximizeBox = true;
                 this.MinimizeBox = true;
                 this.DoubleBuffered = true;
                 this.SetStyle(ControlStyles.ResizeRedraw, true);
-                
+
                 // 初始化托盘图标菜单
                 _trayIcon.ContextMenuStrip = contextMenuStrip1;
             }
@@ -172,7 +172,7 @@ namespace TbEinkSuperFlushTurbo
                     string json = File.ReadAllText(hotkeyConfigPath);
                     using JsonDocument doc = JsonDocument.Parse(json);
                     JsonElement root = doc.RootElement;
-                    
+
                     if (root.TryGetProperty("ToggleHotkey", out JsonElement hotkeyElement))
                     {
                         _toggleHotkey = (Keys)hotkeyElement.GetInt32();
@@ -231,9 +231,9 @@ namespace TbEinkSuperFlushTurbo
 
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmssfff", CultureInfo.InvariantCulture);
                 _logFilePath = Path.Combine(logDirectory, $"application_{timestamp}.log");
-                
+
                 _logWriter = new StreamWriter(_logFilePath, false, System.Text.Encoding.UTF8) { AutoFlush = true };
-                
+
                 Log("Application started");
                 DebugLogger = Log;
                 Log($"[Config] ProtectionFrames={ProtectionFrames}");
@@ -332,7 +332,7 @@ namespace TbEinkSuperFlushTurbo
                         return scale;
                     }
                 }
-                
+
                 // 方法2: 使用GetDpiForSystem
                 uint systemDpi = GetDpiForSystem();
                 if (systemDpi > 0)
@@ -341,7 +341,7 @@ namespace TbEinkSuperFlushTurbo
                     Log($"DPI检测: System DPI = {systemDpi}, Scale = {scale:F2}");
                     return scale;
                 }
-                
+
                 // 方法3: 使用Graphics对象检测
                 using (Graphics graphics = Graphics.FromHwnd(IntPtr.Zero))
                 {
@@ -382,7 +382,7 @@ namespace TbEinkSuperFlushTurbo
                 Color overlayBaseColor = Color.FromName(OVERLAY_BASE_COLOR);
                 string[] rgbParts = OVERLAY_BORDER_COLOR.Split(',');
                 Color borderColor = Color.FromArgb(OVERLAY_BORDER_ALPHA, int.Parse(rgbParts[0].Trim()), int.Parse(rgbParts[1].Trim()), int.Parse(rgbParts[2].Trim()));
-                
+
                 _overlayForm = new OverlayForm(_d3d.TileSize, _d3d.ScreenWidth, _d3d.ScreenHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log)
                 {
                     ShowInTaskbar = false,
@@ -392,10 +392,10 @@ namespace TbEinkSuperFlushTurbo
                 };
                 _overlayForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
                 _overlayForm.Location = new Point(0, 0);
-                
+
                 _overlayForm.Show();
             }
-            
+
             _overlayForm?.UpdateContent(tiles, brightnessData);
         }
 
@@ -407,17 +407,17 @@ namespace TbEinkSuperFlushTurbo
         private string FormatShortcut(Keys keys)
         {
             var parts = new List<string>();
-            
+
             if ((keys & Keys.Control) == Keys.Control) parts.Add("Ctrl");
             if ((keys & Keys.Alt) == Keys.Alt) parts.Add("Alt");
             if ((keys & Keys.Shift) == Keys.Shift) parts.Add("Shift");
-            
+
             var keyCode = keys & Keys.KeyCode;
             if (keyCode != Keys.None)
             {
                 parts.Add(keyCode.ToString());
             }
-            
+
             return string.Join(" + ", parts);
         }
 
@@ -427,7 +427,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 uint modifiers = GetModifiers(_toggleHotkey);
                 uint virtualKey = (uint)GetKeyCode(_toggleHotkey);
-                
+
                 if (NativeMethods.RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modifiers, virtualKey))
                 {
                     _isHotkeyRegistered = true;
@@ -484,7 +484,7 @@ namespace TbEinkSuperFlushTurbo
             btnToggleRecord.Text = "●";
             btnToggleRecord.ForeColor = Color.Red;
             btnToggleRecord.BackColor = Color.White;
-            
+
             Log("Hotkey recording cancelled");
         }
 
@@ -506,11 +506,11 @@ namespace TbEinkSuperFlushTurbo
             float scaleX = (float)this.ClientSize.Width / 1770f;
             float scaleY = (float)this.ClientSize.Height / 1100f;
             float scale = Math.Min(scaleX, scaleY);
-            
+
             // 更新字体大小
             float baseFontSize = 9f;
             this.Font = new Font(this.Font.FontFamily, baseFontSize * scale);
-            
+
             // 可以在这里添加更多的自适应布局逻辑
         }
 
@@ -520,17 +520,17 @@ namespace TbEinkSuperFlushTurbo
         {
             // 更新控件文本为本地化文本
             UpdateLocalizedTexts();
-            
+
             // 更新控件值
             trackPixelDelta.Value = _pixelDelta;
             lblPixelDeltaValue.Text = _pixelDelta.ToString();
             trackPollInterval.Value = _pollInterval;
             lblPollIntervalValue.Text = _pollInterval.ToString();
             txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
-            
+
             // 设置初始按钮状态
             lblInfo.Text = Localization.GetText("StatusStopped");
-            
+
             // 执行自适应布局
             UpdateAdaptiveLayout();
         }
@@ -550,28 +550,28 @@ namespace TbEinkSuperFlushTurbo
                 // 录制模式：捕获按键
                 e.Handled = true;
                 e.SuppressKeyPress = true;
-                
+
                 if (e.KeyCode == Keys.Escape)
                 {
                     // ESC键取消录制
                     CancelHotkeyRecording();
                     return;
                 }
-                
+
                 if (e.KeyCode == Keys.ControlKey || e.KeyCode == Keys.ShiftKey || e.KeyCode == Keys.Menu)
                 {
                     // 忽略单独的修饰键
                     return;
                 }
-                
+
                 // 获取按键组合
                 Keys keyCombo = e.KeyData;
-                
+
                 // 更新内部变量和显示
                 _toggleHotkey = keyCombo;
                 string formattedShortcut = FormatShortcut(keyCombo);
                 txtToggleHotkey.Text = formattedShortcut;
-                
+
                 Log($"Hotkey recorded: {formattedShortcut} - continue recording");
             }
             else if (e.KeyData == _toggleHotkey && _isHotkeyRegistered && !_isRecordingHotkey)
@@ -591,7 +591,7 @@ namespace TbEinkSuperFlushTurbo
                 MessageBox.Show("Cannot start capture while recording hotkey. Please complete hotkey recording first.", "Hotkey Recording in Progress", MessageBoxButtons.OK, MessageBoxIcon.None);
                 return;
             }
-            
+
             btnStart.Enabled = false;
             _cts = new CancellationTokenSource();
             _frameCounter = 0; // Reset frame counter on start
@@ -621,7 +621,7 @@ namespace TbEinkSuperFlushTurbo
                     if (_cts.Token.IsCancellationRequested || _d3d == null) return;
 
                     _frameCounter++; // Increment frame counter
-                    
+
                     // Capture screen and compute differences
                     var (tilesToRefresh, brightnessData) = await _d3d.CaptureAndComputeOnceAsync(_frameCounter, _cts.Token);
                     if (_cts.Token.IsCancellationRequested) return;
@@ -680,14 +680,14 @@ namespace TbEinkSuperFlushTurbo
             lblInfo.Text = Localization.GetText("StatusStopped");
             btnStart.Enabled = true;
             btnStop.Enabled = false;
-            
+
             // 重新启用设置项修改
             trackPixelDelta.Enabled = true;
             trackPollInterval.Enabled = true;
-            
+
             _cts?.Dispose();
             _cts = null;
-            
+
             _overlayForm?.HideOverlay();
             Log("GPU capture stopped");
         }
@@ -715,7 +715,7 @@ namespace TbEinkSuperFlushTurbo
         {
             string helpText;
             string title;
-            
+
             // 根据当前语言显示相应语言的帮助内容
             if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
             {
@@ -737,7 +737,7 @@ namespace TbEinkSuperFlushTurbo
                     "Recommended: Start with 10 and adjust based on your theme.";
                 title = "Pixel Color Diff Threshold - Help";
             }
-            
+
             MessageBox.Show(helpText, title, MessageBoxButtons.OK, MessageBoxIcon.None);
         }
 
@@ -745,9 +745,9 @@ namespace TbEinkSuperFlushTurbo
         {
             var btn = sender as Button;
             if (btn == null) return;
-            
+
             e.Graphics.Clear(btn.BackColor);
-            
+
             using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
             using (var brush = new SolidBrush(btn.BackColor == Color.FromArgb(135, 206, 235) ? Color.White : btn.ForeColor))
             {
@@ -788,7 +788,7 @@ namespace TbEinkSuperFlushTurbo
                 btnToggleRecord.Text = "●";
                 btnToggleRecord.ForeColor = Color.Red;
                 btnToggleRecord.BackColor = Color.White;
-                
+
                 // 如果文本框显示的是提示文字，说明用户没有输入任何按键
                 if (txtToggleHotkey.Text == Localization.GetText("PressHotkeyCombination"))
                 {
@@ -809,21 +809,21 @@ namespace TbEinkSuperFlushTurbo
                     MessageBox.Show("Cannot modify hotkey while capture is running. Please stop capture first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
-                
+
                 // 开始录制
                 _isRecordingHotkey = true;
                 btnToggleRecord.Text = "■";
                 btnToggleRecord.ForeColor = Color.Black;
                 btnToggleRecord.BackColor = Color.White;
                 txtToggleHotkey.Text = Localization.GetText("PressHotkeyCombination");
-            
+
                 // 开始录制时临时注销当前快捷键，避免冲突
                 if (_isHotkeyRegistered)
                 {
                     NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
                     _isHotkeyRegistered = false;
                 }
-            
+
                 // 开始录制时清空临时变量，确保每次录制都是全新的开始
                 _toggleHotkey = Keys.None;
             }
@@ -834,16 +834,16 @@ namespace TbEinkSuperFlushTurbo
             var btn = sender as Button;
             if (btn == null) return;
             var text = btn.Text;
-            
+
             // 绘制背景
             e.Graphics.Clear(btn.BackColor);
-            
+
             // 绘制黑色边框
             using (var borderPen = new Pen(Color.Black, 2))
             {
                 e.Graphics.DrawRectangle(borderPen, 1, 1, btn.Width - 2, btn.Height - 2);
             }
-            
+
             // 根据文本内容选择不同的绘制方式，确保都基于中心对齐
             using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
             using (var brush = new SolidBrush(btn.ForeColor))
@@ -856,19 +856,19 @@ namespace TbEinkSuperFlushTurbo
                     int ringThickness = 2; // 固定环厚度，不再DPI缩放
                     int x = (btn.Width - outerDiameter) / 2;
                     int y = (btn.Height - outerDiameter) / 2;
-                    
+
                     // 绘制外圆环（红色）
                     using (var redBrush = new SolidBrush(Color.Red))
                     {
                         e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
                     }
-                    
+
                     // 绘制内圆（白色背景，形成圆环效果）
                     int innerDiameter = outerDiameter - (ringThickness * 2);
                     int innerX = x + ringThickness;
                     int innerY = y + ringThickness;
                     e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
-                    
+
                     // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
                     int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
                     int centerX = (btn.Width - centerDiameter) / 2;
@@ -949,10 +949,10 @@ namespace TbEinkSuperFlushTurbo
             lblPollIntervalUnit.Text = Localization.GetText("Milliseconds");
             lblToggleHotkey.Text = Localization.GetText("ToggleHotkey");
             btnHelpPixelDelta.Text = Localization.GetText("QuestionMark");
-            
+
             // 设置帮助按钮为圆形
             SetCircularButton(btnHelpPixelDelta);
-            
+
             // 如果快捷键为None，确保显示"click button to set"
             if (_toggleHotkey == Keys.None)
             {
@@ -973,8 +973,28 @@ namespace TbEinkSuperFlushTurbo
             UnregisterToggleHotkey();
             _overlayForm?.HideOverlay();
             _displayChangeTimer?.Stop();
-            
+
             base.OnFormClosing(e);
+        }
+
+        private void listBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void trackPollInterval_Scroll(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lblPollIntervalUnit_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lblPollIntervalValue_Click(object sender, EventArgs e)
+        {
+
         }
     }
 
