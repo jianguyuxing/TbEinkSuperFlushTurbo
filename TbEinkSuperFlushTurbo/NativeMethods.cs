@@ -123,6 +123,12 @@ namespace TbEinkSuperFlushTurbo
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr GlobalDeleteAtom(IntPtr nAtom);
 
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern IntPtr CreateWindowEx(int dwExStyle, string lpClassName, string lpWindowName, int dwStyle, int X, int Y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool DestroyWindow(IntPtr hWnd);
+
         // 辅助方法
         public static Rectangle GetCursorExclusionRect(Point mousePos, int exclusionRadius, int screenWidth, int screenHeight)
         {

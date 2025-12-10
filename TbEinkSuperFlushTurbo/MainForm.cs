@@ -250,6 +250,20 @@ namespace TbEinkSuperFlushTurbo
         private TextBox? _txtToggleHotkey;
         private Button? _btnToggleRecord;
         private bool _isHotkeyRegistered = false;
+        
+        // 自适应布局控件字段
+        private Label? lblPollInterval;
+        private TrackBar? trackPollInterval;
+        private Label? lblPollIntervalValue;
+        private Label? lblPollIntervalUnit;
+        private Label? lblPixelDelta;
+        private TrackBar? trackPixelDelta;
+        private Label? lblPixelDeltaValue;
+        private Button? btnHelpPixelDelta;
+        private Label? lblToggleHotkey;
+        private Label? lblInfo;
+        private ListBox? listBox;
+        private Button? _btnFullscreen;
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")]
@@ -258,6 +272,8 @@ namespace TbEinkSuperFlushTurbo
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
         [DllImport("user32.dll")]
         private static extern uint GetDpiForWindow(IntPtr hWnd);
+        [DllImport("user32.dll")]
+        private static extern uint GetDpiForSystem();
 
         private const int CARET_CHECK_INTERVAL = 400;
         private const int IME_CHECK_INTERVAL = 400;
@@ -304,6 +320,16 @@ namespace TbEinkSuperFlushTurbo
                 
                 // 注册快捷键
                 RegisterToggleHotkey();
+                
+                // 设置窗口属性以支持拖动边框缩放
+                this.FormBorderStyle = FormBorderStyle.Sizable;
+                this.MaximizeBox = true;
+                this.MinimizeBox = true;
+                this.DoubleBuffered = true;
+                this.SetStyle(ControlStyles.ResizeRedraw, true);
+                
+                // 添加全屏切换按钮
+                AddFullscreenButton();
             }
             catch (Exception ex)
             {
@@ -552,12 +578,12 @@ namespace TbEinkSuperFlushTurbo
             float dpiScale = GetDpiForWindow(this.Handle) / 96f;
             
             // 设置项放在单独一行 - Color Channel Changes (增加垂直间距)
-            var lblPixelDelta = new Label() { Text = Localization.GetText("PixelColorDiff"), Left = 60, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var trackPixelDelta = new TrackBar() { Left = 650, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
-            var lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1360, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
+            lblPixelDelta = new Label() { Text = Localization.GetText("PixelColorDiff"), Left = 60, Top = 120, Width = labelWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            trackPixelDelta = new TrackBar() { Left = 650, Top = 120, Width = sliderWidth, Height = 56, Minimum = 2, Maximum = 25, Value = _pixelDelta, TickFrequency = 1, SmallChange = 1, LargeChange = 5 };
+            lblPixelDeltaValue = new Label() { Text = _pixelDelta.ToString(), Left = 1360, Top = 120, Width = valueWidth, Height = buttonHeight, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
             
             // 问号按钮 - DPI自适应，增大尺寸和字体，改为点击显示弹窗，优化悬停效果
-            var btnHelpPixelDelta = new Button() { Text = Localization.GetText("QuestionMark"), Left = 1520, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 12, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 像素差异问号按钮右移40px，确保4位数也能显示，字体加大到12号
+            btnHelpPixelDelta = new Button() { Text = Localization.GetText("QuestionMark"), Left = 1520, Top = 120, Width = (int)(22 * dpiScale), Height = (int)(22 * dpiScale), Font = new Font("Segoe UI", 12, FontStyle.Bold), BackColor = Color.LightBlue, FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 } }; // 像素差异问号按钮右移40px，确保4位数也能显示，字体加大到12号
             btnHelpPixelDelta.TextAlign = ContentAlignment.MiddleCenter;
             // 设置圆形区域（宽高相同保持正圆）
             System.Drawing.Drawing2D.GraphicsPath pathHelp = new System.Drawing.Drawing2D.GraphicsPath();
@@ -592,11 +618,68 @@ namespace TbEinkSuperFlushTurbo
                 btnHelpPixelDelta.Cursor = Cursors.Default;
             };
             
-            // 设置项放在单独一行 - Detection Interval (增加垂直间距和顶部空间)
-            var lblPollInterval = new Label() { Text = Localization.GetText("DetectInterval"), Left = 60, Top = 220, Width = labelWidth, Height = 80, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            var trackPollInterval = new TrackBar() { Left = 650, Top = 237, Width = sliderWidth, Height = 56, Minimum = 200, Maximum = 5000, Value = 500, TickFrequency = 500, SmallChange = 50, LargeChange = 500 };
-            var lblPollIntervalValue = new Label() { Text = _pollInterval.ToString(), Left = 1360, Top = 230, Width = valueWidth, Height = 60, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(this.Font.FontFamily, 12f) };
-            var lblPollIntervalUnit = new Label() { Text = "毫秒", Left = 1520, Top = 230, Width = 120, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            // 设置项放在单独一行 - Detection Interval (使用相对布局实现自适应)
+            int formWidthLocal = this.ClientSize.Width;
+            int leftMarginLocal = (int)(formWidthLocal * 0.04); // 4% 左边距
+            int rightMarginLocal = (int)(formWidthLocal * 0.04); // 4% 右边距
+            int controlHeightLocal = 60;
+            int topPositionLocal = 220;
+            
+            // 计算各个区域的宽度比例
+            int labelWidthLocal = (int)(formWidthLocal * 0.25); // 标签占25%
+            int sliderWidthLocal = (int)(formWidthLocal * 0.35); // 滑块占35% 
+            int valueWidthLocal = (int)(formWidthLocal * 0.08); // 数值显示占8%
+            int unitWidthLocal = (int)(formWidthLocal * 0.1); // 单位占10%
+            
+            lblPollInterval = new Label() { 
+                Text = Localization.GetText("DetectInterval"), 
+                Left = leftMarginLocal, 
+                Top = topPositionLocal, 
+                Width = labelWidthLocal, 
+                Height = controlHeightLocal, 
+                TextAlign = ContentAlignment.MiddleLeft, 
+                Font = new Font(this.Font.FontFamily, 12f),
+                Anchor = AnchorStyles.Left | AnchorStyles.Top
+            };
+            
+            int sliderLeft = leftMarginLocal + labelWidthLocal + 20; // 标签右侧20px
+            trackPollInterval = new TrackBar() { 
+                Left = sliderLeft, 
+                Top = topPositionLocal + 17, // 垂直居中调整
+                Width = sliderWidthLocal, 
+                Height = 56, 
+                Minimum = 200, 
+                Maximum = 5000, 
+                Value = 500, 
+                TickFrequency = 500, 
+                SmallChange = 50, 
+                LargeChange = 500,
+                Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right
+            };
+            
+            int valueLeft = sliderLeft + sliderWidthLocal + 20; // 滑块右侧20px
+            lblPollIntervalValue = new Label() { 
+                Text = _pollInterval.ToString(), 
+                Left = valueLeft, 
+                Top = topPositionLocal, 
+                Width = valueWidthLocal, 
+                Height = controlHeightLocal, 
+                TextAlign = ContentAlignment.MiddleCenter, 
+                Font = new Font(this.Font.FontFamily, 12f),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            
+            int unitLeft = valueLeft + valueWidthLocal + 10; // 数值右侧10px
+            lblPollIntervalUnit = new Label() { 
+                Text = "毫秒", 
+                Left = unitLeft, 
+                Top = topPositionLocal, 
+                Width = unitWidthLocal, 
+                Height = controlHeightLocal, 
+                TextAlign = ContentAlignment.MiddleLeft, 
+                Font = new Font(this.Font.FontFamily, 12f),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
             
             // 设置项放在单独一行 - Block Size (区块尺寸设置) - 已隐藏，默认值为8
             // var lblTileSize = new Label() { Text = "Block Size (pixels):", Left = 30, Top = 340, Width = labelWidth, Height = 100, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
@@ -613,7 +696,7 @@ namespace TbEinkSuperFlushTurbo
             btnHelp.Region = new Region(path);
 
             // 快捷键设置项 - 切换运行状态
-            var lblToggleHotkey = new Label() { Text = Localization.GetText("ToggleHotkey"), Left = 60, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            lblToggleHotkey = new Label() { Text = Localization.GetText("ToggleHotkey"), Left = 60, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
             _txtToggleHotkey = new TextBox() { Left = 650, Top = 350, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
             _btnToggleRecord = new Button() { Text = "●", Left = 1380, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
             _btnToggleRecord.BackColor = Color.White;
@@ -702,10 +785,10 @@ namespace TbEinkSuperFlushTurbo
                 _txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
             }
             
-            var lblInfo = new Label() { Left = 60, Top = 460, Width = 1600, Height = 60, Text = Localization.GetText("StatusStopped"), Font = new Font(this.Font.FontFamily, 12f) };
+            lblInfo = new Label() { Left = 60, Top = 560, Width = 1600, Height = 60, Text = Localization.GetText("StatusStopped"), Font = new Font(this.Font.FontFamily, 12f) };
             // 日志字体大小调整为5号字体（比之前小3个字号）
             float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
-            var listBox = new ListBox() { Left = 70, Top = 530, Width = 1595, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 宽度减少15px到1595px
+            listBox = new ListBox() { Left = 70, Top = 630, Width = 1595, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 宽度减少15px到1595px
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
@@ -732,6 +815,18 @@ namespace TbEinkSuperFlushTurbo
             // Controls.Add(lblTileSizeUnit);
             // Controls.Add(btnHelp); // 问号按钮暂时注释掉，未来可以视情况恢复
 
+            // 窗口大小改变事件处理 - 实现自适应布局
+            this.Resize += (s, e) => {
+                if (this.WindowState != FormWindowState.Minimized) {
+                    UpdateAdaptiveLayout();
+                }
+            };
+            
+            // 初始化时执行一次自适应布局
+            this.Load += (s, e) => {
+                UpdateAdaptiveLayout();
+            };
+            
             // 添加鼠标悬停提示 - 多行详细说明
             var toolTip = new ToolTip();
             // Pixel Color Diff 提示已移除
@@ -898,8 +993,8 @@ namespace TbEinkSuperFlushTurbo
                     };
                     _pollTimer.Start();
 
-                    // 获取系统缩放比例
-                    float dpiScale = GetDpiForWindow(this.Handle) / 96f;
+                    // 获取系统缩放比例 - 使用更准确的DPI检测
+                    float dpiScale = GetSystemDpiScale();
                     int scalePercent = (int)(dpiScale * 100);
                     lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
                     btnStop.Enabled = true;
@@ -1055,6 +1150,77 @@ namespace TbEinkSuperFlushTurbo
             // 启动通知已移除
         }
 
+        // 添加全屏切换按钮
+        private void AddFullscreenButton()
+        {
+            _btnFullscreen = new Button();
+            _btnFullscreen.Text = "□";
+            _btnFullscreen.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
+            _btnFullscreen.BackColor = Color.LightGray;
+            _btnFullscreen.ForeColor = Color.Black;
+            _btnFullscreen.FlatStyle = FlatStyle.Flat;
+            _btnFullscreen.FlatAppearance.BorderSize = 1;
+            _btnFullscreen.Cursor = Cursors.Hand;
+            _btnFullscreen.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            
+            // 设置位置和大小
+            UpdateFullscreenButtonPosition();
+            
+            // 添加点击事件
+            _btnFullscreen.Click += (s, e) => {
+                ToggleFullscreen();
+            };
+            
+            // 添加鼠标悬停效果
+            _btnFullscreen.MouseEnter += (s, e) => {
+                _btnFullscreen.BackColor = Color.Gray;
+            };
+            
+            _btnFullscreen.MouseLeave += (s, e) => {
+                _btnFullscreen.BackColor = Color.LightGray;
+            };
+            
+            this.Controls.Add(_btnFullscreen);
+            _btnFullscreen.BringToFront();
+        }
+        
+        // 更新全屏按钮位置
+        private void UpdateFullscreenButtonPosition()
+        {
+            if (_btnFullscreen != null)
+            {
+                int buttonSize = 30;
+                int margin = 10;
+                _btnFullscreen.Size = new Size(buttonSize, buttonSize);
+                _btnFullscreen.Location = new Point(this.ClientSize.Width - buttonSize - margin, margin);
+            }
+        }
+        
+        // 切换全屏/窗口化
+        private void ToggleFullscreen()
+        {
+            if (this.WindowState == FormWindowState.Maximized)
+            {
+                this.WindowState = FormWindowState.Normal;
+                _btnFullscreen.Text = "□";
+            }
+            else if (this.WindowState == FormWindowState.Normal)
+            {
+                this.WindowState = FormWindowState.Maximized;
+                _btnFullscreen.Text = "❐";
+            }
+            
+            // 重新定位按钮
+            UpdateFullscreenButtonPosition();
+        }
+        
+        // 重写OnResize以更新按钮位置
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            UpdateFullscreenButtonPosition();
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             Log("Application closing...");
@@ -1071,6 +1237,48 @@ namespace TbEinkSuperFlushTurbo
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             _displayChangeTimer?.Stop();
             _displayChangeTimer?.Dispose();
+        }
+        
+        // 获取系统DPI缩放比例 - 更准确的检测方法
+        private float GetSystemDpiScale()
+        {
+            try
+            {
+                // 方法1: 使用GetDpiForWindow（如果窗口句柄有效）
+                if (this.Handle != IntPtr.Zero)
+                {
+                    uint windowDpi = GetDpiForWindow(this.Handle);
+                    if (windowDpi > 0)
+                    {
+                        float scale = windowDpi / 96f;
+                        Log($"DPI检测: Window DPI = {windowDpi}, Scale = {scale:F2}");
+                        return scale;
+                    }
+                }
+                
+                // 方法2: 使用GetDpiForSystem
+                uint systemDpi = GetDpiForSystem();
+                if (systemDpi > 0)
+                {
+                    float scale = systemDpi / 96f;
+                    Log($"DPI检测: System DPI = {systemDpi}, Scale = {scale:F2}");
+                    return scale;
+                }
+                
+                // 方法3: 使用Graphics对象检测
+                using (Graphics graphics = Graphics.FromHwnd(IntPtr.Zero))
+                {
+                    float dpiX = graphics.DpiX;
+                    float scale = dpiX / 96f;
+                    Log($"DPI检测: Graphics DPI = {dpiX}, Scale = {scale:F2}");
+                    return scale;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"DPI检测失败: {ex.Message}, 使用默认值 1.0");
+                return 1.0f;
+            }
         }
 
         public async void ManualRefresh()
@@ -1329,6 +1537,131 @@ namespace TbEinkSuperFlushTurbo
             catch (Exception ex)
             {
                 Log($"Failed to register hotkey: {ex.Message}");
+            }
+        }
+        
+        // 自适应布局更新方法
+        private void UpdateAdaptiveLayout()
+        {
+            int formWidth = this.ClientSize.Width;
+            int formHeight = this.ClientSize.Height;
+            
+            // 设置最小尺寸限制 - 调整为支持800x600分辨率
+            if (formWidth < 800 || formHeight < 600) return; // 最小高度改为600px
+            
+            // 计算各个区域的宽度比例
+            int leftMargin = (int)(formWidth * 0.04); // 4% 左边距
+            int labelWidth = (int)(formWidth * 0.25); // 标签占25%
+            int sliderWidth = (int)(formWidth * 0.35); // 滑块占35% 
+            int valueWidth = (int)(formWidth * 0.08); // 数值显示占8%
+            int unitWidth = (int)(formWidth * 0.1); // 单位占10%
+            
+            // 更新检测间隔行的布局
+            if (lblPollInterval != null)
+            {
+                lblPollInterval.Left = leftMargin;
+                lblPollInterval.Width = labelWidth;
+            }
+            
+            if (trackPollInterval != null)
+            {
+                trackPollInterval.Left = leftMargin + labelWidth + 20;
+                trackPollInterval.Width = sliderWidth;
+            }
+            
+            if (lblPollIntervalValue != null)
+            {
+                lblPollIntervalValue.Left = leftMargin + labelWidth + 20 + sliderWidth + 20;
+                lblPollIntervalValue.Width = valueWidth;
+            }
+            
+            if (lblPollIntervalUnit != null)
+            {
+                lblPollIntervalUnit.Left = leftMargin + labelWidth + 20 + sliderWidth + 20 + valueWidth + 10;
+                lblPollIntervalUnit.Width = unitWidth;
+            }
+            
+            // 更新像素颜色差异行的布局
+            if (lblPixelDelta != null)
+            {
+                lblPixelDelta.Left = leftMargin;
+                lblPixelDelta.Width = labelWidth;
+            }
+            
+            if (trackPixelDelta != null)
+            {
+                trackPixelDelta.Left = leftMargin + labelWidth + 20;
+                trackPixelDelta.Width = sliderWidth;
+            }
+            
+            if (lblPixelDeltaValue != null)
+            {
+                lblPixelDeltaValue.Left = leftMargin + labelWidth + 20 + sliderWidth + 20;
+                lblPixelDeltaValue.Width = valueWidth;
+            }
+            
+            if (btnHelpPixelDelta != null)
+            {
+                btnHelpPixelDelta.Left = leftMargin + labelWidth + 20 + sliderWidth + 20 + valueWidth + 10;
+            }
+            
+            // 更新切换热键行的布局
+            if (lblToggleHotkey != null)
+            {
+                lblToggleHotkey.Left = leftMargin;
+                lblToggleHotkey.Width = labelWidth;
+            }
+            
+            if (_txtToggleHotkey != null)
+            {
+                _txtToggleHotkey.Left = leftMargin + labelWidth + 20;
+                _txtToggleHotkey.Width = sliderWidth;
+            }
+            
+            if (_btnToggleRecord != null)
+            {
+                _btnToggleRecord.Left = leftMargin + labelWidth + 20 + sliderWidth + 20;
+            }
+            
+            // 更新日志栏的布局（支持高度自适应和字体大小调整）
+            int logMargin = (int)(formWidth * 0.04); // 4% 边距
+            int logWidth = formWidth - logMargin * 2 - 10; // 减去10px的微调
+            
+            // 计算可用高度（从顶部控件到底部）
+            int topControlsHeight = formHeight < 700 ? 320 : 380; // 小屏幕使用更小的顶部高度
+            int bottomMargin = (int)(formHeight * 0.02); // 2% 底部边距
+            int availableHeight = formHeight - topControlsHeight - bottomMargin;
+            
+            // 确保日志栏高度合理（根据屏幕大小动态调整）
+            int logHeight = Math.Max(150, Math.Min(availableHeight, formHeight * 3 / 5)); // 最小150px，最大占窗口高度的60%
+            int logTop = formHeight - logHeight - bottomMargin + 100; // 从底部向上定位，额外下移100px
+            
+            if (lblInfo != null)
+            {
+                lblInfo.Left = logMargin;
+                lblInfo.Width = logWidth;
+                lblInfo.Top = logTop - 70; // 状态标签在日志栏上方70px
+            }
+            
+            if (listBox != null)
+            {
+                listBox.Left = logMargin + 10; // 稍微右移一点
+                listBox.Width = logWidth - 10; // 相应减少宽度
+                listBox.Top = logTop;
+                listBox.Height = logHeight;
+                
+                // 根据DPI缩放和窗口大小调整字体大小
+                float dpiScale = GetSystemDpiScale();
+                float baseFontSize = 9f; // 基础字体大小
+                
+                // 在小屏幕上使用更大的字体比例
+                if (formHeight < 800)
+                {
+                    baseFontSize = 11f; // 小屏幕使用更大字体以提高可读性
+                }
+                
+                float adjustedFontSize = baseFontSize * dpiScale;
+                listBox.Font = new Font(this.Font.FontFamily, adjustedFontSize);
             }
         }
     }
