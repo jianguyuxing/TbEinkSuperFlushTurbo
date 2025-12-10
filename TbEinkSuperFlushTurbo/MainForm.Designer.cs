@@ -56,7 +56,7 @@ namespace TbEinkSuperFlushTurbo
             // btnStart
             // 
             btnStart.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Bold, GraphicsUnit.Point, 134);
-            btnStart.Location = new Point(166, 30);
+            btnStart.Location = new Point(120, 12);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(160, 50);
             btnStart.TabIndex = 0;
@@ -68,7 +68,7 @@ namespace TbEinkSuperFlushTurbo
             // 
             btnStop.Enabled = false;
             btnStop.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Bold, GraphicsUnit.Point, 134);
-            btnStop.Location = new Point(435, 30);
+            btnStop.Location = new Point(332, 12);
             btnStop.Name = "btnStop";
             btnStop.Size = new Size(160, 50);
             btnStop.TabIndex = 1;
@@ -79,7 +79,7 @@ namespace TbEinkSuperFlushTurbo
             // lblPixelDelta
             // 
             lblPixelDelta.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblPixelDelta.Location = new Point(22, 121);
+            lblPixelDelta.Location = new Point(37, 73);
             lblPixelDelta.Name = "lblPixelDelta";
             lblPixelDelta.Size = new Size(186, 50);
             lblPixelDelta.TabIndex = 2;
@@ -88,7 +88,7 @@ namespace TbEinkSuperFlushTurbo
             // 
             // trackPixelDelta
             // 
-            trackPixelDelta.Location = new Point(212, 126);
+            trackPixelDelta.Location = new Point(227, 78);
             trackPixelDelta.Maximum = 25;
             trackPixelDelta.Minimum = 2;
             trackPixelDelta.Name = "trackPixelDelta";
@@ -101,7 +101,7 @@ namespace TbEinkSuperFlushTurbo
             // lblPixelDeltaValue
             // 
             lblPixelDeltaValue.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblPixelDeltaValue.Location = new Point(532, 121);
+            lblPixelDeltaValue.Location = new Point(532, 73);
             lblPixelDeltaValue.Name = "lblPixelDeltaValue";
             lblPixelDeltaValue.Size = new Size(73, 50);
             lblPixelDeltaValue.TabIndex = 4;
@@ -113,7 +113,7 @@ namespace TbEinkSuperFlushTurbo
             btnHelpPixelDelta.BackColor = Color.LightBlue;
             btnHelpPixelDelta.FlatStyle = FlatStyle.Flat;
             btnHelpPixelDelta.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnHelpPixelDelta.Location = new Point(611, 130);
+            btnHelpPixelDelta.Location = new Point(624, 82);
             btnHelpPixelDelta.Name = "btnHelpPixelDelta";
             btnHelpPixelDelta.Size = new Size(26, 27);
             btnHelpPixelDelta.TabIndex = 5;
@@ -128,7 +128,7 @@ namespace TbEinkSuperFlushTurbo
             // lblPollInterval
             // 
             lblPollInterval.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblPollInterval.Location = new Point(22, 241);
+            lblPollInterval.Location = new Point(35, 123);
             lblPollInterval.Name = "lblPollInterval";
             lblPollInterval.Size = new Size(186, 50);
             lblPollInterval.TabIndex = 6;
@@ -138,7 +138,7 @@ namespace TbEinkSuperFlushTurbo
             // trackPollInterval
             // 
             trackPollInterval.LargeChange = 500;
-            trackPollInterval.Location = new Point(214, 246);
+            trackPollInterval.Location = new Point(227, 128);
             trackPollInterval.Maximum = 5000;
             trackPollInterval.Minimum = 200;
             trackPollInterval.Name = "trackPollInterval";
@@ -154,7 +154,7 @@ namespace TbEinkSuperFlushTurbo
             // lblPollIntervalValue
             // 
             lblPollIntervalValue.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblPollIntervalValue.Location = new Point(532, 241);
+            lblPollIntervalValue.Location = new Point(532, 123);
             lblPollIntervalValue.Name = "lblPollIntervalValue";
             lblPollIntervalValue.Size = new Size(73, 50);
             lblPollIntervalValue.TabIndex = 8;
@@ -165,18 +165,18 @@ namespace TbEinkSuperFlushTurbo
             // lblPollIntervalUnit
             // 
             lblPollIntervalUnit.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblPollIntervalUnit.Location = new Point(611, 241);
+            lblPollIntervalUnit.Location = new Point(613, 123);
             lblPollIntervalUnit.Name = "lblPollIntervalUnit";
-            lblPollIntervalUnit.Size = new Size(80, 50);
+            lblPollIntervalUnit.Size = new Size(60, 50);
             lblPollIntervalUnit.TabIndex = 9;
             lblPollIntervalUnit.Text = "ms";
-            lblPollIntervalUnit.TextAlign = ContentAlignment.MiddleLeft;
+            lblPollIntervalUnit.TextAlign = ContentAlignment.MiddleCenter;
             lblPollIntervalUnit.Click += lblPollIntervalUnit_Click;
             // 
             // lblToggleHotkey
             // 
             lblToggleHotkey.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblToggleHotkey.Location = new Point(22, 310);
+            lblToggleHotkey.Location = new Point(35, 192);
             lblToggleHotkey.Name = "lblToggleHotkey";
             lblToggleHotkey.Size = new Size(186, 50);
             lblToggleHotkey.TabIndex = 10;
@@ -186,7 +186,7 @@ namespace TbEinkSuperFlushTurbo
             // txtToggleHotkey
             // 
             txtToggleHotkey.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            txtToggleHotkey.Location = new Point(214, 322);
+            txtToggleHotkey.Location = new Point(227, 204);
             txtToggleHotkey.Name = "txtToggleHotkey";
             txtToggleHotkey.ReadOnly = true;
             txtToggleHotkey.Size = new Size(300, 26);
@@ -201,7 +201,7 @@ namespace TbEinkSuperFlushTurbo
             btnToggleRecord.Font = new Font("Microsoft Sans Serif", 22F, FontStyle.Bold);
             btnToggleRecord.ForeColor = Color.Red;
             btnToggleRecord.ImageAlign = ContentAlignment.MiddleRight;
-            btnToggleRecord.Location = new Point(548, 322);
+            btnToggleRecord.Location = new Point(558, 197);
             btnToggleRecord.Name = "btnToggleRecord";
             btnToggleRecord.Size = new Size(47, 45);
             btnToggleRecord.TabIndex = 12;
@@ -216,7 +216,7 @@ namespace TbEinkSuperFlushTurbo
             // lblInfo
             // 
             lblInfo.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblInfo.Location = new Point(22, 370);
+            lblInfo.Location = new Point(35, 252);
             lblInfo.Name = "lblInfo";
             lblInfo.Size = new Size(550, 32);
             lblInfo.TabIndex = 13;
@@ -228,9 +228,9 @@ namespace TbEinkSuperFlushTurbo
             listBox.Font = new Font("Microsoft Sans Serif", 12F);
             listBox.FormattingEnabled = true;
             listBox.ItemHeight = 20;
-            listBox.Location = new Point(22, 415);
+            listBox.Location = new Point(35, 301);
             listBox.Name = "listBox";
-            listBox.Size = new Size(550, 204);
+            listBox.Size = new Size(615, 184);
             listBox.TabIndex = 14;
             listBox.SelectedIndexChanged += listBox_SelectedIndexChanged;
             // 
@@ -263,7 +263,7 @@ namespace TbEinkSuperFlushTurbo
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1028, 621);
+            ClientSize = new Size(686, 509);
             Controls.Add(listBox);
             Controls.Add(lblInfo);
             Controls.Add(btnToggleRecord);
