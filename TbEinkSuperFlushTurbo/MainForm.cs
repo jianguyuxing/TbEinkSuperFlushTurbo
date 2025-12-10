@@ -619,7 +619,7 @@ namespace TbEinkSuperFlushTurbo
             int leftMarginLocal = (int)(formWidthLocal * 0.04); // 4% 左边距
             int rightMarginLocal = (int)(formWidthLocal * 0.04); // 4% 右边距
             int controlHeightLocal = 60;
-            int topPositionLocal = 220;
+            int topPositionLocal = 240;
             
             // 计算各个区域的宽度比例
             int labelWidthLocal = (int)(formWidthLocal * 0.25); // 标签占25%
@@ -692,9 +692,9 @@ namespace TbEinkSuperFlushTurbo
             btnHelp.Region = new Region(path);
 
             // 快捷键设置项 - 切换运行状态
-            lblToggleHotkey = new Label() { Text = Localization.GetText("ToggleHotkey"), Left = 60, Top = 350, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
-            _txtToggleHotkey = new TextBox() { Left = 650, Top = 350, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
-            _btnToggleRecord = new Button() { Text = "●", Left = 1380, Top = 340, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
+            lblToggleHotkey = new Label() { Text = Localization.GetText("ToggleHotkey"), Left = 60, Top = 320, Width = labelWidth, Height = 60, TextAlign = ContentAlignment.MiddleLeft, Font = new Font(this.Font.FontFamily, 12f) };
+            _txtToggleHotkey = new TextBox() { Left = 650, Top = 320, Width = sliderWidth, Height = 60, Font = new Font(this.Font.FontFamily, 12f), ReadOnly = true };
+            _btnToggleRecord = new Button() { Text = "●", Left = 1380, Top = 310, Width = 70, Height = 70, Font = new Font(this.Font.FontFamily, 16f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(0, 0, 0, 0) };
             _btnToggleRecord.BackColor = Color.White;
             _btnToggleRecord.ForeColor = Color.Red;
             _btnToggleRecord.FlatStyle = FlatStyle.Flat; // 关键：移除按钮边框
@@ -781,10 +781,10 @@ namespace TbEinkSuperFlushTurbo
                 _txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
             }
             
-            lblInfo = new Label() { Left = 60, Top = 560, Width = 1600, Height = 60, Text = Localization.GetText("StatusStopped"), Font = new Font(this.Font.FontFamily, 12f) };
+            lblInfo = new Label() { Left = 60, Top = 380, Width = 1600, Height = 60, Text = Localization.GetText("StatusStopped"), Font = new Font(this.Font.FontFamily, 12f) };
             // 日志字体大小调整为5号字体（比之前小3个字号）
             float logFontSize = 5f * dpiScale; // 调整为5号字体，比之前小3个字号
-            listBox = new ListBox() { Left = 70, Top = 630, Width = 1595, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 宽度减少15px到1595px
+            listBox = new ListBox() { Left = 70, Top = 450, Width = 1595, Height = 480, Font = new Font(this.Font.FontFamily, logFontSize) }; // 日志列表框 - 宽度减少15px到1595px
 
             this.Font = new Font(this.Font.FontFamily, 9f);
 
@@ -1558,8 +1558,8 @@ namespace TbEinkSuperFlushTurbo
             int availableHeight = formHeight - topControlsHeight - bottomMargin;
             
             // 确保日志栏高度合理（根据屏幕大小动态调整）
-            int logHeight = Math.Max(150, Math.Min(availableHeight, formHeight * 3 / 5)); // 最小150px，最大占窗口高度的60%
-            int logTop = formHeight - logHeight - bottomMargin + 100; // 从底部向上定位，额外下移100px
+            int logHeight = Math.Max(80, Math.Min(availableHeight, formHeight * 1 / 4)); // 最小80px，最大占窗口高度的25%，进一步缩短纵向长度
+            int logTop = formHeight - logHeight - bottomMargin; // 从底部向上定位，移除额外的100px下移
             
             if (lblInfo != null)
             {
@@ -1583,6 +1583,12 @@ namespace TbEinkSuperFlushTurbo
                 if (formHeight < 800)
                 {
                     baseFontSize = 11f; // 小屏幕使用更大字体以提高可读性
+                }
+                
+                // 在高DPI缩放情况下（如250%缩放），减小字体大小
+                if (dpiScale > 2.0f) // 250%缩放约为2.5
+                {
+                    baseFontSize = Math.Max(6f, baseFontSize - 3f); // 减小3个字号，最小6pt
                 }
                 
                 float adjustedFontSize = baseFontSize * dpiScale;
