@@ -502,16 +502,8 @@ namespace TbEinkSuperFlushTurbo
 
         private void UpdateAdaptiveLayout()
         {
-            // 根据窗口大小动态调整控件位置和大小
-            float scaleX = (float)this.ClientSize.Width / 1770f;
-            float scaleY = (float)this.ClientSize.Height / 1100f;
-            float scale = Math.Min(scaleX, scaleY);
-
-            // 更新字体大小
-            float baseFontSize = 9f;
-            this.Font = new Font(this.Font.FontFamily, baseFontSize * scale);
-
-            // 可以在这里添加更多的自适应布局逻辑
+            // 完全移除自适应布局逻辑，因为它在高DPI环境下引起问题
+            // 依赖于WinForm内置的DPI处理机制
         }
 
         // ==================== Designer Event Handlers ====================
