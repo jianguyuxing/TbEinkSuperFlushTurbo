@@ -57,9 +57,9 @@ namespace TbEinkSuperFlushTurbo
             
             ["ToggleHotkey"] = new()
             {
-                [Language.English] = "Toggle Hotkey:",
-                [Language.ChineseSimplified] = "切换热键：",
-                [Language.ChineseTraditional] = "切換熱鍵："
+                [Language.English] = "Toggle Status Hotkey:",
+                [Language.ChineseSimplified] = "切换运行状态快捷键：",
+                [Language.ChineseTraditional] = "切換運行狀態快捷鍵："
             },
             
             // 单位
@@ -109,16 +109,16 @@ namespace TbEinkSuperFlushTurbo
             // 热键相关
             ["ClickButtonToSet"] = new()
             {
-                [Language.English] = "click button to set",
-                [Language.ChineseSimplified] = "点击按钮设置",
-                [Language.ChineseTraditional] = "點擊按鈕設置"
+                [Language.English] = "click button to set hotkey",
+                [Language.ChineseSimplified] = "点击按钮设置快捷键",
+                [Language.ChineseTraditional] = "點擊按鈕設置快捷鍵"
             },
             
             ["PressHotkeyCombination"] = new()
             {
                 [Language.English] = "Press hotkey combination...",
-                [Language.ChineseSimplified] = "按下热键组合...",
-                [Language.ChineseTraditional] = "按下熱鍵組合..."
+                [Language.ChineseSimplified] = "按下快捷键组合...",
+                [Language.ChineseTraditional] = "按下快捷鍵組合..."
             },
             
             // 问号按钮
