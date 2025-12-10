@@ -263,7 +263,6 @@ namespace TbEinkSuperFlushTurbo
         private Label? lblToggleHotkey;
         private Label? lblInfo;
         private ListBox? listBox;
-        private Button? _btnFullscreen;
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")]
@@ -327,9 +326,6 @@ namespace TbEinkSuperFlushTurbo
                 this.MinimizeBox = true;
                 this.DoubleBuffered = true;
                 this.SetStyle(ControlStyles.ResizeRedraw, true);
-                
-                // 添加全屏切换按钮
-                AddFullscreenButton();
             }
             catch (Exception ex)
             {
@@ -1148,77 +1144,6 @@ namespace TbEinkSuperFlushTurbo
             base.OnLoad(e);
             // RegisterHotKey(this.Handle, HOTKEY_ID, MOD_NONE, VK_F6);
             // 启动通知已移除
-        }
-
-        // 添加全屏切换按钮
-        private void AddFullscreenButton()
-        {
-            _btnFullscreen = new Button();
-            _btnFullscreen.Text = "□";
-            _btnFullscreen.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
-            _btnFullscreen.BackColor = Color.LightGray;
-            _btnFullscreen.ForeColor = Color.Black;
-            _btnFullscreen.FlatStyle = FlatStyle.Flat;
-            _btnFullscreen.FlatAppearance.BorderSize = 1;
-            _btnFullscreen.Cursor = Cursors.Hand;
-            _btnFullscreen.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            
-            // 设置位置和大小
-            UpdateFullscreenButtonPosition();
-            
-            // 添加点击事件
-            _btnFullscreen.Click += (s, e) => {
-                ToggleFullscreen();
-            };
-            
-            // 添加鼠标悬停效果
-            _btnFullscreen.MouseEnter += (s, e) => {
-                _btnFullscreen.BackColor = Color.Gray;
-            };
-            
-            _btnFullscreen.MouseLeave += (s, e) => {
-                _btnFullscreen.BackColor = Color.LightGray;
-            };
-            
-            this.Controls.Add(_btnFullscreen);
-            _btnFullscreen.BringToFront();
-        }
-        
-        // 更新全屏按钮位置
-        private void UpdateFullscreenButtonPosition()
-        {
-            if (_btnFullscreen != null)
-            {
-                int buttonSize = 30;
-                int margin = 10;
-                _btnFullscreen.Size = new Size(buttonSize, buttonSize);
-                _btnFullscreen.Location = new Point(this.ClientSize.Width - buttonSize - margin, margin);
-            }
-        }
-        
-        // 切换全屏/窗口化
-        private void ToggleFullscreen()
-        {
-            if (this.WindowState == FormWindowState.Maximized)
-            {
-                this.WindowState = FormWindowState.Normal;
-                _btnFullscreen.Text = "□";
-            }
-            else if (this.WindowState == FormWindowState.Normal)
-            {
-                this.WindowState = FormWindowState.Maximized;
-                _btnFullscreen.Text = "❐";
-            }
-            
-            // 重新定位按钮
-            UpdateFullscreenButtonPosition();
-        }
-        
-        // 重写OnResize以更新按钮位置
-        protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
-            UpdateFullscreenButtonPosition();
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
