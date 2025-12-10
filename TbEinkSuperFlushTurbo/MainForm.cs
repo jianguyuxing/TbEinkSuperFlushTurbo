@@ -580,7 +580,13 @@ namespace TbEinkSuperFlushTurbo
             // 检查是否正在录制快捷键
             if (_isRecordingHotkey)
             {
-                MessageBox.Show("Cannot start capture while recording hotkey. Please complete hotkey recording first.", "Hotkey Recording in Progress", MessageBoxButtons.OK, MessageBoxIcon.None);
+                string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                    "无法在录制热键时启动截屏，请先完成热键录制。" :
+                    "Cannot start screen capture while recording hotkey, Please complete hotkey recording first.";
+                string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                    "热键录制进行中" : 
+                    "Hotkey Recording in Progress";
+                MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.None);
                 return;
             }
 
@@ -798,7 +804,13 @@ namespace TbEinkSuperFlushTurbo
                 // 如果不在录制状态，检查是否正在运行
                 if (_pollTimer != null && _pollTimer.Enabled)
                 {
-                    MessageBox.Show("Cannot modify hotkey while capture is running. Please stop capture first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.None);
+                    string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                        "运行时无法修改热键，请先停止截屏。" :
+                        "Cannot modify hotkey while screen capture is running, Please stop screen capture first.";
+                    string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                        "警告" : 
+                        "Warning";
+                    MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
 
@@ -840,32 +852,40 @@ namespace TbEinkSuperFlushTurbo
             {
                 if (text == "●") // 圆点 - 改为圆环+内部小圆点
                 {
-                    using (var brush = new SolidBrush(btn.ForeColor))
+                    // 检查是否是录制按钮，如果是则使用图片绘制
+                    if (btn == btnToggleRecord)
                     {
-                        // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
-                        int baseSize = Math.Min(btn.Width, btn.Height);
-                        int outerDiameter = baseSize - 32; // 再放大圆环，从-36改为-32
-                        int ringThickness = 2; // 固定环厚度，不再DPI缩放
-                        int x = (btn.Width - outerDiameter) / 2;
-                        int y = (btn.Height - outerDiameter) / 2;
-
-                        // 绘制外圆环（红色）
-                        using (var redBrush = new SolidBrush(Color.Red))
+                        DrawRecordButton(e.Graphics, btn.Width, btn.Height);
+                    }
+                    else
+                    {
+                        using (var brush = new SolidBrush(btn.ForeColor))
                         {
-                            e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
+                            // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
+                            int baseSize = Math.Min(btn.Width, btn.Height);
+                            int outerDiameter = baseSize - 32; // 再放大圆环，从-36改为-32
+                            int ringThickness = 2; // 固定环厚度，不再DPI缩放
+                            int x = (btn.Width - outerDiameter) / 2;
+                            int y = (btn.Height - outerDiameter) / 2;
+
+                            // 绘制外圆环（红色）
+                            using (var redBrush = new SolidBrush(Color.Red))
+                            {
+                                e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
+                            }
+
+                            // 绘制内圆（白色背景，形成圆环效果）
+                            int innerDiameter = outerDiameter - (ringThickness * 2);
+                            int innerX = x + ringThickness;
+                            int innerY = y + ringThickness;
+                            e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
+
+                            // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
+                            int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
+                            int centerX = (btn.Width - centerDiameter) / 2;
+                            int centerY = (btn.Height - centerDiameter) / 2;
+                            e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
                         }
-
-                        // 绘制内圆（白色背景，形成圆环效果）
-                        int innerDiameter = outerDiameter - (ringThickness * 2);
-                        int innerX = x + ringThickness;
-                        int innerY = y + ringThickness;
-                        e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
-
-                        // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
-                        int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
-                        int centerX = (btn.Width - centerDiameter) / 2;
-                        int centerY = (btn.Height - centerDiameter) / 2;
-                        e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
                     }
                 }
                 else if (text == "✓") // 对勾符号
@@ -933,6 +953,56 @@ namespace TbEinkSuperFlushTurbo
                 int x = (width - squareSize) / 2;
                 int y = (height - squareSize) / 2;
                 g.FillRectangle(brush, x, y, squareSize, squareSize);
+            }
+        }
+        
+        private void DrawRecordButton(Graphics g, int width, int height)
+        {
+            // 首先尝试加载自定义图片
+            try
+            {
+                string imagePath = Path.Combine(Application.StartupPath, "Resources", "record_button.png");
+                if (File.Exists(imagePath))
+                {
+                    using (var image = Image.FromFile(imagePath))
+                    {
+                        // 计算居中位置
+                        int x = (width - image.Width) / 2;
+                        int y = (height - image.Height) / 2;
+                        
+                        // 确保图片不会超出按钮边界
+                        if (image.Width <= width && image.Height <= height)
+                        {
+                            g.DrawImage(image, x, y, image.Width, image.Height);
+                        }
+                        else
+                        {
+                            // 如果图片太大，则按比例缩放
+                            float scale = Math.Min((float)width / image.Width, (float)height / image.Height) * 0.8f;
+                            int scaledWidth = (int)(image.Width * scale);
+                            int scaledHeight = (int)(image.Height * scale);
+                            x = (width - scaledWidth) / 2;
+                            y = (height - scaledHeight) / 2;
+                            g.DrawImage(image, x, y, scaledWidth, scaledHeight);
+                        }
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 如果加载图片失败，继续使用绘制的红色圆点
+                System.Diagnostics.Debug.WriteLine($"Failed to load record button image: {ex.Message}");
+            }
+            
+            // 如果没有找到图片或加载失败，使用红色圆点作为备选
+            using (var brush = new SolidBrush(Color.Red))
+            {
+                // 绘制一个居中的红色圆点
+                int diameter = Math.Min(width, height) / 2;
+                int x = (width - diameter) / 2;
+                int y = (height - diameter) / 2;
+                g.FillEllipse(brush, x, y, diameter, diameter);
             }
         }
         
