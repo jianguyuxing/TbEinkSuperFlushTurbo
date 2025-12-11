@@ -83,6 +83,10 @@ namespace TbEinkSuperFlushTurbo
         private static extern uint GetDpiForWindow(IntPtr hWnd);
         [DllImport("user32.dll")]
         private static extern uint GetDpiForSystem();
+        [DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
         private const int CARET_CHECK_INTERVAL = 400;
         private const int IME_CHECK_INTERVAL = 400;
@@ -464,22 +468,39 @@ namespace TbEinkSuperFlushTurbo
             return string.Join(" + ", parts);
         }
 
+        // 注册快捷键
         private void RegisterToggleHotkey()
         {
+            if (_isHotkeyRegistered)
+            {
+                UnregisterToggleHotkey();
+            }
+
             try
             {
-                uint modifiers = GetModifiers(_toggleHotkey);
-                uint virtualKey = (uint)GetKeyCode(_toggleHotkey);
+                // 提取虚拟键码和修饰键
+                Keys keyCode = _toggleHotkey & Keys.KeyCode;
+                Keys modifiers = _toggleHotkey & Keys.Modifiers;
 
-                if (NativeMethods.RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modifiers, virtualKey))
+                int modFlags = 0;
+                if ((modifiers & Keys.Control) == Keys.Control)
+                    modFlags |= 0x0002; // MOD_CONTROL
+                if ((modifiers & Keys.Alt) == Keys.Alt)
+                    modFlags |= 0x0001; // MOD_ALT
+                if ((modifiers & Keys.Shift) == Keys.Shift)
+                    modFlags |= 0x0004; // MOD_SHIFT
+
+                // 注册系统级快捷键
+                bool result = RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modFlags, (int)keyCode);
+                _isHotkeyRegistered = result;
+                
+                if (!result)
                 {
-                    _isHotkeyRegistered = true;
-                    Log($"Hotkey registered: {FormatShortcut(_toggleHotkey)}");
+                    Log($"Failed to register hotkey: {_toggleHotkey}");
                 }
                 else
                 {
-                    Log($"Failed to register hotkey: {FormatShortcut(_toggleHotkey)}");
-                    _isHotkeyRegistered = false;
+                    Log($"Successfully registered hotkey: {_toggleHotkey}");
                 }
             }
             catch (Exception ex)
@@ -489,28 +510,15 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
+        // 取消注册快捷键
         private void UnregisterToggleHotkey()
         {
             if (_isHotkeyRegistered)
             {
-                NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
+                UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
                 _isHotkeyRegistered = false;
                 Log("Hotkey unregistered");
             }
-        }
-
-        private uint GetModifiers(Keys keys)
-        {
-            uint modifiers = 0;
-            if ((keys & Keys.Control) == Keys.Control) modifiers |= 0x0002; // MOD_CONTROL
-            if ((keys & Keys.Alt) == Keys.Alt) modifiers |= 0x0001; // MOD_ALT
-            if ((keys & Keys.Shift) == Keys.Shift) modifiers |= 0x0004; // MOD_SHIFT
-            return modifiers;
-        }
-
-        private Keys GetKeyCode(Keys keys)
-        {
-            return keys & Keys.KeyCode;
         }
 
         private void SaveToggleHotkey()
@@ -1140,18 +1148,10 @@ namespace TbEinkSuperFlushTurbo
             ShowMainForm();
         }
 
-        // 重写OnResize方法处理最小化到托盘
+        // 重写OnResize方法处理最小化到任务栏
         protected override void OnResize(EventArgs e)
         {
-            if (this.WindowState == FormWindowState.Minimized)
-            {
-                // 最小化时隐藏窗体
-                this.Hide();
-                // 显示托盘提示
-                _trayIcon.BalloonTipTitle = Localization.GetText("MinimizedToTrayTitle");
-                _trayIcon.BalloonTipText = Localization.GetText("MinimizedToTrayMessage");
-                _trayIcon.ShowBalloonTip(2000);
-            }
+            // 不再隐藏窗口，而是正常最小化到任务栏
             base.OnResize(e);
         }
 
@@ -1169,7 +1169,7 @@ namespace TbEinkSuperFlushTurbo
         // 重写OnFormClosing方法控制窗体关闭
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            // 如果不允许关闭，则取消关闭操作并最小化到托盘
+            // 如果不允许关闭，则取消关闭操作并最小化到任务栏
             if (!_allowClose && e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
