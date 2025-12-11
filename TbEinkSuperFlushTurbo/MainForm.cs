@@ -855,12 +855,6 @@ namespace TbEinkSuperFlushTurbo
                 e.Graphics.FillEllipse(backgroundBrush, 0, 0, btn.Width - 1, btn.Height - 1);
             }
 
-            // 绘制黑色边框
-            using (var borderPen = new Pen(Color.Black, 1))
-            {
-                e.Graphics.DrawEllipse(borderPen, 0, 0, btn.Width - 1, btn.Height - 1);
-            }
-
             using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
             using (var brush = new SolidBrush(btn.BackColor == Color.FromArgb(135, 206, 235) ? Color.White : btn.ForeColor))
             {
