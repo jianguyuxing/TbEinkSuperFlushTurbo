@@ -194,7 +194,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        public OverlayForm(int tileSize, int screenW, int screenH, int noiseDensity, int noisePointInterval, Color baseColor, Color borderColor, int borderWidth, Action<string> log)
+        public OverlayForm(int tileSize, int screenW, int screenH, int noiseDensity, int noisePointInterval, Color baseColor, Color borderColor, int borderWidth, Action<string> log, int screenIndex = 0)
         {
             _tileSize = tileSize;
             _screenW = screenW;
@@ -216,8 +216,11 @@ namespace TbEinkSuperFlushTurbo
             StartPosition = FormStartPosition.Manual;
             ShowInTaskbar = false;
             TopMost = true;
-            Location = new Point(0, 0);
-            Size = new Size(screenW, screenH);
+            
+            // 设置窗口位置和大小以匹配指定的屏幕
+            Screen targetScreen = Screen.AllScreens.Length > screenIndex ? Screen.AllScreens[screenIndex] : Screen.PrimaryScreen;
+            Location = targetScreen.Bounds.Location;
+            Size = targetScreen.Bounds.Size;
 
             // 设置 WS_EX_LAYERED 扩展样式
             int exStyle = GetWindowLong(this.Handle, -20); // GWL_EXSTYLE = -20

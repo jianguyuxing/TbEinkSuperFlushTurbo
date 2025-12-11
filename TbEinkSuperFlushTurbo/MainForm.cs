@@ -70,6 +70,8 @@ namespace TbEinkSuperFlushTurbo
         private Keys _toggleHotkey = Keys.F6; // 默认快捷键
         private bool _isRecordingHotkey = false;
         private bool _isHotkeyRegistered = false;
+        // 显示器选择相关字段
+        private int _targetScreenIndex = 0; // 默认使用主显示器
 
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -163,6 +165,11 @@ namespace TbEinkSuperFlushTurbo
                     {
                         _tileSize = Math.Max(8, Math.Min(64, savedTileSize));
                     }
+                    // 加载显示器索引配置
+                    if (lines.Length >= 4 && int.TryParse(lines[3], out int savedScreenIndex))
+                    {
+                        _targetScreenIndex = savedScreenIndex;
+                    }
                 }
 
                 // 加载快捷键配置
@@ -195,9 +202,9 @@ namespace TbEinkSuperFlushTurbo
             try
             {
                 string configPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
-                string[] lines = { _pixelDelta.ToString(), _pollInterval.ToString(), _tileSize.ToString() };
+                string[] lines = { _pixelDelta.ToString(), _pollInterval.ToString(), _tileSize.ToString(), _targetScreenIndex.ToString() };
                 File.WriteAllLines(configPath, lines);
-                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}");
+                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}, SCREEN_INDEX={_targetScreenIndex}");
 
                 // 保存快捷键配置
                 string hotkeyConfigPath = Path.Combine(AppContext.BaseDirectory, "hotkey.json");
@@ -383,7 +390,7 @@ namespace TbEinkSuperFlushTurbo
                 string[] rgbParts = OVERLAY_BORDER_COLOR.Split(',');
                 Color borderColor = Color.FromArgb(OVERLAY_BORDER_ALPHA, int.Parse(rgbParts[0].Trim()), int.Parse(rgbParts[1].Trim()), int.Parse(rgbParts[2].Trim()));
 
-                _overlayForm = new OverlayForm(_d3d.TileSize, _d3d.ScreenWidth, _d3d.ScreenHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log)
+                _overlayForm = new OverlayForm(_d3d.TileSize, _d3d.ScreenWidth, _d3d.ScreenHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log, _targetScreenIndex)
                 {
                     ShowInTaskbar = false,
                     FormBorderStyle = FormBorderStyle.None,
@@ -391,7 +398,6 @@ namespace TbEinkSuperFlushTurbo
                     Size = new Size(_d3d.ScreenWidth, _d3d.ScreenHeight)
                 };
                 _overlayForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
-                _overlayForm.Location = new Point(0, 0);
 
                 _overlayForm.Show();
             }
@@ -608,7 +614,7 @@ namespace TbEinkSuperFlushTurbo
                         BOUNDING_AREA_HEIGHT,
                         BOUNDING_AREA_HISTORY_FRAMES,
                         BOUNDING_AREA_CHANGE_THRESHOLD,
-                        BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture, ProtectionFrames);
+                        BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture, ProtectionFrames, _targetScreenIndex);
 
                 _pollTimer = new System.Windows.Forms.Timer
                 {

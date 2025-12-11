@@ -133,6 +133,7 @@ namespace TbEinkSuperFlushTurbo
         private bool _useGdiCapture = false; // 是否使用GDI+捕获
         private bool _isEinkScreen = false; // 是否为eink屏幕
         private bool _forceDirectXCapture; // 是否强制使用DirectX捕获（从MainForm传入）
+        private int _targetScreenIndex = 0; // 目标屏幕索引（从MainForm传入）
         private double _detectedRefreshRate = 60.0; // 检测到的刷新率
         private Bitmap? _gdiBitmap; // GDI+位图用于屏幕捕获
         private Graphics? _gdiGraphics; // GDI+图形对象
@@ -162,7 +163,7 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
         }
 
-        public D3DCaptureAndCompute(Action<string>? debugLogger, int tileSize, int pixelDelta, uint averageWindowSize, uint stableFramesRequired, uint additionalCooldownFrames, uint firstRefreshExtraDelay, int caretCheckInterval, int imeCheckInterval, int mouseExclusionRadiusFactor, BoundingAreaConfig boundingArea, bool forceDirectXCapture = true, uint protectionFrames = 0) // Constructor with parameters
+        public D3DCaptureAndCompute(Action<string>? debugLogger, int tileSize, int pixelDelta, uint averageWindowSize, uint stableFramesRequired, uint additionalCooldownFrames, uint firstRefreshExtraDelay, int caretCheckInterval, int imeCheckInterval, int mouseExclusionRadiusFactor, BoundingAreaConfig boundingArea, bool forceDirectXCapture = true, uint protectionFrames = 0, int targetScreenIndex = 0) // Constructor with parameters
         {
             _debugLogger = debugLogger;
             TileSize = tileSize;
@@ -177,6 +178,7 @@ namespace TbEinkSuperFlushTurbo
             _forceDirectXCapture = forceDirectXCapture;
             BoundingArea = boundingArea; // 使用从MainForm传入的配置
             ProtectionFrames = protectionFrames;
+            _targetScreenIndex = targetScreenIndex;
             
             Console.WriteLine("=== D3DCaptureAndCompute Constructor Started ===");
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
@@ -296,10 +298,16 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                // Temporarily hardcode selecting first output for duplication
-                // After reviewing logs, user can specify which output index to use.
-                var selectedOutput = allOutputs[0]; 
-                _debugLogger?.Invoke($"DEBUG: Selected output 0 for duplication.");
+                // Select output based on target screen index
+                int selectedScreenIndex = _targetScreenIndex;
+                if (selectedScreenIndex < 0 || selectedScreenIndex >= allOutputs.Count)
+                {
+                    _debugLogger?.Invoke($"DEBUG: Invalid target screen index {selectedScreenIndex}, defaulting to primary screen (index 0).");
+                    selectedScreenIndex = 0;
+                }
+                
+                var selectedOutput = allOutputs[selectedScreenIndex]; 
+                _debugLogger?.Invoke($"DEBUG: Selected output {selectedScreenIndex} for duplication.");
 
                 // 检测是否为eink屏幕
                 _isEinkScreen = DetectEinkScreen(selectedOutput);
