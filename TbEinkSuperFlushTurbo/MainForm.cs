@@ -158,12 +158,41 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
+        private void InitLogFile()
+        {
+            try
+            {
+                string logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+                if (!Directory.Exists(logDirectory))
+                {
+                    Directory.CreateDirectory(logDirectory);
+                }
+                else
+                {
+                    CleanupOldApplicationLogFiles(logDirectory);
+                }
+
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmssfff", CultureInfo.InvariantCulture);
+                _logFilePath = Path.Combine(logDirectory, $"application_{timestamp}.log");
+
+                _logWriter = new StreamWriter(_logFilePath, false, System.Text.Encoding.UTF8) { AutoFlush = true };
+
+                Log("Application started");
+                DebugLogger = Log;
+                Log($"[Config] ProtectionFrames={ProtectionFrames}");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to create log file: {ex.Message}", "Logging Error", MessageBoxButtons.OK, MessageBoxIcon.None);
+            }
+        }
+
         private void LoadConfig()
         {
             try
             {
                 // 先尝试加载新的JSON格式配置文件
-                string configJsonPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+                string configJsonPath = Path.Combine(AppContext.BaseDirectory, "config", "config.json");
                 if (File.Exists(configJsonPath))
                 {
                     string json = File.ReadAllText(configJsonPath);
@@ -249,7 +278,13 @@ namespace TbEinkSuperFlushTurbo
             try
             {
                 // 保存为新的JSON格式配置文件（包含所有配置）
-                string configJsonPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+                string configDir = Path.Combine(AppContext.BaseDirectory, "config");
+                if (!Directory.Exists(configDir))
+                {
+                    Directory.CreateDirectory(configDir);
+                }
+                
+                string configJsonPath = Path.Combine(configDir, "config.json");
                 var config = new
                 {
                     PixelDelta = _pixelDelta,
@@ -265,35 +300,6 @@ namespace TbEinkSuperFlushTurbo
             catch (Exception ex)
             {
                 Log($"Failed to save config: {ex.Message}");
-            }
-        }
-
-        private void InitLogFile()
-        {
-            try
-            {
-                string logDirectory = Path.Combine(AppContext.BaseDirectory, "Logs");
-                if (!Directory.Exists(logDirectory))
-                {
-                    Directory.CreateDirectory(logDirectory);
-                }
-                else
-                {
-                    CleanupOldApplicationLogFiles(logDirectory);
-                }
-
-                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmssfff", CultureInfo.InvariantCulture);
-                _logFilePath = Path.Combine(logDirectory, $"application_{timestamp}.log");
-
-                _logWriter = new StreamWriter(_logFilePath, false, System.Text.Encoding.UTF8) { AutoFlush = true };
-
-                Log("Application started");
-                DebugLogger = Log;
-                Log($"[Config] ProtectionFrames={ProtectionFrames}");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to create log file: {ex.Message}", "Logging Error", MessageBoxButtons.OK, MessageBoxIcon.None);
             }
         }
 

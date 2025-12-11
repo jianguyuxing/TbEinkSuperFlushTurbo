@@ -10,7 +10,13 @@ namespace TbEinkSuperFlushTurbo
         static void Main()
         {
             // 创建调试输出文件
-            string debugFile = Path.Combine(AppContext.BaseDirectory, "debug_output.txt");
+            string logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+            if (!Directory.Exists(logDirectory))
+            {
+                Directory.CreateDirectory(logDirectory);
+            }
+            string debugFile = Path.Combine(logDirectory, "debug_output.txt");
+            
             try
             {
                 // 全局异常捕获

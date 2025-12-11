@@ -1686,7 +1686,7 @@ namespace TbEinkSuperFlushTurbo
                                 if (currentMode.RefreshRate.Denominator != 0 && currentMode.RefreshRate.Numerator != 0)
                                 {
                                     double refreshRate = (double)currentMode.RefreshRate.Numerator / currentMode.RefreshRate.Denominator;
-                                    _debugLogger?.Invoke($"DEBUG: Current primary display refresh rate: {refreshRate}Hz");
+                                    _debugLogger?.Invoke($"DEBUG: Current primary display refresh rate: {refreshRate:F2}Hz");
                                     return refreshRate;
                                 }
                             }
