@@ -135,6 +135,36 @@ namespace TbEinkSuperFlushTurbo
                 [Language.English] = "EInk Ghost Reducer",
                 [Language.ChineseSimplified] = "EInk 残影清除器",
                 [Language.ChineseTraditional] = "EInk 殘影清除器"
+            },
+            
+            // 托盘菜单项
+            ["ShowPanel"] = new()
+            {
+                [Language.English] = "Show Panel",
+                [Language.ChineseSimplified] = "显示面板",
+                [Language.ChineseTraditional] = "顯示面板"
+            },
+            
+            ["Exit"] = new()
+            {
+                [Language.English] = "Exit",
+                [Language.ChineseSimplified] = "退出",
+                [Language.ChineseTraditional] = "退出"
+            },
+            
+            // 托盘提示信息
+            ["MinimizedToTrayTitle"] = new()
+            {
+                [Language.English] = "Minimized to Tray",
+                [Language.ChineseSimplified] = "已最小化到托盘",
+                [Language.ChineseTraditional] = "已最小化到托盤"
+            },
+            
+            ["MinimizedToTrayMessage"] = new()
+            {
+                [Language.English] = "The application has been minimized to the system tray. You can restore it by clicking the tray icon.",
+                [Language.ChineseSimplified] = "程序已最小化到系统托盘。您可以通过点击托盘图标来恢复它。",
+                [Language.ChineseTraditional] = "程式已最小化到系統托盤。您可以通過點擊托盤圖標來恢復它。"
             }
         };
 

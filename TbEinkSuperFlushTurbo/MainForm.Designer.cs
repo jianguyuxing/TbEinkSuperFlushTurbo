@@ -237,8 +237,6 @@ namespace TbEinkSuperFlushTurbo
             // _trayIcon
             // 
             _trayIcon.Text = "EInk Ghost Reducer";
-            _trayIcon.Click += _trayIcon_Click;
-            _trayIcon.DoubleClick += _trayIcon_DoubleClick;
             // 
             // _displayChangeTimer
             // 
@@ -257,7 +255,6 @@ namespace TbEinkSuperFlushTurbo
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
             exitToolStripMenuItem.Size = new Size(96, 22);
             exitToolStripMenuItem.Text = "Exit";
-            exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
             // MainForm
             // 

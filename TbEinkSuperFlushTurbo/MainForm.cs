@@ -98,6 +98,10 @@ namespace TbEinkSuperFlushTurbo
         private const int OVERLAY_BORDER_WIDTH = 0;
         private const int OVERLAY_BORDER_ALPHA = 100;
 
+        // 托盘图标相关字段
+        private bool _allowVisible = true;     // 允许窗体显示
+        private bool _allowClose = false;      // 允许窗体关闭
+
         public MainForm()
         {
             try
@@ -134,8 +138,8 @@ namespace TbEinkSuperFlushTurbo
                 this.DoubleBuffered = true;
                 this.SetStyle(ControlStyles.ResizeRedraw, true);
 
-                // 初始化托盘图标菜单
-                _trayIcon.ContextMenuStrip = contextMenuStrip1;
+                // 初始化托盘图标
+                InitializeTrayIcon();
             }
             catch (Exception ex)
             {
@@ -1074,59 +1078,116 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        private void _trayIcon_Click(object? sender, EventArgs e)
+        private void InitializeTrayIcon()
         {
+            // 设置托盘图标
+            _trayIcon.Icon = this.Icon ?? SystemIcons.Application;
+            _trayIcon.Visible = true;
+            _trayIcon.Text = Localization.GetText("TrayIconText");
+            
+            // 创建托盘菜单
+            ContextMenuStrip trayMenu = new ContextMenuStrip();
+            
+            // 显示面板菜单项
+            ToolStripMenuItem showItem = new ToolStripMenuItem(Localization.GetText("ShowPanel"));
+            showItem.Click += (sender, e) => ShowMainForm();
+            trayMenu.Items.Add(showItem);
+            
+            // 分隔符
+            trayMenu.Items.Add(new ToolStripSeparator());
+            
+            // 退出菜单项
+            ToolStripMenuItem exitItem = new ToolStripMenuItem(Localization.GetText("Exit"));
+            exitItem.Click += (sender, e) => ExitApplication();
+            trayMenu.Items.Add(exitItem);
+            
+            // 设置托盘图标上下文菜单
+            _trayIcon.ContextMenuStrip = trayMenu;
+            
+            // 设置托盘图标点击事件
+            _trayIcon.MouseClick += TrayIcon_MouseClick;
+            _trayIcon.MouseDoubleClick += TrayIcon_MouseDoubleClick;
+        }
+
+        // 显示主窗体
+        private void ShowMainForm()
+        {
+            _allowVisible = true;
             this.Show();
             this.WindowState = FormWindowState.Normal;
             this.Activate();
         }
 
-        private void _trayIcon_DoubleClick(object? sender, EventArgs e)
+        // 退出应用程序
+        private void ExitApplication()
         {
-            ManualRefresh();
-        }
-
-        private void exitToolStripMenuItem_Click(object? sender, EventArgs e)
-        {
+            _allowClose = true;
             this.Close();
         }
 
-        private void UpdateLocalizedTexts()
+        // 托盘图标单击事件
+        private void TrayIcon_MouseClick(object? sender, MouseEventArgs e)
         {
-            this.Text = Localization.GetText("WindowTitle");
-            btnStart.Text = Localization.GetText("Start");
-            btnStop.Text = Localization.GetText("Stop");
-            lblPixelDelta.Text = Localization.GetText("PixelColorDiff");
-            lblPollInterval.Text = Localization.GetText("DetectInterval");
-            lblPollIntervalUnit.Text = Localization.GetText("Milliseconds");
-            lblToggleHotkey.Text = Localization.GetText("ToggleHotkey");
-            btnHelpPixelDelta.Text = Localization.GetText("QuestionMark");
-
-            // 设置帮助按钮为圆形
-            SetCircularButton(btnHelpPixelDelta);
-
-            // 如果快捷键为None，确保显示"click button to set"
-            if (_toggleHotkey == Keys.None)
+            if (e.Button == MouseButtons.Left)
             {
-                txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
+                ShowMainForm();
             }
         }
 
-        private void SetCircularButton(Button button)
+        // 托盘图标双击事件
+        private void TrayIcon_MouseDoubleClick(object? sender, MouseEventArgs e)
         {
-            // 设置圆形区域（宽高相同保持正圆）
-            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
-            path.AddEllipse(0, 0, button.Width, button.Height);
-            button.Region = new Region(path);
+            ShowMainForm();
         }
 
+        // 重写OnResize方法处理最小化到托盘
+        protected override void OnResize(EventArgs e)
+        {
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                // 最小化时隐藏窗体
+                this.Hide();
+                // 显示托盘提示
+                _trayIcon.BalloonTipTitle = Localization.GetText("MinimizedToTrayTitle");
+                _trayIcon.BalloonTipText = Localization.GetText("MinimizedToTrayMessage");
+                _trayIcon.ShowBalloonTip(2000);
+            }
+            base.OnResize(e);
+        }
+
+        // 重写SetVisibleCore方法控制窗体可见性
+        protected override void SetVisibleCore(bool value)
+        {
+            if (!_allowVisible)
+            {
+                value = false;
+                if (!this.IsHandleCreated) CreateHandle();
+            }
+            base.SetVisibleCore(value);
+        }
+
+        // 重写OnFormClosing方法控制窗体关闭
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            // 如果不允许关闭，则取消关闭操作并最小化到托盘
+            if (!_allowClose && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                this.WindowState = FormWindowState.Minimized;
+                return;
+            }
+
             UnregisterToggleHotkey();
             _overlayForm?.HideOverlay();
             _displayChangeTimer?.Stop();
 
             base.OnFormClosing(e);
+        }
+
+        // 退出菜单项点击事件
+        private void exitToolStripMenuItem_Click(object? sender, EventArgs e)
+        {
+            ExitApplication();
         }
 
         private void listBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -1147,6 +1208,41 @@ namespace TbEinkSuperFlushTurbo
         private void lblPollIntervalValue_Click(object sender, EventArgs e)
         {
 
+        }
+
+        // 更新本地化文本
+        private void UpdateLocalizedTexts()
+        {
+            // 更新窗口标题
+            this.Text = Localization.GetText("WindowTitle");
+            
+            // 更新标签文本
+            lblPixelDelta.Text = Localization.GetText("PixelColorDiff");
+            lblPollInterval.Text = Localization.GetText("DetectInterval");
+            lblToggleHotkey.Text = Localization.GetText("ToggleHotkey");
+            lblPollIntervalUnit.Text = Localization.GetText("Milliseconds");
+            btnHelpPixelDelta.Text = Localization.GetText("QuestionMark");
+            
+            // 更新按钮文本
+            btnStart.Text = Localization.GetText("Start");
+            btnStop.Text = Localization.GetText("Stop");
+            
+            // 更新状态标签
+            switch (lblInfo.Text)
+            {
+                case "Status: Stopped":
+                    lblInfo.Text = Localization.GetText("StatusStopped");
+                    break;
+                case "Status: Running":
+                    lblInfo.Text = Localization.GetText("StatusRunning");
+                    break;
+                case "Status: Initializing GPU capture...":
+                    lblInfo.Text = Localization.GetText("StatusInitializing");
+                    break;
+                case "Status: Failed":
+                    lblInfo.Text = Localization.GetText("StatusFailed");
+                    break;
+            }
         }
     }
 }
