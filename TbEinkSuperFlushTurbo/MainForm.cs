@@ -552,8 +552,8 @@ namespace TbEinkSuperFlushTurbo
             IntPtr foregroundWindow = GetForegroundWindow();
             bool isCurrentWindowFocused = (foregroundWindow == this.Handle);
             
-            // 如果是由快捷键触发，或者当前窗口没有焦点，则显示气泡提示
-            bool shouldShowNotification = _isTriggeredByHotkey || !isCurrentWindowFocused;
+             // 只有当当前窗口没有焦点时才显示气泡提示
+            bool shouldShowNotification = !isCurrentWindowFocused;
 
             if (_pollTimer?.Enabled != true)
             {
@@ -1183,29 +1183,21 @@ namespace TbEinkSuperFlushTurbo
         // 重写OnResize方法处理最小化到任务栏
         protected override void OnResize(EventArgs e)
         {
-            // 不再隐藏窗口，而是正常最小化到任务栏
+            // 当窗口最小化时，正常最小化到任务栏
             base.OnResize(e);
-        }
-
-        // 重写SetVisibleCore方法控制窗体可见性
-        protected override void SetVisibleCore(bool value)
-        {
-            if (!_allowVisible)
-            {
-                value = false;
-                if (!this.IsHandleCreated) CreateHandle();
-            }
-            base.SetVisibleCore(value);
         }
 
         // 重写OnFormClosing方法控制窗体关闭
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            // 如果不允许关闭，则取消关闭操作并最小化到任务栏
+            // 区分关闭原因：
+            // 如果是用户点击关闭按钮，则隐藏窗口但不退出程序
+            // 如果是其他原因（如系统关机），则正常退出
             if (!_allowClose && e.CloseReason == CloseReason.UserClosing)
             {
+                // 用户点击关闭按钮[X]，隐藏窗口但保持托盘图标
                 e.Cancel = true;
-                this.WindowState = FormWindowState.Minimized;
+                this.Hide(); // 隐藏窗口而不是最小化
                 return;
             }
 
