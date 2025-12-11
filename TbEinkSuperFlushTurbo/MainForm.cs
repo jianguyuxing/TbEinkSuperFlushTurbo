@@ -1198,6 +1198,12 @@ namespace TbEinkSuperFlushTurbo
                 // 用户点击关闭按钮[X]，隐藏窗口但保持托盘图标
                 e.Cancel = true;
                 this.Hide(); // 隐藏窗口而不是最小化
+                
+                // 显示托盘提示
+                _trayIcon.BalloonTipTitle = Localization.GetText("MinimizedToTrayTitle");
+                _trayIcon.BalloonTipText = Localization.GetText("MinimizedToTrayMessage");
+                _trayIcon.ShowBalloonTip(2000);
+                
                 return;
             }
 
