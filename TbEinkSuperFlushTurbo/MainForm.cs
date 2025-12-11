@@ -1264,7 +1264,7 @@ namespace TbEinkSuperFlushTurbo
                 double refreshRate = _d3d.GetCurrentPrimaryDisplayRefreshRate();
                 if (refreshRate >= 59.0)
                 {
-                    Log($"High refresh rate detected ({refreshRate}Hz), stopping capture.");
+                    Log($"High refresh rate detected ({refreshRate:F2}Hz), stopping capture.");
                     StopCapture();
                 }
             }

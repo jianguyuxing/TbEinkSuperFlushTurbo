@@ -1257,7 +1257,7 @@ namespace TbEinkSuperFlushTurbo
                         // eink屏幕通常有较低的刷新率（低于59Hz）
                         if (refreshRate < 59.0)
                         {
-                            _debugLogger?.Invoke($"低刷新率({refreshRate}Hz)可能为eink屏幕");
+                            _debugLogger?.Invoke($"低刷新率({refreshRate:F2}Hz)可能为eink屏幕");
                             return true;
                         }
                     }
