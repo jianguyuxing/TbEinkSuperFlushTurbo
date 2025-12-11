@@ -842,7 +842,24 @@ namespace TbEinkSuperFlushTurbo
             var btn = sender as Button;
             if (btn == null) return;
 
-            e.Graphics.Clear(btn.BackColor);
+            // 创建圆形区域
+            using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                path.AddEllipse(0, 0, btn.Width - 1, btn.Height - 1);
+                btn.Region = new Region(path);
+            }
+
+            // 绘制圆形背景
+            using (var backgroundBrush = new SolidBrush(btn.BackColor))
+            {
+                e.Graphics.FillEllipse(backgroundBrush, 0, 0, btn.Width - 1, btn.Height - 1);
+            }
+
+            // 绘制黑色边框
+            using (var borderPen = new Pen(Color.Black, 1))
+            {
+                e.Graphics.DrawEllipse(borderPen, 0, 0, btn.Width - 1, btn.Height - 1);
+            }
 
             using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
             using (var brush = new SolidBrush(btn.BackColor == Color.FromArgb(135, 206, 235) ? Color.White : btn.ForeColor))
