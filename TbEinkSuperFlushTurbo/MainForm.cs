@@ -403,12 +403,77 @@ namespace TbEinkSuperFlushTurbo
                     return scale;
                 }
 
-                // 方法3: 使用Graphics对象检测
+                // 方法3: 尝试获取指定显示器的DPI设置
+                try
+                {
+                    // 获取所有显示器信息
+                    var allScreens = Screen.AllScreens;
+                    Log($"DPI检测: 总共检测到 {allScreens.Length} 个显示器");
+                    
+                    // 检查目标显示器索引是否有效
+                    if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
+                    {
+                        var targetScreen = allScreens[_targetScreenIndex];
+                        Log($"DPI检测: 尝试获取显示器 [{_targetScreenIndex}] 的DPI设置");
+                        
+                        // 尝试为特定显示器创建Graphics对象以获取其DPI
+                        try
+                        {
+                            // 获取显示器的边界矩形
+                            var bounds = targetScreen.Bounds;
+                            Log($"DPI检测: 显示器 [{_targetScreenIndex}] 边界 = ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
+                            
+                            // 创建临时窗口句柄来获取该显示器的DPI
+                            var tempHwnd = NativeMethods.CreateWindowEx(
+                                0, "STATIC", "", 0,
+                                bounds.Left, bounds.Top, 1, 1,
+                                IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+                            
+                            if (tempHwnd != IntPtr.Zero)
+                            {
+                                try
+                                {
+                                    using (var graphics = Graphics.FromHwnd(tempHwnd))
+                                    {
+                                        float dpiX = graphics.DpiX;
+                                        float scale = dpiX / 96f;
+                                        Log($"DPI检测: 成功获取显示器 [{_targetScreenIndex}] DPI = {dpiX}, Scale = {scale:F2}");
+                                        return scale;
+                                    }
+                                }
+                                finally
+                                {
+                                    NativeMethods.DestroyWindow(tempHwnd);
+                                }
+                            }
+                            else
+                            {
+                                Log($"DPI检测: 无法为显示器 [{_targetScreenIndex}] 创建临时窗口句柄");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log($"DPI检测: 获取显示器 [{_targetScreenIndex}] DPI时发生异常: {ex.Message}");
+                            // 如果无法获取特定DPI，继续使用系统DPI
+                        }
+                    }
+                    else
+                    {
+                        Log($"DPI检测: 目标显示器索引 {_targetScreenIndex} 超出范围 [0-{allScreens.Length-1}]");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"DPI检测: 枚举显示器信息时发生异常: {ex.Message}");
+                    // 如果无法获取特定显示器的DPI，继续使用系统DPI
+                }
+
+                // 方法4: 使用Graphics对象检测主显示器DPI
                 using (Graphics graphics = Graphics.FromHwnd(IntPtr.Zero))
                 {
                     float dpiX = graphics.DpiX;
                     float scale = dpiX / 96f;
-                    Log($"DPI检测: Graphics DPI = {dpiX}, Scale = {scale:F2}");
+                    Log($"DPI检测: 使用主显示器DPI = {dpiX}, Scale = {scale:F2}");
                     return scale;
                 }
             }
@@ -461,7 +526,76 @@ namespace TbEinkSuperFlushTurbo
 
         private float GetDpiScale()
         {
-            return GetDpiForWindow(this.Handle) / 96f;
+            // 尝试获取指定显示器的DPI设置
+            try
+            {
+                // 获取所有显示器信息
+                var allScreens = Screen.AllScreens;
+                Log($"GetDpiScale: 总共检测到 {allScreens.Length} 个显示器");
+                
+                // 检查目标显示器索引是否有效
+                if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
+                {
+                    var targetScreen = allScreens[_targetScreenIndex];
+                    Log($"GetDpiScale: 尝试获取显示器 [{_targetScreenIndex}] 的DPI设置");
+                    
+                    // 尝试为特定显示器创建Graphics对象以获取其DPI
+                    try
+                    {
+                        // 获取显示器的边界矩形
+                        var bounds = targetScreen.Bounds;
+                        Log($"GetDpiScale: 显示器 [{_targetScreenIndex}] 边界 = ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
+                        
+                        // 创建临时窗口句柄来获取该显示器的DPI
+                        var tempHwnd = NativeMethods.CreateWindowEx(
+                            0, "STATIC", "", 0,
+                            bounds.Left, bounds.Top, 1, 1,
+                            IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+                        
+                        if (tempHwnd != IntPtr.Zero)
+                        {
+                            try
+                            {
+                                using (var graphics = Graphics.FromHwnd(tempHwnd))
+                                {
+                                    float dpiX = graphics.DpiX;
+                                    float scale = dpiX / 96f;
+                                    Log($"GetDpiScale: 成功获取显示器 [{_targetScreenIndex}] DPI = {dpiX}, Scale = {scale:F2}");
+                                    return scale;
+                                }
+                            }
+                            finally
+                            {
+                                NativeMethods.DestroyWindow(tempHwnd);
+                            }
+                        }
+                        else
+                        {
+                            Log($"GetDpiScale: 无法为显示器 [{_targetScreenIndex}] 创建临时窗口句柄");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"GetDpiScale: 获取显示器 [{_targetScreenIndex}] DPI时发生异常: {ex.Message}");
+                        // 如果无法获取特定DPI，继续使用窗口DPI
+                    }
+                }
+                else
+                {
+                    Log($"GetDpiScale: 目标显示器索引 {_targetScreenIndex} 超出范围 [0-{allScreens.Length-1}]");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"GetDpiScale: 枚举显示器信息时发生异常: {ex.Message}");
+                // 如果无法获取特定显示器的DPI，继续使用窗口DPI
+            }
+            
+            // 回退到原来的实现
+            uint windowDpi = GetDpiForWindow(this.Handle);
+            float fallbackScale = windowDpi / 96f;
+            Log($"GetDpiScale: 回退到窗口DPI = {windowDpi}, Scale = {fallbackScale:F2}");
+            return fallbackScale;
         }
 
         private string FormatShortcut(Keys keys)

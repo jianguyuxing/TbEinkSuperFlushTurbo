@@ -80,6 +80,9 @@ namespace TbEinkSuperFlushTurbo
         private float _dpiX = 96.0f;
         private float _dpiY = 96.0f;
         
+        // 选定显示器的索引
+        private int _targetScreenIndex = 0;
+        
         // 屏幕纹理
         private ID3D11Texture2D? _gpuTexCurr;
         private ID3D11Texture2D? _gpuTexPrev;
@@ -133,7 +136,6 @@ namespace TbEinkSuperFlushTurbo
         private bool _useGdiCapture = false; // 是否使用GDI+捕获
         private bool _isEinkScreen = false; // 是否为eink屏幕
         private bool _forceDirectXCapture; // 是否强制使用DirectX捕获（从MainForm传入）
-        private int _targetScreenIndex = 0; // 目标屏幕索引（从MainForm传入）
         private double _detectedRefreshRate = 60.0; // 检测到的刷新率
         private Bitmap? _gdiBitmap; // GDI+位图用于屏幕捕获
         private Graphics? _gdiGraphics; // GDI+图形对象
@@ -183,7 +185,7 @@ namespace TbEinkSuperFlushTurbo
             Console.WriteLine("=== D3DCaptureAndCompute Constructor Started ===");
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
 
-            // 检测系统DPI设置
+            // 检测系统DPI设置（根据选择的显示器）
             DetectSystemDpiSettings();
             
             // 创建独立的日志文件用于调试
@@ -268,6 +270,13 @@ namespace TbEinkSuperFlushTurbo
                         int height = outputDesc.DesktopCoordinates.Bottom - outputDesc.DesktopCoordinates.Top;
                         _debugLogger?.Invoke($"DEBUG: Output {i}: Name='{outputDesc.DeviceName}', Physical Resolution: {width}x{height}");
                         
+                        // 获取显示器友好名称
+                        string friendlyName = GetFriendlyDisplayName(outputDesc.DeviceName);
+                        if (!string.IsNullOrEmpty(friendlyName))
+                        {
+                            _debugLogger?.Invoke($"DEBUG: Output {i}: Friendly Name='{friendlyName}'");
+                        }
+                        
                         // 计算逻辑分辨率（如果适用）
                         float logicalWidth = width / _dpiScaleX;
                         float logicalHeight = height / _dpiScaleY;
@@ -285,10 +294,9 @@ namespace TbEinkSuperFlushTurbo
                             }
                             _debugLogger?.Invoke("Successfully got " + modeCount.ToString() + " display modes for output " + i.ToString());
                             
-                            modeCount = Math.Min(5, modeCount);
-                            for (int j = 0; j < modeCount; j++)
+                            // 打印所有显示模式而不是仅仅前5个
+                            foreach (var mode in displayModeList)
                             {
-                                var mode = displayModeList[j];
                                 double refreshRate = (double)mode.RefreshRate.Numerator / mode.RefreshRate.Denominator;
                                 _debugLogger?.Invoke($"DEBUG:   Mode: {mode.Width}x{mode.Height}@{refreshRate:F2}Hz, Format:{mode.Format}");
                             }
@@ -299,6 +307,7 @@ namespace TbEinkSuperFlushTurbo
                             _debugLogger?.Invoke($"Exception HRESULT: 0x{ex.HResult:X8}");
                             _debugLogger?.Invoke($"Exception StackTrace: {ex.StackTrace}");
                         }
+
                     }
                     catch (Exception ex)
                     {
@@ -1109,34 +1118,68 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                using (var graphics = Graphics.FromHwnd(IntPtr.Zero))
+                // 尝试获取指定显示器的DPI设置
+                float dpiX = 96.0f, dpiY = 96.0f;
+                
+                // 获取所有显示器信息
+                var allScreens = System.Windows.Forms.Screen.AllScreens;
+                
+                // 检查目标显示器索引是否有效
+                if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
                 {
-                    _dpiX = graphics.DpiX;
-                    _dpiY = graphics.DpiY;
-                    _dpiScaleX = _dpiX / 96.0f;
-                    _dpiScaleY = _dpiY / 96.0f;
+                    var targetScreen = allScreens[_targetScreenIndex];
+                    
+                    // 尝试为特定显示器创建Graphics对象以获取其DPI
+                    try
+                    {
+                        // 获取显示器的边界矩形
+                        var bounds = targetScreen.Bounds;
+                        
+                        // 创建临时窗口句柄来获取该显示器的DPI
+                        var tempHwnd = NativeMethods.CreateWindowEx(
+                            0, "STATIC", "", 0,
+                            bounds.Left, bounds.Top, 1, 1,
+                            IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+                        
+                        if (tempHwnd != IntPtr.Zero)
+                        {
+                            try
+                            {
+                                using (var graphics = Graphics.FromHwnd(tempHwnd))
+                                {
+                                    dpiX = graphics.DpiX;
+                                    dpiY = graphics.DpiY;
+                                }
+                            }
+                            finally
+                            {
+                                NativeMethods.DestroyWindow(tempHwnd);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // 如果无法获取特定DPI，使用主显示器DPI
+                    }
                 }
                 
-                _debugLogger?.Invoke($"系统DPI设置: {_dpiX}x{_dpiY}");
+                // 如果未能获取到特定显示器的DPI，则使用主显示器的DPI
+                if (dpiX == 96.0f && dpiY == 96.0f)
+                {
+                    using (var graphics = Graphics.FromHwnd(IntPtr.Zero))
+                    {
+                        dpiX = graphics.DpiX;
+                        dpiY = graphics.DpiY;
+                    }
+                }
+                
+                _dpiX = dpiX;
+                _dpiY = dpiY;
+                _dpiScaleX = _dpiX / 96.0f;
+                _dpiScaleY = _dpiY / 96.0f;
+                
+                _debugLogger?.Invoke($"显示器 {_targetScreenIndex} DPI设置: {_dpiX}x{_dpiY}");
                 _debugLogger?.Invoke($"DPI缩放比例: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
-                
-                // 特殊处理常见的DPI设置
-                if (Math.Abs(_dpiScaleX - 2.5f) < 0.01f)
-                {
-                    _debugLogger?.Invoke("检测到250%缩放，将使用物理坐标进行屏幕捕获");
-                }
-                else if (Math.Abs(_dpiScaleX - 2.0f) < 0.01f)
-                {
-                    _debugLogger?.Invoke("检测到200%缩放，将使用物理坐标进行屏幕捕获");
-                }
-                else if (Math.Abs(_dpiScaleX - 1.5f) < 0.01f)
-                {
-                    _debugLogger?.Invoke("检测到150%缩放，将使用物理坐标进行屏幕捕获");
-                }
-                else if (Math.Abs(_dpiScaleX - 1.25f) < 0.01f)
-                {
-                    _debugLogger?.Invoke("检测到125%缩放，将使用物理坐标进行屏幕捕获");
-                }
             }
             catch (Exception ex)
             {
@@ -1180,6 +1223,13 @@ namespace TbEinkSuperFlushTurbo
                 
                 var desc = output.Description;
                 string deviceName = desc.DeviceName.ToLower();
+                
+                // 获取显示器友好名称
+                string friendlyName = GetFriendlyDisplayName(desc.DeviceName);
+                if (!string.IsNullOrEmpty(friendlyName))
+                {
+                    _debugLogger?.Invoke($"显示器友好名称: '{friendlyName}'");
+                }
                 
                 // 检测设备名称中的eink关键词
                 bool isEink = deviceName.Contains("eink") || deviceName.Contains("e-ink") || 
@@ -1227,12 +1277,36 @@ namespace TbEinkSuperFlushTurbo
             }
         }
         
-        private bool InitializeGdiCapture(IDXGIOutput output)
+        // 获取显示器的友好名称
+        private string GetFriendlyDisplayName(string deviceName)
         {
             try
             {
+                NativeMethods.DISPLAY_DEVICE deviceInfo = new NativeMethods.DISPLAY_DEVICE();
+                deviceInfo.cb = Marshal.SizeOf(deviceInfo);
+
+                // 尝试获取显示器设备信息
+                if (NativeMethods.EnumDisplayDevices(deviceName, 0, ref deviceInfo, 0))
+                {
+                    // 如果获取成功，返回设备字符串（通常是友好名称）
+                    return deviceInfo.DeviceString;
+                }
+            }
+            catch (Exception ex)
+            {
+                _debugLogger?.Invoke($"获取显示器友好名称失败: {ex.Message}");
+            }
+
+            // 如果无法获取友好名称，返回空字符串
+            return string.Empty;
+        }
+
+      private bool InitializeGdiCapture(IDXGIOutput output)
+      {
+            try
+            {
                 _debugLogger?.Invoke("初始化GDI+屏幕捕获...");
-                
+
                 var desc = output.Description;
                 var dxgiBounds = new Rectangle(
                     desc.DesktopCoordinates.Left,
@@ -1240,7 +1314,6 @@ namespace TbEinkSuperFlushTurbo
                     desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left,
                     desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top
                 );
-                
                 // 使用正确的屏幕边界（DXGI已返回物理分辨率）
                 _screenBounds = GetCorrectScreenBounds(dxgiBounds);
                 
@@ -1268,7 +1341,7 @@ namespace TbEinkSuperFlushTurbo
                 _debugLogger?.Invoke($"异常详情: {ex}");
                 return false;
             }
-        }
+       }
         
         private async Task<bool> CaptureScreenWithGdiAsync()
         {
