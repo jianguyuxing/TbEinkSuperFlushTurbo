@@ -67,7 +67,7 @@ namespace TbEinkSuperFlushTurbo
         }
         // 快捷键相关字段
         private const int TOGGLE_HOTKEY_ID = 9001;
-        private Keys _toggleHotkey = Keys.F6; // 默认快捷键
+        private Keys _toggleHotkey = Keys.None; // 默认无快捷键
         private bool _isRecordingHotkey = false;
         private bool _isHotkeyRegistered = false;
         // 显示器选择相关字段
@@ -262,14 +262,14 @@ namespace TbEinkSuperFlushTurbo
                     }
                     else
                     {
-                        _toggleHotkey = Keys.F6;
+                        _toggleHotkey = Keys.None;
                     }
                 }
             }
             catch (Exception ex)
             {
                 Log($"Failed to load config: {ex.Message}");
-                _toggleHotkey = Keys.F6;
+                _toggleHotkey = Keys.None;
             }
         }
 
