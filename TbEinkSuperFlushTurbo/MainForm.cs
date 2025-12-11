@@ -149,37 +149,31 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                string configPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
-                if (File.Exists(configPath))
+                // 先尝试加载新的JSON格式配置文件
+                string configJsonPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+                if (File.Exists(configJsonPath))
                 {
-                    string[] lines = File.ReadAllLines(configPath);
-                    if (lines.Length >= 1 && int.TryParse(lines[0], out int savedPixelDelta))
-                    {
-                        _pixelDelta = Math.Max(2, Math.Min(25, savedPixelDelta));
-                    }
-                    if (lines.Length >= 2 && int.TryParse(lines[1], out int savedPollInterval))
-                    {
-                        _pollInterval = Math.Max(200, Math.Min(5000, savedPollInterval));
-                    }
-                    if (lines.Length >= 3 && int.TryParse(lines[2], out int savedTileSize))
-                    {
-                        _tileSize = Math.Max(8, Math.Min(64, savedTileSize));
-                    }
-                    // 加载显示器索引配置
-                    if (lines.Length >= 4 && int.TryParse(lines[3], out int savedScreenIndex))
-                    {
-                        _targetScreenIndex = savedScreenIndex;
-                    }
-                }
-
-                // 加载快捷键配置
-                string hotkeyConfigPath = Path.Combine(AppContext.BaseDirectory, "hotkey.json");
-                if (File.Exists(hotkeyConfigPath))
-                {
-                    string json = File.ReadAllText(hotkeyConfigPath);
+                    string json = File.ReadAllText(configJsonPath);
                     using JsonDocument doc = JsonDocument.Parse(json);
                     JsonElement root = doc.RootElement;
 
+                    if (root.TryGetProperty("PixelDelta", out JsonElement pixelDeltaElement))
+                    {
+                        _pixelDelta = Math.Max(2, Math.Min(25, pixelDeltaElement.GetInt32()));
+                    }
+                    if (root.TryGetProperty("PollInterval", out JsonElement pollIntervalElement))
+                    {
+                        _pollInterval = Math.Max(200, Math.Min(5000, pollIntervalElement.GetInt32()));
+                    }
+                    if (root.TryGetProperty("TileSize", out JsonElement tileSizeElement))
+                    {
+                        _tileSize = Math.Max(8, Math.Min(64, tileSizeElement.GetInt32()));
+                    }
+                    if (root.TryGetProperty("ScreenIndex", out JsonElement screenIndexElement))
+                    {
+                        _targetScreenIndex = screenIndexElement.GetInt32();
+                    }
+                    // 加载快捷键配置
                     if (root.TryGetProperty("ToggleHotkey", out JsonElement hotkeyElement))
                     {
                         _toggleHotkey = (Keys)hotkeyElement.GetInt32();
@@ -187,7 +181,47 @@ namespace TbEinkSuperFlushTurbo
                 }
                 else
                 {
-                    _toggleHotkey = Keys.F6;
+                    // 如果不存在JSON配置文件，则尝试加载旧的文本格式配置文件
+                    string configTxtPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
+                    if (File.Exists(configTxtPath))
+                    {
+                        string[] lines = File.ReadAllLines(configTxtPath);
+                        if (lines.Length >= 1 && int.TryParse(lines[0], out int savedPixelDelta))
+                        {
+                            _pixelDelta = Math.Max(2, Math.Min(25, savedPixelDelta));
+                        }
+                        if (lines.Length >= 2 && int.TryParse(lines[1], out int savedPollInterval))
+                        {
+                            _pollInterval = Math.Max(200, Math.Min(5000, savedPollInterval));
+                        }
+                        if (lines.Length >= 3 && int.TryParse(lines[2], out int savedTileSize))
+                        {
+                            _tileSize = Math.Max(8, Math.Min(64, savedTileSize));
+                        }
+                        // 加载显示器索引配置
+                        if (lines.Length >= 4 && int.TryParse(lines[3], out int savedScreenIndex))
+                        {
+                            _targetScreenIndex = savedScreenIndex;
+                        }
+                    }
+                    
+                    // 加载快捷键配置（旧方式）
+                    string hotkeyConfigPath = Path.Combine(AppContext.BaseDirectory, "hotkey.json");
+                    if (File.Exists(hotkeyConfigPath))
+                    {
+                        string json = File.ReadAllText(hotkeyConfigPath);
+                        using JsonDocument doc = JsonDocument.Parse(json);
+                        JsonElement root = doc.RootElement;
+
+                        if (root.TryGetProperty("ToggleHotkey", out JsonElement hotkeyElement))
+                        {
+                            _toggleHotkey = (Keys)hotkeyElement.GetInt32();
+                        }
+                    }
+                    else
+                    {
+                        _toggleHotkey = Keys.F6;
+                    }
                 }
             }
             catch (Exception ex)
@@ -201,20 +235,19 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                string configPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
-                string[] lines = { _pixelDelta.ToString(), _pollInterval.ToString(), _tileSize.ToString(), _targetScreenIndex.ToString() };
-                File.WriteAllLines(configPath, lines);
-                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}, SCREEN_INDEX={_targetScreenIndex}");
-
-                // 保存快捷键配置
-                string hotkeyConfigPath = Path.Combine(AppContext.BaseDirectory, "hotkey.json");
-                var hotkeyConfig = new
+                // 保存为新的JSON格式配置文件（包含所有配置）
+                string configJsonPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+                var config = new
                 {
+                    PixelDelta = _pixelDelta,
+                    PollInterval = _pollInterval,
+                    TileSize = _tileSize,
+                    ScreenIndex = _targetScreenIndex,
                     ToggleHotkey = (int)_toggleHotkey
                 };
-                string json = JsonSerializer.Serialize(hotkeyConfig, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(hotkeyConfigPath, json);
-                Log($"Saved hotkey config: {FormatShortcut(_toggleHotkey)}");
+                string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(configJsonPath, json);
+                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}, SCREEN_INDEX={_targetScreenIndex}, HOTKEY={(int)_toggleHotkey}");
             }
             catch (Exception ex)
             {

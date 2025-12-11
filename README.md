@@ -83,6 +83,29 @@ TbEinkSuperFlushTurbo 是一款专为电子墨水屏设备设计的智能残影�
 - 可自定义检测参数（图块大小、阈值等）
 - 支持日志级别调整
 
+### 配置文件说明
+
+应用程序使用一个配置文件，存储在应用程序目录中：
+
+1. `config.json` - 包含所有应用程序设置：
+   ```json
+   {
+     "PixelDelta": 10,
+     "PollInterval": 500,
+     "TileSize": 8,
+     "ScreenIndex": 0,
+     "ToggleHotkey": 117
+   }
+   ```
+   参数说明：
+   - `PixelDelta`：像素颜色差异敏感度阈值（2-25）
+   - `PollInterval`：屏幕捕获间隔（毫秒）（200-5000）
+   - `TileSize`：检测区块大小（像素）（8-64）
+   - `ScreenIndex`：多显示器设置中的目标显示器索引（0为主显示器）
+   - `ToggleHotkey`：切换快捷键的虚拟键码（117 = F6）
+
+如果此文件不存在，应用程序会在首次运行时创建带有默认值的配置文件。
+
 ## 系统要求
 
 - **操作系统**：Windows 10 或更高版本

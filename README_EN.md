@@ -89,6 +89,29 @@ This algorithm fully leverages GPU parallel computing power to achieve high proc
 - Customizable detection parameters (tile size, thresholds, etc.)
 - Adjustable log levels
 
+### Configuration Files
+
+The application uses a configuration file stored in the application directory:
+
+1. `config.json` - Contains all application settings:
+   ```json
+   {
+     "PixelDelta": 10,
+     "PollInterval": 500,
+     "TileSize": 8,
+     "ScreenIndex": 0,
+     "ToggleHotkey": 117
+   }
+   ```
+   Where:
+   - `PixelDelta`: Sensitivity threshold for pixel color differences (2-25)
+   - `PollInterval`: Screen capture interval in milliseconds (200-5000)
+   - `TileSize`: Size of detection blocks in pixels (8-64)
+   - `ScreenIndex`: Target monitor index for multi-monitor setups (0 for primary)
+   - `ToggleHotkey`: Virtual key code for the toggle hotkey (117 = F6)
+
+If this file doesn't exist, the application will create it with default values on first run.
+
 ## System Requirements
 
 - **Operating System**: Windows 10 or higher
