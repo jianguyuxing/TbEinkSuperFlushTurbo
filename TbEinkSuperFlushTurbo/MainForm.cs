@@ -607,7 +607,16 @@ namespace TbEinkSuperFlushTurbo
             lblPixelDeltaValue.Text = _pixelDelta.ToString();
             trackPollInterval.Value = _pollInterval;
             lblPollIntervalValue.Text = _pollInterval.ToString();
-            txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+            
+            // 如果没有设置快捷键，显示提示文本
+            if (_toggleHotkey == Keys.None)
+            {
+                txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
+            }
+            else
+            {
+                txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
+            }
 
             // 设置初始按钮状态
             lblInfo.Text = Localization.GetText("StatusStopped");

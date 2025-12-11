@@ -180,7 +180,7 @@ namespace TbEinkSuperFlushTurbo
             lblToggleHotkey.Name = "lblToggleHotkey";
             lblToggleHotkey.Size = new Size(186, 50);
             lblToggleHotkey.TabIndex = 10;
-            lblToggleHotkey.Text = "Toggle Hotkey";
+            lblToggleHotkey.Text = "Toggle Switch Hotkey";
             lblToggleHotkey.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // txtToggleHotkey

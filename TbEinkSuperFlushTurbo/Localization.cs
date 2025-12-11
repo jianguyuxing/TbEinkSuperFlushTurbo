@@ -57,9 +57,9 @@ namespace TbEinkSuperFlushTurbo
             
             ["ToggleHotkey"] = new()
             {
-                [Language.English] = "Toggle Status Hotkey:",
-                [Language.ChineseSimplified] = "切换运行状态快捷键：",
-                [Language.ChineseTraditional] = "切換運行狀態快捷鍵："
+                [Language.English] = "Toggle Switch Hotkey:",
+                [Language.ChineseSimplified] = "切换开关快捷键：",
+                [Language.ChineseTraditional] = "切換開關快捷鍵："
             },
             
             // 单位
