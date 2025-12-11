@@ -87,6 +87,8 @@ namespace TbEinkSuperFlushTurbo
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
         [DllImport("user32.dll")]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
 
         private const int CARET_CHECK_INTERVAL = 400;
         private const int IME_CHECK_INTERVAL = 400;
@@ -105,6 +107,9 @@ namespace TbEinkSuperFlushTurbo
         // 托盘图标相关字段
         private bool _allowVisible = true;     // 允许窗体显示
         private bool _allowClose = false;      // 允许窗体关闭
+        
+        // 快捷键触发提示相关字段
+        private bool _isTriggeredByHotkey = false; // 是否由快捷键触发
 
         public MainForm()
         {
@@ -357,7 +362,9 @@ namespace TbEinkSuperFlushTurbo
                 // 全局快捷键触发（仅在非录制状态下响应）
                 if (!_isRecordingHotkey)
                 {
+                    _isTriggeredByHotkey = true;
                     ToggleCaptureState();
+                    _isTriggeredByHotkey = false;
                 }
                 return;
             }
@@ -541,14 +548,39 @@ namespace TbEinkSuperFlushTurbo
 
         private void ToggleCaptureState()
         {
-            if (_pollTimer?.Enabled == true)
+            // 检查当前焦点窗口
+            IntPtr foregroundWindow = GetForegroundWindow();
+            bool isCurrentWindowFocused = (foregroundWindow == this.Handle);
+            
+            // 如果是由快捷键触发，或者当前窗口没有焦点，则显示气泡提示
+            bool shouldShowNotification = _isTriggeredByHotkey || !isCurrentWindowFocused;
+
+            if (_pollTimer?.Enabled != true)
             {
-                btnStop?.PerformClick();
+                // 启动捕获
+                if (shouldShowNotification)
+                {
+                    ShowNotification(Localization.GetText("CaptureStartedTitle"), Localization.GetText("CaptureStartedMessage"));
+                }
+                btnStart.PerformClick();
             }
             else
             {
-                btnStart?.PerformClick();
+                // 停止捕获
+                if (shouldShowNotification)
+                {
+                    ShowNotification(Localization.GetText("CaptureStoppedTitle"), Localization.GetText("CaptureStoppedMessage"));
+                }
+                btnStop.PerformClick();
             }
+        }
+
+        // 显示托盘通知
+        private void ShowNotification(string title, string message)
+        {
+            _trayIcon.BalloonTipTitle = title;
+            _trayIcon.BalloonTipText = message;
+            _trayIcon.ShowBalloonTip(2000);
         }
 
         private void UpdateAdaptiveLayout()

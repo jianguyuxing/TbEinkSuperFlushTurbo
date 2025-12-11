@@ -165,6 +165,35 @@ namespace TbEinkSuperFlushTurbo
                 [Language.English] = "The application has been minimized to the system tray. You can restore it by clicking the tray icon.",
                 [Language.ChineseSimplified] = "程序已最小化到系统托盘。您可以通过点击托盘图标来恢复它。",
                 [Language.ChineseTraditional] = "程式已最小化到系統托盤。您可以通過點擊托盤圖標來恢復它。"
+            },
+            
+            // 捕获状态提示信息
+            ["CaptureStartedTitle"] = new()
+            {
+                [Language.English] = "Capture Started",
+                [Language.ChineseSimplified] = "捕获已开始",
+                [Language.ChineseTraditional] = "捕獲已開始"
+            },
+            
+            ["CaptureStartedMessage"] = new()
+            {
+                [Language.English] = "Screen capture has started.",
+                [Language.ChineseSimplified] = "屏幕捕获已开始。",
+                [Language.ChineseTraditional] = "螢幕捕獲已開始。"
+            },
+            
+            ["CaptureStoppedTitle"] = new()
+            {
+                [Language.English] = "Capture Stopped",
+                [Language.ChineseSimplified] = "捕获已停止",
+                [Language.ChineseTraditional] = "捕獲已停止"
+            },
+            
+            ["CaptureStoppedMessage"] = new()
+            {
+                [Language.English] = "Screen capture has stopped.",
+                [Language.ChineseSimplified] = "屏幕捕获已停止。",
+                [Language.ChineseTraditional] = "螢幕捕獲已停止。"
             }
         };
 
