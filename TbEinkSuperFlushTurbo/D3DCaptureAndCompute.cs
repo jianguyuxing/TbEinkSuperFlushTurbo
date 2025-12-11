@@ -264,8 +264,15 @@ namespace TbEinkSuperFlushTurbo
                     try
                     {
                         var outputDesc = output.Description;
-                        _debugLogger?.Invoke($"DEBUG: Output {i}: Name='{outputDesc.DeviceName}', W:{outputDesc.DesktopCoordinates.Right - outputDesc.DesktopCoordinates.Left}, H:{outputDesc.DesktopCoordinates.Bottom - outputDesc.DesktopCoordinates.Top}");
+                        int width = outputDesc.DesktopCoordinates.Right - outputDesc.DesktopCoordinates.Left;
+                        int height = outputDesc.DesktopCoordinates.Bottom - outputDesc.DesktopCoordinates.Top;
+                        _debugLogger?.Invoke($"DEBUG: Output {i}: Name='{outputDesc.DeviceName}', Physical Resolution: {width}x{height}");
                         
+                        // 计算逻辑分辨率（如果适用）
+                        float logicalWidth = width / _dpiScaleX;
+                        float logicalHeight = height / _dpiScaleY;
+                        _debugLogger?.Invoke($"DEBUG: Output {i}: Logical Resolution (approx): {logicalWidth:F0}x{logicalHeight:F0} (based on DPI scale {_dpiScaleX:F2}x{_dpiScaleY:F2})");
+
                         // 尝试获取显示模式列表，但要处理可能的失败
                         try
                         {
@@ -282,13 +289,15 @@ namespace TbEinkSuperFlushTurbo
                             for (int j = 0; j < modeCount; j++)
                             {
                                 var mode = displayModeList[j];
-                                _debugLogger?.Invoke("DEBUG:   Mode: " + mode.Width.ToString() + "x" + mode.Height.ToString() + "@" + mode.RefreshRate.Numerator.ToString() + "/" + mode.RefreshRate.Denominator.ToString() + "Hz, Format:" + mode.Format.ToString());
+                                double refreshRate = (double)mode.RefreshRate.Numerator / mode.RefreshRate.Denominator;
+                                _debugLogger?.Invoke($"DEBUG:   Mode: {mode.Width}x{mode.Height}@{refreshRate:F2}Hz, Format:{mode.Format}");
                             }
                         }
                         catch (Exception ex)
                         {
-                            _debugLogger?.Invoke($"DEBUG: Failed to get display mode list for output {i}: {ex.GetType().Name}: {ex.Message}");
-                            _debugLogger?.Invoke($"DEBUG: Exception HRESULT: 0x{ex.HResult:X8}");
+                            _debugLogger?.Invoke($"Exception during GetDisplayModeList for output {i}: {ex.GetType().Name}: {ex.Message}");
+                            _debugLogger?.Invoke($"Exception HRESULT: 0x{ex.HResult:X8}");
+                            _debugLogger?.Invoke($"Exception StackTrace: {ex.StackTrace}");
                         }
                     }
                     catch (Exception ex)
@@ -1192,7 +1201,8 @@ namespace TbEinkSuperFlushTurbo
                         double refreshRate = (double)primaryMode.RefreshRate.Numerator / primaryMode.RefreshRate.Denominator;
                         _detectedRefreshRate = refreshRate;
                         
-                        _debugLogger?.Invoke($"检测到刷新率: {refreshRate}Hz");
+                        _debugLogger?.Invoke($"检测到刷新率: {refreshRate:F2}Hz");
+                        _debugLogger?.Invoke($"物理分辨率: {desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left}x{desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top}");
                         
                         // eink屏幕通常有较低的刷新率（低于59Hz）
                         if (refreshRate < 59.0)
@@ -1421,7 +1431,8 @@ namespace TbEinkSuperFlushTurbo
                 {
                     // 尝试使用第一个支持的显示模式
                     var mode = displayModeList[0];
-                    _debugLogger?.Invoke($"尝试显示模式: {mode.Width}x{mode.Height}@{mode.RefreshRate.Numerator}/{mode.RefreshRate.Denominator}Hz");
+                    double refreshRate = (double)mode.RefreshRate.Numerator / mode.RefreshRate.Denominator;
+                    _debugLogger?.Invoke($"尝试显示模式: {mode.Width}x{mode.Height}@{refreshRate:F2}Hz");
                     
                     // 这里可以添加更多显示模式尝试逻辑
                     return false; // 暂时返回false，继续尝试其他方法
