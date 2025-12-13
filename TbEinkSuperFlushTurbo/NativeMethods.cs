@@ -200,6 +200,10 @@ namespace TbEinkSuperFlushTurbo
         [DllImport("shcore.dll", SetLastError = true)]
         public static extern int GetDpiForMonitor(IntPtr hmonitor, MONITOR_DPI_TYPE dpiType, out uint dpiX, out uint dpiY);
 
+        // Win10+ 新的DPI检测API，支持更多DPI类型
+        [DllImport("shcore.dll", SetLastError = true)]
+        public static extern int GetDpiForMonitorV2(IntPtr hmonitor, MONITOR_DPI_TYPE dpiType, out uint dpiX, out uint dpiY);
+
         // DEVMODE fields constants
         public const int DM_PELSWIDTH = 0x00080000;
         public const int DM_PELSHEIGHT = 0x00100000;

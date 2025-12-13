@@ -1163,7 +1163,7 @@ namespace TbEinkSuperFlushTurbo
                     _debugLogger?.Invoke($"尝试获取显示器 {_targetScreenIndex} ({targetScreen.DeviceName}) 的DPI设置");
                     _debugLogger?.Invoke($"显示器边界: {targetScreen.Bounds}");
                     
-                    // 方法1: 使用GetDpiForMonitor API获取准确的显示器DPI
+                    // 方法1: 使用Win10+的GetDpiForMonitorV2 API获取准确的显示器DPI（首选方法）
                     try
                     {
                         var bounds = targetScreen.Bounds;
@@ -1175,17 +1175,17 @@ namespace TbEinkSuperFlushTurbo
                         if (hMonitor != IntPtr.Zero)
                         {
                             uint monitorDpiX, monitorDpiY;
-                            int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out monitorDpiX, out monitorDpiY);
+                            int result = NativeMethods.GetDpiForMonitorV2(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out monitorDpiX, out monitorDpiY);
                             
                             if (result == 0) // S_OK
                             {
                                 dpiX = monitorDpiX;
                                 dpiY = monitorDpiY;
-                                _debugLogger?.Invoke($"方法1成功: GetDpiForMonitor 返回 DPI {dpiX}x{dpiY}");
+                                _debugLogger?.Invoke($"方法1成功: GetDpiForMonitorV2 返回 DPI {dpiX}x{dpiY}");
                             }
                             else
                             {
-                                _debugLogger?.Invoke($"方法1: GetDpiForMonitor 失败，错误码: 0x{result:X8}");
+                                _debugLogger?.Invoke($"方法1: GetDpiForMonitorV2 失败，错误码: 0x{result:X8}，将尝试备用方法");
                             }
                         }
                         else
@@ -1195,10 +1195,49 @@ namespace TbEinkSuperFlushTurbo
                     }
                     catch (Exception ex)
                     {
-                        _debugLogger?.Invoke($"方法1失败: {ex.Message}");
+                        _debugLogger?.Invoke($"方法1失败: {ex.Message}，将尝试备用方法");
                     }
                     
-                    // 方法2: 如果方法1失败，尝试为特定显示器创建Graphics对象以获取其DPI
+                    // 方法2: 如果方法1失败，使用GetDpiForMonitor作为备用方法
+                    if (dpiX == 96.0f && dpiY == 96.0f)
+                    {
+                        try
+                        {
+                            var bounds = targetScreen.Bounds;
+                            var centerPoint = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
+                            
+                            // 获取显示器句柄
+                            IntPtr hMonitor = NativeMethods.MonitorFromPoint(centerPoint, NativeMethods.MONITOR_DEFAULTTONEAREST);
+                            
+                            if (hMonitor != IntPtr.Zero)
+                            {
+                                uint monitorDpiX, monitorDpiY;
+                                int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out monitorDpiX, out monitorDpiY);
+                                
+                                if (result == 0) // S_OK
+                                {
+                                    dpiX = monitorDpiX;
+                                    dpiY = monitorDpiY;
+                                    _debugLogger?.Invoke($"方法2成功: GetDpiForMonitor 返回 DPI {dpiX}x{dpiY}");
+                                }
+                                else
+                                {
+                                    _debugLogger?.Invoke($"方法2: GetDpiForMonitor 失败，错误码: 0x{result:X8}");
+                                }
+                            }
+                            else
+                            {
+                                _debugLogger?.Invoke($"方法2: 无法获取显示器句柄");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _debugLogger?.Invoke($"方法2失败: {ex.Message}");
+                        }
+                    }
+                    
+                    /*
+                    // 方法3: 如果方法1和方法2失败，尝试为特定显示器创建Graphics对象以获取其DPI（已注释掉）
                     if (dpiX == 96.0f && dpiY == 96.0f)
                     {
                         try
@@ -1220,7 +1259,7 @@ namespace TbEinkSuperFlushTurbo
                                     {
                                         dpiX = graphics.DpiX;
                                         dpiY = graphics.DpiY;
-                                        _debugLogger?.Invoke($"方法2成功: Graphics.FromHwnd 返回 DPI {dpiX}x{dpiY}");
+                                        _debugLogger?.Invoke($"方法3成功: Graphics.FromHwnd 返回 DPI {dpiX}x{dpiY}");
                                     }
                                 }
                                 finally
@@ -1235,7 +1274,7 @@ namespace TbEinkSuperFlushTurbo
                         }
                     }
                     
-                    // 方法3: 如果方法1和方法2失败，尝试使用Screen.Bounds和EnumDisplaySettings计算DPI
+                    // 方法4: 如果所有方法都失败，尝试使用Screen.Bounds和EnumDisplaySettings计算DPI（已注释掉）
                     if (dpiX == 96.0f && dpiY == 96.0f)
                     {
                         try
@@ -1243,9 +1282,9 @@ namespace TbEinkSuperFlushTurbo
                             // 获取设备名称
                             string deviceName = targetScreen.DeviceName;
                             
-                            _debugLogger?.Invoke($"方法3: 尝试通过EnumDisplaySettings获取显示器信息...");
-                            _debugLogger?.Invoke($"方法3: Screen.Bounds = {targetScreen.Bounds}");
-                            _debugLogger?.Invoke($"方法3: DeviceName = {deviceName}");
+                            _debugLogger?.Invoke($"方法4: 尝试通过EnumDisplaySettings获取显示器信息...");
+                            _debugLogger?.Invoke($"方法4: Screen.Bounds = {targetScreen.Bounds}");
+                            _debugLogger?.Invoke($"方法4: DeviceName = {deviceName}");
                             
                             // 使用EnumDisplaySettings获取真实的物理分辨率
                             NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
@@ -1258,8 +1297,8 @@ namespace TbEinkSuperFlushTurbo
                                 int logicalWidth = targetScreen.Bounds.Width;
                                 int logicalHeight = targetScreen.Bounds.Height;
                                 
-                                _debugLogger?.Invoke($"方法3: DEVMODE 物理分辨率 = {physicalWidth}x{physicalHeight}");
-                                _debugLogger?.Invoke($"方法3: Screen.Bounds 逻辑分辨率 = {logicalWidth}x{logicalHeight}");
+                                _debugLogger?.Invoke($"方法4: DEVMODE 物理分辨率 = {physicalWidth}x{physicalHeight}");
+                                _debugLogger?.Invoke($"方法4: Screen.Bounds 逻辑分辨率 = {logicalWidth}x{logicalHeight}");
                                 
                                 // 计算DPI缩放比例
                                 float scaleX = (float)physicalWidth / logicalWidth;
@@ -1268,19 +1307,20 @@ namespace TbEinkSuperFlushTurbo
                                 dpiX = 96.0f * scaleX;
                                 dpiY = 96.0f * scaleY;
                                 
-                                _debugLogger?.Invoke($"方法3: 计算缩放比例 = {scaleX:F2}x{scaleY:F2}");
-                                _debugLogger?.Invoke($"方法3成功: 最终DPI = {dpiX}x{dpiY}");
+                                _debugLogger?.Invoke($"方法4: 计算缩放比例 = {scaleX:F2}x{scaleY:F2}");
+                                _debugLogger?.Invoke($"方法4成功: 最终DPI = {dpiX}x{dpiY}");
                             }
                             else
                             {
-                                _debugLogger?.Invoke($"方法3: EnumDisplaySettings 失败");
+                                _debugLogger?.Invoke($"方法4: EnumDisplaySettings 失败");
                             }
                         }
                         catch (Exception ex)
                         {
-                            _debugLogger?.Invoke($"方法2失败: {ex.Message}");
+                            _debugLogger?.Invoke($"方法4失败: {ex.Message}");
                         }
                     }
+                    */
                 }
                 
                 // 如果未能获取到特定显示器的DPI，则使用主显示器的DPI
