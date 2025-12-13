@@ -54,7 +54,7 @@ namespace TbEinkSuperFlushTurbo
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / 500) + ADDITIONAL_COOLDOWN_FRAMES; // Use default 500ms for protection calculation
 
         private const double RESET_THRESHOLD_PERCENT = 95;
-        private bool _forceDirectXCapture = false;
+        private bool _forceDirectXCapture = false;  // 强制使用GDI+截屏
 
         public bool ForceDirectXCapture
         {
@@ -476,6 +476,67 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
+        // 获取指定显示器的物理和逻辑分辨率
+        private (int physicalWidth, int physicalHeight, int logicalWidth, int logicalHeight) GetScreenResolutions(int screenIndex)
+        {
+            try
+            {
+                // 获取目标显示器
+                var allScreens = Screen.AllScreens;
+                if (screenIndex < 0 || screenIndex >= allScreens.Length)
+                {
+                    screenIndex = 0; // 默认使用主显示器
+                }
+                
+                var targetScreen = allScreens[screenIndex];
+                
+                // 逻辑分辨率：Screen.Bounds 返回的就是逻辑分辨率（如 2560x1440）
+                int logicalWidth = targetScreen.Bounds.Width;
+                int logicalHeight = targetScreen.Bounds.Height;
+                
+                // 物理分辨率：使用 EnumDisplaySettings 获取真实的硬件分辨率
+                int physicalWidth = logicalWidth;
+                int physicalHeight = logicalHeight;
+                
+                // 获取设备名称
+                string deviceName = targetScreen.DeviceName;
+                
+                // 尝试使用EnumDisplaySettings获取真实的物理分辨率
+                NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
+                devMode.dmSize = (short)Marshal.SizeOf(typeof(NativeMethods.DEVMODE));
+                
+                if (NativeMethods.EnumDisplaySettings(deviceName, -1, ref devMode))
+                {
+                    physicalWidth = devMode.dmPelsWidth;
+                    physicalHeight = devMode.dmPelsHeight;
+                    Log($"通过DEVMODE获取物理分辨率: {physicalWidth}x{physicalHeight}");
+                }
+                else
+                {
+                    Log($"DEVMODE获取失败，物理分辨率使用逻辑分辨率: {physicalWidth}x{physicalHeight}");
+                }
+                
+                // 计算DPI缩放比例
+                double scaleX = (double)physicalWidth / logicalWidth;
+                double scaleY = (double)physicalHeight / logicalHeight;
+                
+                Log($"显示器 [{screenIndex}] 分辨率信息:");
+                Log($"  逻辑分辨率: {logicalWidth}x{logicalHeight} (Screen.Bounds)");
+                Log($"  物理分辨率: {physicalWidth}x{physicalHeight} (DEVMODE)");
+                Log($"  DPI缩放比例: {scaleX:F2}x{scaleY:F2}");
+                
+                return (physicalWidth, physicalHeight, logicalWidth, logicalHeight);
+            }
+            catch (Exception ex)
+            {
+                Log($"获取分辨率时发生异常: {ex.Message}");
+                // 回退到使用Screen.Bounds作为逻辑分辨率
+                var screen = screenIndex >= 0 && screenIndex < Screen.AllScreens.Length ? 
+                           Screen.AllScreens[screenIndex] : Screen.PrimaryScreen;
+                return (screen.Bounds.Width, screen.Bounds.Height, screen.Bounds.Width, screen.Bounds.Height);
+            }
+        }
+
         public async void ManualRefresh()
         {
             if (_d3d == null) return;
@@ -501,12 +562,21 @@ namespace TbEinkSuperFlushTurbo
                 string[] rgbParts = OVERLAY_BORDER_COLOR.Split(',');
                 Color borderColor = Color.FromArgb(OVERLAY_BORDER_ALPHA, int.Parse(rgbParts[0].Trim()), int.Parse(rgbParts[1].Trim()), int.Parse(rgbParts[2].Trim()));
 
-                _overlayForm = new OverlayForm(_d3d.TileSize, _d3d.ScreenWidth, _d3d.ScreenHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log, _targetScreenIndex)
+                // 获取物理和逻辑分辨率
+                var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
+                
+                // 计算物理分辨率到逻辑分辨率的缩放比例
+                double scaleX = (double)physicalWidth / logicalWidth;
+                double scaleY = (double)physicalHeight / logicalHeight;
+                
+                Log($"覆盖层创建: 物理分辨率={physicalWidth}x{physicalHeight}, 逻辑分辨率={logicalWidth}x{logicalHeight}, 缩放比例={scaleX:F2}x{scaleY:F2}");
+                
+                _overlayForm = new OverlayForm(_d3d.TileSize, logicalWidth, logicalHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log, _targetScreenIndex, scaleX, scaleY)
                 {
                     ShowInTaskbar = false,
                     FormBorderStyle = FormBorderStyle.None,
                     TopMost = true,
-                    Size = new Size(_d3d.ScreenWidth, _d3d.ScreenHeight)
+                    Size = new Size(logicalWidth, logicalHeight)
                 };
                 _overlayForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
 
@@ -869,12 +939,26 @@ namespace TbEinkSuperFlushTurbo
                 };
                 _pollTimer.Start();
 
-                // 获取系统缩放比例 - 使用更准确的DPI检测
-                float dpiScale = GetSystemDpiScale();
+                // 获取物理和逻辑分辨率
+                var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
+                
+                // 如果D3D捕获器已初始化，使用其更准确的逻辑分辨率计算
+                if (_d3d != null)
+                {
+                    logicalWidth = _d3d.LogicalScreenWidth;
+                    logicalHeight = _d3d.LogicalScreenHeight;
+                    physicalWidth = _d3d.ScreenWidth;
+                    physicalHeight = _d3d.ScreenHeight;
+                }
+                
+                // 计算DPI缩放比例：物理分辨率 ÷ 逻辑分辨率
+                double scaleX = (double)physicalWidth / logicalWidth;
+                double scaleY = (double)physicalHeight / logicalHeight;
+                double dpiScale = Math.Max(scaleX, scaleY); // 使用较大的缩放比例
                 int scalePercent = (int)(dpiScale * 100);
-                lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
+                lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
                 btnStop.Enabled = true;
-                Log($"GPU capture initialized successfully. Screen: {_d3d.ScreenWidth}x{_d3d.ScreenHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels");
+                Log($"GPU capture initialized successfully. Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight} (DXGI), Scale: {scalePercent}%, DPI: {scaleX:F2}x{scaleY:F2}, Tile Size: {_tileSize}x{_tileSize} pixels");
             }
             catch (Exception ex)
             {

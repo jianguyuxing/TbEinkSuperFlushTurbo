@@ -34,6 +34,8 @@ namespace TbEinkSuperFlushTurbo
         public int TileCount => _tiles.Count;
         readonly int _tileSize, _screenW, _screenH, _noiseDensity, _noisePointInterval, _borderWidth;
         readonly Color _baseColor, _borderColor;
+        readonly int _screenIndex; // 添加屏幕索引字段
+        readonly double _scaleX, _scaleY; // 物理分辨率到逻辑分辨率的缩放比例
 
         public bool IsDisplaying => _isDisplaying;
 
@@ -181,10 +183,11 @@ namespace TbEinkSuperFlushTurbo
 
                     foreach (var tile in _expiredTiles)
                     {
-                        int sx = tile.bx * _tileSize;
-                        int sy = tile.by * _tileSize;
-                        int w = Math.Min(_tileSize, _screenW - sx);
-                        int h = Math.Min(_tileSize, _screenH - sy);
+                        // 将物理坐标转换为逻辑坐标
+                        int sx = (int)(tile.bx * _tileSize / _scaleX);
+                        int sy = (int)(tile.by * _tileSize / _scaleY);
+                        int w = Math.Min((int)(_tileSize / _scaleX), _screenW - sx);
+                        int h = Math.Min((int)(_tileSize / _scaleY), _screenH - sy);
 
                         // 使用透明色清除过期的瓦片区域
                         using (var brush = new SolidBrush(Color.Transparent))
@@ -194,7 +197,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        public OverlayForm(int tileSize, int screenW, int screenH, int noiseDensity, int noisePointInterval, Color baseColor, Color borderColor, int borderWidth, Action<string> log, int screenIndex = 0)
+        public OverlayForm(int tileSize, int screenW, int screenH, int noiseDensity, int noisePointInterval, Color baseColor, Color borderColor, int borderWidth, Action<string> log, int screenIndex = 0, double scaleX = 1.0, double scaleY = 1.0)
         {
             _tileSize = tileSize;
             _screenW = screenW;
@@ -205,6 +208,9 @@ namespace TbEinkSuperFlushTurbo
             _borderColor = borderColor;
             _borderWidth = borderWidth;
             Logger = log;
+            _screenIndex = screenIndex;
+            _scaleX = scaleX;
+            _scaleY = scaleY;
 
             // 初始化位图
             lock (_bitmapLock)
@@ -243,14 +249,18 @@ namespace TbEinkSuperFlushTurbo
             if (!this.Visible)
                 this.Show();
 
-            // 使用SetWindowPos确保窗口在最顶层且位置正确
-            SetWindowPos(this.Handle, HWND_TOPMOST, 0, 0, _screenW, _screenH, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+            // 获取目标显示器的位置和大小
+            Screen targetScreen = Screen.AllScreens.Length > _screenIndex ? Screen.AllScreens[_screenIndex] : Screen.PrimaryScreen;
+            Rectangle bounds = targetScreen.Bounds;
+            
+            // 使用SetWindowPos确保窗口在最顶层且位置正确 - 使用目标显示器的实际坐标
+            SetWindowPos(this.Handle, HWND_TOPMOST, bounds.X, bounds.Y, bounds.Width, bounds.Height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
 
             // 在位图上绘制内容
             DrawOverlayBitmap();
 
-            // 使用UpdateLayeredWindow更新窗口
-            UpdateLayeredWindowFromBitmap();
+            // 使用UpdateLayeredWindow更新窗口 - 使用目标显示器的实际坐标
+            UpdateLayeredWindowFromBitmap(bounds.X, bounds.Y);
         }
 
         private void DrawOverlayBitmap()
@@ -287,10 +297,11 @@ namespace TbEinkSuperFlushTurbo
                         int bx = tile.bx;
                         int by = tile.by;
 
-                        int sx = bx * _tileSize;
-                        int sy = by * _tileSize;
-                        int w = Math.Min(_tileSize, _screenW - sx);
-                        int h = Math.Min(_tileSize, _screenH - sy);
+                        // 将物理坐标转换为逻辑坐标
+                        int sx = (int)(bx * _tileSize / _scaleX);
+                        int sy = (int)(by * _tileSize / _scaleY);
+                        int w = Math.Min((int)(_tileSize / _scaleX), _screenW - sx);
+                        int h = Math.Min((int)(_tileSize / _scaleY), _screenH - sy);
 
                         // 根据亮度值决定显示黑色还是白色（反向显示）
                         Color overlayColor;
@@ -332,7 +343,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        private void UpdateLayeredWindowFromBitmap()
+        private void UpdateLayeredWindowFromBitmap(int screenX, int screenY)
         {
             lock (_bitmapLock)
             {
@@ -346,7 +357,7 @@ namespace TbEinkSuperFlushTurbo
 
                 Win32Point ptSrc = new Win32Point(0, 0);
                 Win32Size sz = new Win32Size(_screenW, _screenH);
-                Win32Point ptDest = new Win32Point(0, 0);
+                Win32Point ptDest = new Win32Point(screenX, screenY); // 使用目标显示器的实际坐标
 
                 BLENDFUNCTION blend = new BLENDFUNCTION
                 {

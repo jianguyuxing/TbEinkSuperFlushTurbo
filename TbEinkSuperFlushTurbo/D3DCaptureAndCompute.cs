@@ -65,6 +65,12 @@ namespace TbEinkSuperFlushTurbo
         public int ScreenHeight => _screenH;
         public int TilesX => _tilesX;
         public int TilesY => _tilesY;
+        
+        // 添加逻辑分辨率属性
+        public int LogicalScreenWidth => (int)(_screenW / _dpiScaleX);
+        public int LogicalScreenHeight => (int)(_screenH / _dpiScaleY);
+        public float DpiScaleX => _dpiScaleX;
+        public float DpiScaleY => _dpiScaleY;
 
         // D3D objects
         private ID3D11Device? _device;
@@ -377,8 +383,12 @@ namespace TbEinkSuperFlushTurbo
                         }
                         
                         var desc = selectedOutput.Description;
+                        
+                        // DXGI模式下直接使用DesktopCoordinates，确保与DXGI捕获的图像尺寸一致
                         _screenW = desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left;
                         _screenH = desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top;
+                        _debugLogger?.Invoke($"DEBUG: Using desktop coordinates for DXGI: {_screenW}x{_screenH}");
+                        
                         _debugLogger?.Invoke($"DEBUG: Successfully created desktop duplication. Screen size: {_screenW}x{_screenH}");
                         _debugLogger?.Invoke($"Desktop coordinates: Left={desc.DesktopCoordinates.Left}, Top={desc.DesktopCoordinates.Top}, Right={desc.DesktopCoordinates.Right}, Bottom={desc.DesktopCoordinates.Bottom}");
                     }
@@ -438,9 +448,26 @@ namespace TbEinkSuperFlushTurbo
                 {
                     // 使用GDI+捕获模式，设置屏幕尺寸
                     var desc = selectedOutput.Description;
-                    _screenW = desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left;
-                    _screenH = desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top;
-                    _debugLogger?.Invoke($"GDI+捕获模式，屏幕尺寸: {_screenW}x{_screenH}");
+                    
+                    // 尝试使用EnumDisplaySettings获取真实的物理分辨率
+                    NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
+                    devMode.dmSize = (short)Marshal.SizeOf(typeof(NativeMethods.DEVMODE));
+                    
+                    bool usePhysicalResolution = NativeMethods.EnumDisplaySettings(desc.DeviceName, -1, ref devMode);
+                    if (usePhysicalResolution)
+                    {
+                        _screenW = devMode.dmPelsWidth;
+                        _screenH = devMode.dmPelsHeight;
+                        _debugLogger?.Invoke($"DEBUG (GDI): Using physical resolution from DEVMODE: {_screenW}x{_screenH}");
+                    }
+                    else
+                    {
+                        _screenW = desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left;
+                        _screenH = desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top;
+                        _debugLogger?.Invoke($"DEBUG (GDI): DEVMODE failed, using desktop coordinates: {_screenW}x{_screenH}");
+                    }
+                    
+                    _debugLogger?.Invoke($"GDI+捕获模式，最终屏幕尺寸: {_screenW}x{_screenH}");
                 }
 
                 // 获取桌面复制的实际格式
@@ -1356,21 +1383,25 @@ namespace TbEinkSuperFlushTurbo
                     return false;
                 }
                 
-                // Use the screen bounds determined during initialization
-                Rectangle currentScreenBounds = _screenBounds;
+                // 统一坐标系统：使用相对于目标显示器的本地坐标(0,0)
+                // GDI+捕获应该从显示器的左上角(0,0)开始，而不是使用虚拟屏幕的绝对坐标
+                Rectangle localScreenBounds = new Rectangle(0, 0, _screenW, _screenH);
                 
-                _debugLogger?.Invoke($"开始GDI+屏幕捕获，捕获区域: {currentScreenBounds}");
+                _debugLogger?.Invoke($"开始GDI+屏幕捕获，本地坐标: {localScreenBounds}");
+                _debugLogger?.Invoke($"原始虚拟坐标: {_screenBounds}");
+                _debugLogger?.Invoke($"目标显示器索引: {_targetScreenIndex}");
                 _debugLogger?.Invoke($"DPI缩放: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
+                _debugLogger?.Invoke($"CopyFromScreen参数: 源({_screenBounds.X},{_screenBounds.Y}) -> 目标(0,0) 尺寸({localScreenBounds.Width}x{localScreenBounds.Height})");
                 
                 // 验证捕获参数有效性
-                if (currentScreenBounds.Width <= 0 || currentScreenBounds.Height <= 0)
+                if (localScreenBounds.Width <= 0 || localScreenBounds.Height <= 0)
                 {
-                    _debugLogger?.Invoke($"DEBUG: 无效的屏幕分辨率: {currentScreenBounds.Width}x{currentScreenBounds.Height}");
+                    _debugLogger?.Invoke($"DEBUG: 无效的屏幕分辨率: {localScreenBounds.Width}x{localScreenBounds.Height}");
                     return false;
                 }
                 
-                // The capture bounds are already determined to be safe during initialization
-                Rectangle safeCaptureBounds = currentScreenBounds;
+                // 使用本地坐标进行捕获，避免坐标系统混乱
+                Rectangle safeCaptureBounds = localScreenBounds;
                 
                 bool captureSuccess = false;
                 int retryCount = 0;
@@ -1380,16 +1411,15 @@ namespace TbEinkSuperFlushTurbo
                 {
                     try
                     {
-                        // 使用GDI+捕获屏幕 - 使用物理坐标
-                        // CopyFromScreen会自动处理DPI缩放，所以我们使用物理坐标
-                        // 将屏幕捕获部分移至后台线程执行
+                        // 使用GDI+捕获屏幕 - 统一使用目标显示器的本地坐标
+                        // 从目标显示器的绝对位置开始，捕获到Bitmap的(0,0)位置
                         await Task.Run(() => 
                         {
                             _gdiGraphics.CopyFromScreen(
-                                safeCaptureBounds.X, 
-                                safeCaptureBounds.Y, 
-                                0, 0, 
-                                safeCaptureBounds.Size, 
+                                _screenBounds.X,        // 源坐标：目标显示器在虚拟屏幕中的X位置
+                                _screenBounds.Y,        // 源坐标：目标显示器在虚拟屏幕中的Y位置  
+                                0, 0,                   // 目标坐标：Bitmap的左上角
+                                safeCaptureBounds.Size, // 尺寸：显示器的完整尺寸
                                 CopyPixelOperation.SourceCopy);
                         });
                         
