@@ -188,9 +188,35 @@ namespace TbEinkSuperFlushTurbo
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern bool EnumDisplaySettings(string lpszDeviceName, int iModeNum, ref DEVMODE lpDevMode);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr MonitorFromPoint(Point pt, int dwFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr MonitorFromRect(ref RECT lprc, int dwFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr MonitorFromWindow(IntPtr hwnd, int dwFlags);
+
+        [DllImport("shcore.dll", SetLastError = true)]
+        public static extern int GetDpiForMonitor(IntPtr hmonitor, MONITOR_DPI_TYPE dpiType, out uint dpiX, out uint dpiY);
+
         // DEVMODE fields constants
         public const int DM_PELSWIDTH = 0x00080000;
         public const int DM_PELSHEIGHT = 0x00100000;
+
+        // DPI detection constants
+        public const int MONITOR_DEFAULTTONULL = 0;
+        public const int MONITOR_DEFAULTTOPRIMARY = 1;
+        public const int MONITOR_DEFAULTTONEAREST = 2;
+
+        // DPI types for GetDpiForMonitor
+        public enum MONITOR_DPI_TYPE
+        {
+            MDT_Effective_DPI = 0,
+            MDT_Angular_DPI = 1,
+            MDT_Raw_DPI = 2,
+            MDT_Default = MDT_Effective_DPI
+        }
 
         // 辅助方法
         public static Rectangle GetCursorExclusionRect(Point mousePos, int exclusionRadius, int screenWidth, int screenHeight)
