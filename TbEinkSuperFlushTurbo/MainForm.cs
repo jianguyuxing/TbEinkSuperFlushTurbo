@@ -826,6 +826,7 @@ namespace TbEinkSuperFlushTurbo
             if (this.WindowState != FormWindowState.Minimized)
             {
                 UpdateAdaptiveLayout();
+                AdjustStatusLabelProperties(); // 窗口大小改变时重新调整状态标签
             }
         }
 
@@ -1476,6 +1477,11 @@ namespace TbEinkSuperFlushTurbo
 
         }
 
+        private void lblInfo_TextChanged(object? sender, EventArgs e)
+        {
+            AdjustStatusLabelProperties(); // 文本改变时重新调整标签大小
+        }
+
         // 更新本地化文本
         private void UpdateLocalizedTexts()
         {
@@ -1509,6 +1515,27 @@ namespace TbEinkSuperFlushTurbo
                     lblInfo.Text = Localization.GetText("StatusFailed");
                     break;
             }
+            
+            // 调整状态标签属性以支持换行
+            AdjustStatusLabelProperties();
+        }
+        
+        // 确保状态标签能够正确换行显示
+        private void AdjustStatusLabelProperties()
+        {
+            lblInfo.AutoSize = false;
+            lblInfo.MaximumSize = new Size(panelBottom.Width - 10, 0); // 留一些边距
+            // 测量文本所需的高度
+            var textSize = TextRenderer.MeasureText(lblInfo.Text, lblInfo.Font, 
+                new Size(lblInfo.MaximumSize.Width, int.MaxValue), TextFormatFlags.WordBreak);
+            lblInfo.Height = textSize.Height;
+            
+            // 调整listBox的位置，使其始终在lblInfo下方
+            listBox.Location = new Point(listBox.Location.X, lblInfo.Height + 5);
+            listBox.Height = panelBottom.ClientSize.Height - listBox.Location.Y - 5;
+            
+            // 强制面板重新布局，使listBox跟随lblInfo的高度变化
+            panelBottom.PerformLayout();
         }
     }
 }

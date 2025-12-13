@@ -42,12 +42,14 @@ namespace TbEinkSuperFlushTurbo
             lblToggleHotkey = new Label();
             txtToggleHotkey = new TextBox();
             btnToggleRecord = new Button();
+            panelBottom = new Panel();
             lblInfo = new Label();
             listBox = new ListBox();
             _trayIcon = new NotifyIcon(components);
             _displayChangeTimer = new System.Windows.Forms.Timer(components);
             contextMenuStrip1 = new ContextMenuStrip(components);
             exitToolStripMenuItem = new ToolStripMenuItem();
+            panelBottom.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)trackPixelDelta).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackPollInterval).BeginInit();
             contextMenuStrip1.SuspendLayout();
@@ -213,25 +215,39 @@ namespace TbEinkSuperFlushTurbo
             btnToggleRecord.MouseEnter += btnToggleRecord_MouseEnter;
             btnToggleRecord.MouseLeave += btnToggleRecord_MouseLeave;
             // 
+            // panelBottom
+            // 
+            panelBottom.Controls.Add(listBox);
+            panelBottom.Controls.Add(lblInfo);
+            panelBottom.Location = new Point(35, 252);
+            panelBottom.Name = "panelBottom";
+            panelBottom.Size = new Size(615, 216);
+            panelBottom.TabIndex = 15;
+            panelBottom.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            // 
             // lblInfo
             // 
             lblInfo.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblInfo.Location = new Point(35, 252);
+            lblInfo.Location = new Point(0, 0);
             lblInfo.Name = "lblInfo";
-            lblInfo.Size = new Size(550, 32);
-            lblInfo.TabIndex = 13;
+            lblInfo.Size = new Size(615, 20);
+            lblInfo.TabIndex = 0;
             lblInfo.Text = "Status: Stopped";
             lblInfo.TextAlign = ContentAlignment.MiddleLeft;
+            lblInfo.AutoEllipsis = false;
+            lblInfo.AutoSize = false;
+            lblInfo.TextChanged += lblInfo_TextChanged;
             // 
             // listBox
             // 
+            listBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             listBox.Font = new Font("Microsoft Sans Serif", 12F);
             listBox.FormattingEnabled = true;
             listBox.ItemHeight = 20;
-            listBox.Location = new Point(35, 301);
+            listBox.Location = new Point(0, 30);
             listBox.Name = "listBox";
             listBox.Size = new Size(615, 184);
-            listBox.TabIndex = 14;
+            listBox.TabIndex = 1;
             listBox.SelectedIndexChanged += listBox_SelectedIndexChanged;
             // 
             // _trayIcon
@@ -261,8 +277,7 @@ namespace TbEinkSuperFlushTurbo
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(686, 509);
-            Controls.Add(listBox);
-            Controls.Add(lblInfo);
+            Controls.Add(panelBottom);
             Controls.Add(btnToggleRecord);
             Controls.Add(txtToggleHotkey);
             Controls.Add(lblToggleHotkey);
@@ -287,6 +302,8 @@ namespace TbEinkSuperFlushTurbo
             Resize += MainForm_Resize;
             ((System.ComponentModel.ISupportInitialize)trackPixelDelta).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackPollInterval).EndInit();
+            panelBottom.ResumeLayout(false);
+            panelBottom.PerformLayout();
             contextMenuStrip1.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
@@ -308,6 +325,7 @@ namespace TbEinkSuperFlushTurbo
         private System.Windows.Forms.Label lblToggleHotkey;
         private System.Windows.Forms.TextBox txtToggleHotkey;
         private System.Windows.Forms.Button btnToggleRecord;
+        private System.Windows.Forms.Panel panelBottom;
         private System.Windows.Forms.Label lblInfo;
         private System.Windows.Forms.ListBox listBox;
         private System.Windows.Forms.NotifyIcon _trayIcon;
