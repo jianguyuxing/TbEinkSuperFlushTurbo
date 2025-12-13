@@ -531,8 +531,9 @@ namespace TbEinkSuperFlushTurbo
             {
                 Log($"获取分辨率时发生异常: {ex.Message}");
                 // 回退到使用Screen.Bounds作为逻辑分辨率
-                var screen = screenIndex >= 0 && screenIndex < Screen.AllScreens.Length ? 
-                           Screen.AllScreens[screenIndex] : Screen.PrimaryScreen;
+                Screen[] allScreens = Screen.AllScreens;
+                var screen = screenIndex >= 0 && screenIndex < allScreens.Length ? 
+                           allScreens[screenIndex] : Screen.PrimaryScreen!;
                 return (screen.Bounds.Width, screen.Bounds.Height, screen.Bounds.Width, screen.Bounds.Height);
             }
         }

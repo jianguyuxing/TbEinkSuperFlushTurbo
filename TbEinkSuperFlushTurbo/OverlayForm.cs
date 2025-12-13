@@ -23,7 +23,6 @@ namespace TbEinkSuperFlushTurbo
         private const uint SWP_SHOWWINDOW = 0x0040;
         private const uint SWP_NOACTIVATE = 0x0010;
 
-        private readonly Action<string> Logger;
         // 使用Dictionary存储瓦片，提高查找效率，键为(bx,by)元组，值为亮度数据
         readonly Dictionary<(int bx, int by), float> _tiles = new Dictionary<(int bx, int by), float>();
         readonly List<(int bx, int by)> _expiredTiles = new List<(int bx, int by)>(); // 用于当前绘制周期的过期瓦片
@@ -33,9 +32,12 @@ namespace TbEinkSuperFlushTurbo
         private bool _isDisplaying = false; // 标记是否正在显示刷新色
         public int TileCount => _tiles.Count;
         readonly int _tileSize, _screenW, _screenH, _noiseDensity, _noisePointInterval, _borderWidth;
-        readonly Color _baseColor, _borderColor;
+        readonly Color _borderColor;
         readonly int _screenIndex; // 添加屏幕索引字段
         readonly double _scaleX, _scaleY; // 物理分辨率到逻辑分辨率的缩放比例
+        // 新增字段
+        readonly Color _overlayBaseColor;
+        readonly Action<string>? _logger;
 
         public bool IsDisplaying => _isDisplaying;
 
@@ -96,7 +98,7 @@ namespace TbEinkSuperFlushTurbo
             }
             if (addedNewTiles)
             {
-                Logger?.Invoke($"DEBUG: 刷新色显示开始，将显示{MainForm.OVERLAY_DISPLAY_TIME}ms，当前瓦片数: {_tiles.Count}");
+                _logger?.Invoke($"DEBUG: 刷新色显示开始，将显示{MainForm.OVERLAY_DISPLAY_TIME}ms，当前瓦片数: {_tiles.Count}");
             }
         }
 
@@ -137,7 +139,7 @@ namespace TbEinkSuperFlushTurbo
             // 更新显示以清除过期的瓦片
             UpdateVisuals();
 
-            Logger?.Invoke($"DEBUG: 部分刷新色过期，本次过期瓦片数: {expiredCount}，剩余瓦片数: {_tiles.Count}，过期瓦片数: {_expiredTiles.Count}");
+            _logger?.Invoke($"DEBUG: 部分刷新色过期，本次过期瓦片数: {expiredCount}，剩余瓦片数: {_tiles.Count}，过期瓦片数: {_expiredTiles.Count}");
             // 清理临时过期瓦片列表，为下一轮刷新做准备
             _expiredTiles.Clear();
         }
@@ -167,7 +169,7 @@ namespace TbEinkSuperFlushTurbo
             }
             _isDisplaying = false;
             UpdateVisuals();
-            Logger?.Invoke("DEBUG: 刷新色强制隐藏");
+            _logger?.Invoke("DEBUG: 刷新色强制隐藏");
         }
 
         // 从位图上清除过期的瓦片
@@ -197,26 +199,25 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        public OverlayForm(int tileSize, int screenW, int screenH, int noiseDensity, int noisePointInterval, Color baseColor, Color borderColor, int borderWidth, Action<string> log, int screenIndex = 0, double scaleX = 1.0, double scaleY = 1.0)
+        public OverlayForm(int tileSize, int screenWidth, int screenHeight, int noiseDensity, int noisePointInterval, 
+            Color overlayBaseColor, Color borderColor, int borderWidth, Action<string> logger, int screenIndex, double scaleX, double scaleY)
         {
             _tileSize = tileSize;
-            _screenW = screenW;
-            _screenH = screenH;
+            _screenW = screenWidth;
+            _screenH = screenHeight;
             _noiseDensity = noiseDensity;
             _noisePointInterval = noisePointInterval;
-            _baseColor = baseColor;
+            _overlayBaseColor = overlayBaseColor;
             _borderColor = borderColor;
             _borderWidth = borderWidth;
-            Logger = log;
+            _logger = logger;
             _screenIndex = screenIndex;
             _scaleX = scaleX;
             _scaleY = scaleY;
-
-            // 初始化位图
-            lock (_bitmapLock)
-            {
-                _overlayBitmap = new Bitmap(screenW, screenH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            }
+            
+            // 初始化字典
+            _tiles = new Dictionary<(int bx, int by), float>();
+            _expiredTiles = new List<(int bx, int by)>();
 
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.Manual;
@@ -224,7 +225,8 @@ namespace TbEinkSuperFlushTurbo
             TopMost = true;
             
             // 设置窗口位置和大小以匹配指定的屏幕
-            Screen targetScreen = Screen.AllScreens.Length > screenIndex ? Screen.AllScreens[screenIndex] : Screen.PrimaryScreen;
+            Screen[] allScreens = Screen.AllScreens;
+            Screen targetScreen = allScreens.Length > screenIndex ? allScreens[screenIndex] : Screen.PrimaryScreen!;
             Location = targetScreen.Bounds.Location;
             Size = targetScreen.Bounds.Size;
 
@@ -250,7 +252,8 @@ namespace TbEinkSuperFlushTurbo
                 this.Show();
 
             // 获取目标显示器的位置和大小
-            Screen targetScreen = Screen.AllScreens.Length > _screenIndex ? Screen.AllScreens[_screenIndex] : Screen.PrimaryScreen;
+            Screen[] allScreens = Screen.AllScreens;
+            Screen targetScreen = allScreens.Length > _screenIndex ? allScreens[_screenIndex] : Screen.PrimaryScreen!;
             Rectangle bounds = targetScreen.Bounds;
             
             // 使用SetWindowPos确保窗口在最顶层且位置正确 - 使用目标显示器的实际坐标
