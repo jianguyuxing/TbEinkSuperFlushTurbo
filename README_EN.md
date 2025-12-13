@@ -8,8 +8,6 @@
 
 TbEinkSuperFlushTurbo is an intelligent ghosting reduction tool specifically designed for e-ink display devices. Through DirectX GPU acceleration and smart area detection algorithms, it effectively reduces screen ghosting and flickering, providing a better visual experience.
 
-⚠️ **Important Notice**: The current version only supports accurate detection of resolution and DPI on the primary display. Please set your e-ink display device as the primary display for optimal performance.
-
 ### 🖥️ Primary Target Device
 **This tool is specifically developed and optimized for the Kaleido color e-ink display on ThinkBook Plus Gen4 (Twist)**, while maintaining compatibility with other e-ink display devices.
 

@@ -536,6 +536,43 @@ namespace TbEinkSuperFlushTurbo
                 return (screen.Bounds.Width, screen.Bounds.Height, screen.Bounds.Width, screen.Bounds.Height);
             }
         }
+        
+        // 获取显示器的友好名称
+        private string GetScreenFriendlyName(int screenIndex)
+        {
+            try
+            {
+                var allScreens = Screen.AllScreens;
+                if (screenIndex < 0 || screenIndex >= allScreens.Length)
+                {
+                    screenIndex = 0; // 默认使用主显示器
+                }
+                
+                var targetScreen = allScreens[screenIndex];
+                string deviceName = targetScreen.DeviceName;
+                
+                // 使用 EnumDisplayDevices 获取显示器的友好名称
+                NativeMethods.DISPLAY_DEVICE displayDevice = new NativeMethods.DISPLAY_DEVICE();
+                displayDevice.cb = Marshal.SizeOf(displayDevice);
+                
+                if (NativeMethods.EnumDisplayDevices(deviceName, 0, ref displayDevice, 0))
+                {
+                    // 如果获取到了友好名称，则返回它
+                    if (!string.IsNullOrEmpty(displayDevice.DeviceString))
+                    {
+                        return displayDevice.DeviceString;
+                    }
+                }
+                
+                // 如果无法获取友好名称，则返回默认名称
+                return targetScreen.Primary ? "Primary Display" : $"Display {screenIndex}";
+            }
+            catch (Exception ex)
+            {
+                Log($"获取显示器友好名称时发生异常: {ex.Message}");
+                return $"Display {screenIndex}";
+            }
+        }
 
         public async void ManualRefresh()
         {
@@ -943,6 +980,9 @@ namespace TbEinkSuperFlushTurbo
                 // 获取物理和逻辑分辨率
                 var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
                 
+                // 获取显示器友好名称
+                string screenFriendlyName = GetScreenFriendlyName(_targetScreenIndex);
+                
                 // 如果D3D捕获器已初始化，使用其更准确的逻辑分辨率计算
                 if (_d3d != null)
                 {
@@ -957,7 +997,7 @@ namespace TbEinkSuperFlushTurbo
                 double scaleY = (double)physicalHeight / logicalHeight;
                 double dpiScale = Math.Max(scaleX, scaleY); // 使用较大的缩放比例
                 int scalePercent = (int)(dpiScale * 100);
-                lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
+                lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Display: {screenFriendlyName}, Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
                 btnStop.Enabled = true;
                 Log($"GPU capture initialized successfully. Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight} (DXGI), Scale: {scalePercent}%, DPI: {scaleX:F2}x{scaleY:F2}, Tile Size: {_tileSize}x{_tileSize} pixels");
             }
