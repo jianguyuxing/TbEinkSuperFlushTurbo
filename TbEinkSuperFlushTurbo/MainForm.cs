@@ -1398,38 +1398,68 @@ namespace TbEinkSuperFlushTurbo
                 };
                 _pollTimer.Tick += async (ss, ee) =>
                 {
-                    // 每3秒检查一次显示器变化（计数器达到DISPLAY_CHECK_INTERVAL时检测）
-                    _displayCheckCounter++;
-                    if (_displayCheckCounter >= DISPLAY_CHECK_INTERVAL)
+                    try
                     {
-                        _displayCheckCounter = 0;
-                        CheckDisplayChanges();
-                    }
-
-                    if (_cts.Token.IsCancellationRequested || _d3d == null) return;
-
-                    _frameCounter++; // Increment frame counter
-
-                    // Capture screen and compute differences
-                    var (tilesToRefresh, brightnessData) = await _d3d.CaptureAndComputeOnceAsync(_frameCounter, _cts.Token);
-                    if (_cts.Token.IsCancellationRequested) return;
-
-                    if (tilesToRefresh.Count > 0)
-                    {
-                        double refreshRatio = (double)tilesToRefresh.Count / (_d3d.TilesX * _d3d.TilesY);
-                        if (refreshRatio >= RESET_THRESHOLD_PERCENT / 100.0)
+                        // 每3秒检查一次显示器变化（计数器达到DISPLAY_CHECK_INTERVAL时检测）
+                        _displayCheckCounter++;
+                        if (_displayCheckCounter >= DISPLAY_CHECK_INTERVAL)
                         {
-                            Log($"System-wide refresh detected ({refreshRatio:P1}), skipping overlay.");
+                            _displayCheckCounter = 0;
+                            CheckDisplayChanges();
                         }
-                        else
+
+                        if (_cts.Token.IsCancellationRequested || _d3d == null) return;
+
+                        _frameCounter++; // Increment frame counter
+
+                        // 定期释放内存压力（每100帧约50秒）
+                        if (_frameCounter % 100 == 0)
                         {
-                            Log($"Tiles to refresh: {tilesToRefresh.Count}");
+                            GC.Collect();
+                            GC.WaitForPendingFinalizers();
+                            GC.Collect();
+                            Log($"Memory pressure relieved at frame {_frameCounter}");
+                        }
+
+                        // Capture screen and compute differences
+                        var (tilesToRefresh, brightnessData) = await _d3d.CaptureAndComputeOnceAsync(_frameCounter, _cts.Token);
+                        if (_cts.Token.IsCancellationRequested) return;
+
+                        if (tilesToRefresh.Count > 0)
+                        {
+                            double refreshRatio = (double)tilesToRefresh.Count / (_d3d.TilesX * _d3d.TilesY);
+                            if (refreshRatio >= RESET_THRESHOLD_PERCENT / 100.0)
+                            {
+                                Log($"System-wide refresh detected ({refreshRatio:P1}), skipping overlay.");
+                            }
+                            else
+                            {
+                                Log($"Tiles to refresh: {tilesToRefresh.Count}");
+                                this.Invoke(new Action(() =>
+                                {
+                                    listBox.Items.Insert(0, $"{DateTime.Now:HH:mm:ss.fff}:  tiles: {tilesToRefresh.Count}");
+                                    if (listBox.Items.Count > 200) listBox.Items.RemoveAt(listBox.Items.Count - 1);
+                                }));
+                                ShowTemporaryOverlay(tilesToRefresh, brightnessData);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Error in poll timer: {ex.Message}");
+                        Log($"Stack trace: {ex.StackTrace}");
+                        
+                        // 如果发生严重错误，自动停止捕获
+                        if (ex is ArgumentException || ex is OutOfMemoryException)
+                        {
+                            Log($"Critical error detected, stopping capture automatically");
                             this.Invoke(new Action(() =>
                             {
-                                listBox.Items.Insert(0, $"{DateTime.Now:HH:mm:ss.fff}:  tiles: {tilesToRefresh.Count}");
-                                if (listBox.Items.Count > 200) listBox.Items.RemoveAt(listBox.Items.Count - 1);
+                                if (btnStop.Enabled)
+                                {
+                                    btnStop.PerformClick();
+                                }
                             }));
-                            ShowTemporaryOverlay(tilesToRefresh, brightnessData);
                         }
                     }
                 };

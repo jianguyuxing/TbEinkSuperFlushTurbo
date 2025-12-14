@@ -137,6 +137,10 @@ namespace TbEinkSuperFlushTurbo
         private ID3D11Buffer? _paramBuffer;
 
         private Action<string>? _debugLogger; // Field to store the logger
+        
+        // 异步操作同步控制
+        private readonly SemaphoreSlim _captureSemaphore = new SemaphoreSlim(1, 1); // 防止并发捕获
+        private int _isCapturing = 0; // 原子标志，防止重入
 
         // Eink屏幕兼容性支持
         private bool _useGdiCapture = false; // 是否使用GDI+捕获
@@ -839,6 +843,20 @@ namespace TbEinkSuperFlushTurbo
 
             try
             {
+                // 防止并发捕获 - 使用原子操作快速检查
+                if (Interlocked.CompareExchange(ref _isCapturing, 1, 0) != 0)
+                {
+                    _debugLogger?.Invoke("DEBUG: 捕获操作正在执行，跳过本次调用");
+                    return (result, new float[_tilesX * _tilesY]);
+                }
+            {
+                // 使用信号量确保线程安全
+                if (!await _captureSemaphore.WaitAsync(0, token))
+                {
+                    _debugLogger?.Invoke("DEBUG: 无法获取捕获锁，跳过本次调用");
+                    return (result, new float[_tilesX * _tilesY]);
+                }
+
                 token.ThrowIfCancellationRequested();
                 
                 if (_useGdiCapture)
@@ -887,9 +905,21 @@ namespace TbEinkSuperFlushTurbo
                             // 使用Task.Run将纹理重建操作移至后台线程
                             await Task.Run(() =>
                             {
-                                // 释放旧纹理
-                                if (_gpuTexCurr != null) _gpuTexCurr.Dispose();
-                                if (_gpuTexPrev != null) _gpuTexPrev.Dispose();
+                                // 线程安全地释放旧纹理
+                                var oldTexCurr = _gpuTexCurr;
+                                var oldTexPrev = _gpuTexPrev;
+                                _gpuTexCurr = null;
+                                _gpuTexPrev = null;
+                                
+                                // 延迟释放以避免立即内存压力
+                                if (oldTexCurr != null)
+                                {
+                                    Task.Delay(100).ContinueWith(_ => oldTexCurr.Dispose());
+                                }
+                                if (oldTexPrev != null)
+                                {
+                                    Task.Delay(100).ContinueWith(_ => oldTexPrev.Dispose());
+                                }
                                 
                                 // 创建新纹理匹配实际格式
                                 var newTexDesc = new Texture2DDescription 
@@ -929,15 +959,6 @@ namespace TbEinkSuperFlushTurbo
                     
                     _deskDup.ReleaseFrame();
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                return (result, new float[_tilesX * _tilesY]);
-            }
-            catch (Exception ex)
-            {
-                _debugLogger?.Invoke($"DEBUG: Capture failed: {ex.Message}");
-                return (result, new float[_tilesX * _tilesY]);
             }
 
             token.ThrowIfCancellationRequested();
@@ -1194,6 +1215,20 @@ namespace TbEinkSuperFlushTurbo
             }
 
             return (result, brightnessData);
+            }
+            catch (Exception ex)
+            {
+                _debugLogger?.Invoke($"捕获和计算过程中发生异常: {ex.Message}");
+                _debugLogger?.Invoke($"异常类型: {ex.GetType().Name}");
+                _debugLogger?.Invoke($"异常堆栈: {ex.StackTrace}");
+                return (result, new float[_tilesX * _tilesY]);
+            }
+            finally
+            {
+                // 确保释放信号量和重置标志
+                _captureSemaphore.Release();
+                Interlocked.Exchange(ref _isCapturing, 0);
+            }
         }
 
         // Modified to return a list of all outputs for logging
@@ -1444,6 +1479,16 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke($"系统DPI: {_dpiX}x{_dpiY}, 缩放比例: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
             _debugLogger?.Invoke($"物理分辨率: {dxgiBounds.Width}x{dxgiBounds.Height}");
             
+            // 验证屏幕边界有效性 - 防止无效坐标
+            if (dxgiBounds.X < 0 || dxgiBounds.Y < 0 || 
+                dxgiBounds.Width <= 0 || dxgiBounds.Height <= 0 ||
+                dxgiBounds.Width > 16384 || dxgiBounds.Height > 16384) // 最大合理分辨率限制
+            {
+                _debugLogger?.Invoke($"DEBUG: 无效的DXGI屏幕边界参数: {dxgiBounds}");
+                // 返回一个安全的默认边界
+                return new Rectangle(0, 0, 1920, 1080);
+            }
+            
             // 计算逻辑分辨率供参考
             int logicalWidth = (int)(dxgiBounds.Width / _dpiScaleX);
             int logicalHeight = (int)(dxgiBounds.Height / _dpiScaleY);
@@ -1564,9 +1609,28 @@ namespace TbEinkSuperFlushTurbo
                 _debugLogger?.Invoke($"物理屏幕边界: {_screenBounds}");
                 _debugLogger?.Invoke($"DPI缩放比例: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
                 
+                // 验证屏幕尺寸合理性，防止内存溢出
+                long totalPixels = (long)_screenW * _screenH;
+                long memoryRequired = totalPixels * 4; // 4 bytes per pixel for 32bpp
+                long maxMemory = 512 * 1024 * 1024; // 512MB limit
+                
+                if (memoryRequired > maxMemory || _screenW > 16384 || _screenH > 16384)
+                {
+                    _debugLogger?.Invoke($"DEBUG: 屏幕尺寸过大或内存需求过高: {_screenW}x{_screenH}, 需要内存: {memoryRequired} bytes");
+                    return false;
+                }
+                
                 // 创建GDI+位图 - 使用物理尺寸
-                _gdiBitmap = new Bitmap(_screenW, _screenH, PixelFormat.Format32bppArgb);
-                _gdiGraphics = Graphics.FromImage(_gdiBitmap);
+                try
+                {
+                    _gdiBitmap = new Bitmap(_screenW, _screenH, PixelFormat.Format32bppArgb);
+                    _gdiGraphics = Graphics.FromImage(_gdiBitmap);
+                }
+                catch (OutOfMemoryException ex)
+                {
+                    _debugLogger?.Invoke($"DEBUG: GDI+位图创建失败 - 内存不足: {ex.Message}");
+                    return false;
+                }
                 
                 // 设置GDI+的DPI以匹配系统设置
                 _gdiGraphics.PageUnit = GraphicsUnit.Pixel;
@@ -1629,6 +1693,22 @@ namespace TbEinkSuperFlushTurbo
                 if (localScreenBounds.Width <= 0 || localScreenBounds.Height <= 0)
                 {
                     _debugLogger?.Invoke($"DEBUG: 无效的屏幕分辨率: {localScreenBounds.Width}x{localScreenBounds.Height}");
+                    return false;
+                }
+                
+                // 验证屏幕边界参数 - 防止CopyFromScreen参数异常
+                if (_screenBounds.X < 0 || _screenBounds.Y < 0 || 
+                    _screenBounds.Width != _screenW || _screenBounds.Height != _screenH ||
+                    _screenBounds.Width <= 0 || _screenBounds.Height <= 0)
+                {
+                    _debugLogger?.Invoke($"DEBUG: 无效的屏幕边界参数: Bounds={_screenBounds}, W={_screenW}, H={_screenH}");
+                    return false;
+                }
+                
+                // 验证GDI+位图尺寸
+                if (_gdiBitmap.Width != _screenW || _gdiBitmap.Height != _screenH)
+                {
+                    _debugLogger?.Invoke($"DEBUG: GDI+位图尺寸不匹配 - 实际: {_gdiBitmap.Width}x{_gdiBitmap.Height}, 期望: {_screenW}x{_screenH}");
                     return false;
                 }
                 
@@ -1707,11 +1787,15 @@ namespace TbEinkSuperFlushTurbo
                     // 如果纹理不存在或尺寸不匹配，创建新的
                     if (_gpuTexCurr == null || _gpuTexCurr.Description.Width != texDesc.Width || _gpuTexCurr.Description.Height != texDesc.Height)
                     {
-                        if (_gpuTexCurr != null)
+                        // 线程安全地释放旧纹理
+                        var oldTex = _gpuTexCurr;
+                        _gpuTexCurr = null;
+                        
+                        if (oldTex != null)
                         {
                             _debugLogger?.Invoke("释放旧纹理，创建新纹理");
-                            _gpuTexCurr.Dispose();
-                            _gpuTexCurr = null;
+                            // 延迟释放以避免立即内存压力
+                            Task.Delay(50).ContinueWith(_ => oldTex.Dispose());
                         }
                         
                         _gpuTexCurr = _device!.CreateTexture2D(texDesc);
