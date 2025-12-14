@@ -923,11 +923,32 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                if (comboDisplay.SelectedIndex >= 0)
+                // 只在选择真正改变时处理
+                if (comboDisplay.SelectedIndex != _targetScreenIndex)
                 {
-                    _targetScreenIndex = comboDisplay.SelectedIndex;
-                    SaveConfig(); // 保存配置到文件
-                    Log($"Display changed to index: {_targetScreenIndex}");
+                    // 检查是否正在截屏
+                    if (_pollTimer != null && _pollTimer.Enabled)
+                    {
+                        string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                            "截屏运行中，停止截屏后才能切换显示器。" :
+                            "Screen capture is running. Please stop capture first before switching display.";
+                        string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                            "提示" :
+                            "Notice";
+                        MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        
+                        // 恢复原来的选择，但不阻止用户操作
+                        comboDisplay.SelectedIndex = _targetScreenIndex;
+                        return;
+                    }
+
+                    // 只有在截屏停止时才允许切换
+                    if (comboDisplay.SelectedIndex >= 0)
+                    {
+                        _targetScreenIndex = comboDisplay.SelectedIndex;
+                        SaveConfig(); // 保存配置到文件
+                        Log($"Display changed to index: {_targetScreenIndex}");
+                    }
                 }
             }
             catch (Exception ex)
