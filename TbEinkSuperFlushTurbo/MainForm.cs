@@ -819,16 +819,24 @@ namespace TbEinkSuperFlushTurbo
                 
                 Log($"覆盖层创建: 物理分辨率={physicalWidth}x{physicalHeight}, 逻辑分辨率={logicalWidth}x{logicalHeight}, 缩放比例={scaleX:F2}x{scaleY:F2}");
                 
+                // 获取目标显示器的位置信息
+                var allScreens = Screen.AllScreens;
+                var targetScreen = _targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length ? 
+                    allScreens[_targetScreenIndex] : Screen.PrimaryScreen!;
+                var screenBounds = targetScreen.Bounds;
+                
                 _overlayForm = new OverlayForm(_d3d.TileSize, logicalWidth, logicalHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log, _targetScreenIndex, scaleX, scaleY)
                 {
                     ShowInTaskbar = false,
                     FormBorderStyle = FormBorderStyle.None,
                     TopMost = true,
-                    Size = new Size(logicalWidth, logicalHeight)
+                    Size = new Size(logicalWidth, logicalHeight),
+                    Location = screenBounds.Location  // 确保覆盖层显示在正确的显示器上
                 };
                 _overlayForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
 
                 _overlayForm.Show();
+                Log($"覆盖层显示在显示器 [{_targetScreenIndex}]: 位置=({screenBounds.Left}, {screenBounds.Top}), 大小={logicalWidth}x{logicalHeight}");
             }
 
             _overlayForm?.UpdateContent(tiles, brightnessData);
@@ -1216,6 +1224,15 @@ namespace TbEinkSuperFlushTurbo
                         _targetScreenIndex = comboDisplay.SelectedIndex;
                         SaveConfig(); // 保存配置到文件
                         Log($"Display changed to index: {_targetScreenIndex}");
+                        
+                        // 销毁现有的覆盖层，确保下次会在新显示器上重新创建
+                        if (_overlayForm != null)
+                        {
+                            _overlayForm.Close();
+                            _overlayForm.Dispose();
+                            _overlayForm = null;
+                            Log($"覆盖层已销毁，将在新显示器 [{_targetScreenIndex}] 上重新创建");
+                        }
                     }
                 }
             }
