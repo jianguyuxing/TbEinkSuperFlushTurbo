@@ -78,6 +78,8 @@ namespace TbEinkSuperFlushTurbo
         private int _displayCheckCounter = 0; // 显示器检测计数器
         private const int DISPLAY_CHECK_INTERVAL = 2; // 每秒检测一次（假设500ms定时器间隔）
         private bool _isDisplayMonitoringEnabled = true; // 是否启用显示器变化监控
+        private DateTime _lastDisplayChangeDetectionTime = DateTime.MinValue; // 上次检测到显示器变化的时间
+        private const int DISPLAY_CHANGE_DEDUPLICATION_INTERVAL = 2000; // 去重间隔：2秒内只响应一次显示器变化
 
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -726,6 +728,16 @@ namespace TbEinkSuperFlushTurbo
         // 由于显示器变化自动停止
         private void AutoStopDueToDisplayChange(string reason)
         {
+            // 去重检查：如果在去重间隔内已经处理过显示器变化，则忽略本次检测
+            var now = DateTime.Now;
+            var timeSinceLastDetection = now - _lastDisplayChangeDetectionTime;
+            if (timeSinceLastDetection.TotalMilliseconds < DISPLAY_CHANGE_DEDUPLICATION_INTERVAL)
+            {
+                Log($"忽略重复的显示器变化检测（{reason}），距离上次检测仅{timeSinceLastDetection.TotalMilliseconds:F0}ms");
+                return;
+            }
+            
+            _lastDisplayChangeDetectionTime = now;
             Log($"由于{reason}，自动停止刷新");
             
             try
