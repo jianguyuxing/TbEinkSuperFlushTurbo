@@ -54,7 +54,7 @@ namespace TbEinkSuperFlushTurbo
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / 500) + ADDITIONAL_COOLDOWN_FRAMES; // Use default 500ms for protection calculation
 
         private const double RESET_THRESHOLD_PERCENT = 95;
-        private bool _forceDirectXCapture = false;  // 强制使用GDI+截屏
+        private bool _forceDirectXCapture;  // 强制使用GDI+截屏 (从config.json读取)
 
         public bool ForceDirectXCapture
         {
@@ -236,6 +236,11 @@ namespace TbEinkSuperFlushTurbo
                     {
                         _stopOver59hz = Math.Max(0, Math.Min(1, stopOver59hzElement.GetInt32()));
                     }
+                    // 加载强制DirectX截屏配置
+                    if (root.TryGetProperty("ForceDirectXCapture", out JsonElement forceDirectXCaptureElement))
+                    {
+                        _forceDirectXCapture = forceDirectXCaptureElement.GetBoolean();
+                    }
                 }
                 else
                 {
@@ -286,6 +291,8 @@ namespace TbEinkSuperFlushTurbo
             {
                 Log($"Failed to load config: {ex.Message}");
                 _toggleHotkey = Keys.None;
+                // 设置默认值
+                _forceDirectXCapture = false;
             }
         }
 
@@ -308,11 +315,12 @@ namespace TbEinkSuperFlushTurbo
                     TileSize = _tileSize,
                     ScreenIndex = _targetScreenIndex,
                     ToggleHotkey = (int)_toggleHotkey,
-                    stopOver59hz = _stopOver59hz
+                    stopOver59hz = _stopOver59hz,
+                    ForceDirectXCapture = _forceDirectXCapture
                 };
                 string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(configJsonPath, json);
-                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}, SCREEN_INDEX={_targetScreenIndex}, HOTKEY={(int)_toggleHotkey}, STOP_OVER_59HZ={_stopOver59hz}");
+                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}, SCREEN_INDEX={_targetScreenIndex}, HOTKEY={(int)_toggleHotkey}, STOP_OVER_59HZ={_stopOver59hz}, FORCE_DIRECTX_CAPTURE={_forceDirectXCapture}");
             }
             catch (Exception ex)
             {

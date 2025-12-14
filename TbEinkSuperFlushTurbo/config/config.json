@@ -4,5 +4,6 @@
   "TileSize": 8,
   "ScreenIndex": -1,
   "ToggleHotkey": 0,
-  "stopOver59hz": 1
+  "stopOver59hz": 1,
+  "ForceDirectXCapture": false
 }
