@@ -1901,6 +1901,12 @@ namespace TbEinkSuperFlushTurbo
 
                 using (factory)
                 {
+                    // 检查factory是否为null以避免CS8602警告
+                    if (factory == null)
+                    {
+                        _debugLogger?.Invoke("ERROR: GetCurrentPrimaryDisplayRefreshRate - Factory is null.");
+                        return 0.0;
+                    }
                     var adapterResult = factory.EnumAdapters1(0, out var adapter);
                     if (adapterResult.Failure || adapter == null)
                     {
