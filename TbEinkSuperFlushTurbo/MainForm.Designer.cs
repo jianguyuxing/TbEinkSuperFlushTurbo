@@ -45,6 +45,8 @@ namespace TbEinkSuperFlushTurbo
             panelBottom = new Panel();
             lblInfo = new Label();
             listBox = new ListBox();
+            lblDisplay = new Label();
+            comboDisplay = new ComboBox();
             _trayIcon = new NotifyIcon(components);
             _displayChangeTimer = new System.Windows.Forms.Timer(components);
             contextMenuStrip1 = new ContextMenuStrip(components);
@@ -215,11 +217,32 @@ namespace TbEinkSuperFlushTurbo
             btnToggleRecord.MouseEnter += btnToggleRecord_MouseEnter;
             btnToggleRecord.MouseLeave += btnToggleRecord_MouseLeave;
             // 
+            // lblDisplay
+            // 
+            lblDisplay.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            lblDisplay.Location = new Point(35, 248);
+            lblDisplay.Name = "lblDisplay";
+            lblDisplay.Size = new Size(186, 50);
+            lblDisplay.TabIndex = 13;
+            lblDisplay.Text = "Display Selection";
+            lblDisplay.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // comboDisplay
+            // 
+            comboDisplay.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboDisplay.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            comboDisplay.FormattingEnabled = true;
+            comboDisplay.Location = new Point(227, 260);
+            comboDisplay.Name = "comboDisplay";
+            comboDisplay.Size = new Size(300, 28);
+            comboDisplay.TabIndex = 14;
+            comboDisplay.SelectedIndexChanged += comboDisplay_SelectedIndexChanged;
+            // 
             // panelBottom
             // 
             panelBottom.Controls.Add(listBox);
             panelBottom.Controls.Add(lblInfo);
-            panelBottom.Location = new Point(35, 252);
+            panelBottom.Location = new Point(35, 308);
             panelBottom.Name = "panelBottom";
             panelBottom.Size = new Size(615, 216);
             panelBottom.TabIndex = 15;
@@ -277,6 +300,8 @@ namespace TbEinkSuperFlushTurbo
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(686, 509);
+            Controls.Add(comboDisplay);
+            Controls.Add(lblDisplay);
             Controls.Add(panelBottom);
             Controls.Add(btnToggleRecord);
             Controls.Add(txtToggleHotkey);
@@ -332,5 +357,7 @@ namespace TbEinkSuperFlushTurbo
         private System.Windows.Forms.Timer _displayChangeTimer;
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
+        private System.Windows.Forms.Label lblDisplay;
+        private System.Windows.Forms.ComboBox comboDisplay;
     }
 }

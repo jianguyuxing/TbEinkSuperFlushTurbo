@@ -855,6 +855,9 @@ namespace TbEinkSuperFlushTurbo
             // 设置初始按钮状态
             lblInfo.Text = Localization.GetText("StatusStopped");
 
+            // 填充显示器列表
+            PopulateDisplayList();
+
             // 执行自适应布局
             UpdateAdaptiveLayout();
         }
@@ -865,6 +868,71 @@ namespace TbEinkSuperFlushTurbo
             {
                 UpdateAdaptiveLayout();
                 AdjustStatusLabelProperties(); // 窗口大小改变时重新调整状态标签
+            }
+        }
+
+        private void PopulateDisplayList()
+        {
+            try
+            {
+                comboDisplay.Items.Clear();
+                
+                // 获取所有显示器
+                var screens = Screen.AllScreens;
+                for (int i = 0; i < screens.Length; i++)
+                {
+                    var screen = screens[i];
+                    string displayName = $"显示器 {i + 1}: {screen.Bounds.Width}x{screen.Bounds.Height} - {screen.DeviceName}";
+                    comboDisplay.Items.Add(displayName);
+                }
+                
+                // 根据配置文件选择显示器
+                if (comboDisplay.Items.Count > 0)
+                {
+                    if (_targetScreenIndex == -1)
+                    {
+                        // 默认值为-1时，选择主显示器
+                        int primaryIndex = Array.FindIndex(Screen.AllScreens, s => s.Primary);
+                        comboDisplay.SelectedIndex = primaryIndex >= 0 ? primaryIndex : 0;
+                        _targetScreenIndex = comboDisplay.SelectedIndex; // 更新内部变量
+                    }
+                    else if (_targetScreenIndex >= 0 && _targetScreenIndex < comboDisplay.Items.Count)
+                    {
+                        // 配置文件中的索引有效，使用配置文件中的设置
+                        comboDisplay.SelectedIndex = _targetScreenIndex;
+                    }
+                    else
+                    {
+                        // 配置文件中的索引无效，选择主显示器并更新配置
+                        int primaryIndex = Array.FindIndex(Screen.AllScreens, s => s.Primary);
+                        comboDisplay.SelectedIndex = primaryIndex >= 0 ? primaryIndex : 0;
+                        _targetScreenIndex = comboDisplay.SelectedIndex;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error populating display list: {ex.Message}");
+                comboDisplay.Items.Add("默认显示器");
+                comboDisplay.SelectedIndex = 0;
+                _targetScreenIndex = 0;
+            }
+        }
+
+        private void comboDisplay_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (comboDisplay.SelectedIndex >= 0)
+                {
+                    _targetScreenIndex = comboDisplay.SelectedIndex;
+                    SaveConfig(); // 保存配置到文件
+                    Log($"Display changed to index: {_targetScreenIndex}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error changing display selection: {ex.Message}");
             }
         }
 
