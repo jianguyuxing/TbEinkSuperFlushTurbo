@@ -44,8 +44,8 @@ namespace TbEinkSuperFlushTurbo
             txtToggleHotkey = new TextBox();
             btnToggleRecord = new Button();
             panelBottom = new Panel();
-            lblInfo = new Label();
             listBox = new ListBox();
+            lblInfo = new Label();
             lblDisplay = new Label();
             comboDisplay = new ComboBox();
             btnSettings = new Button();
@@ -53,9 +53,9 @@ namespace TbEinkSuperFlushTurbo
             _displayChangeTimer = new System.Windows.Forms.Timer(components);
             contextMenuStrip1 = new ContextMenuStrip(components);
             exitToolStripMenuItem = new ToolStripMenuItem();
-            panelBottom.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)trackPixelDelta).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackPollInterval).BeginInit();
+            panelBottom.SuspendLayout();
             contextMenuStrip1.SuspendLayout();
             SuspendLayout();
             // 
@@ -207,9 +207,9 @@ namespace TbEinkSuperFlushTurbo
             btnToggleRecord.Font = new Font("Microsoft Sans Serif", 22F, FontStyle.Bold);
             btnToggleRecord.ForeColor = Color.Red;
             btnToggleRecord.ImageAlign = ContentAlignment.MiddleRight;
-            btnToggleRecord.Location = new Point(558, 197);
+            btnToggleRecord.Location = new Point(573, 204);
             btnToggleRecord.Name = "btnToggleRecord";
-            btnToggleRecord.Size = new Size(47, 45);
+            btnToggleRecord.Size = new Size(43, 38);
             btnToggleRecord.TabIndex = 12;
             btnToggleRecord.Text = "●";
             btnToggleRecord.TextAlign = ContentAlignment.MiddleRight;
@@ -219,6 +219,39 @@ namespace TbEinkSuperFlushTurbo
             btnToggleRecord.MouseEnter += btnToggleRecord_MouseEnter;
             btnToggleRecord.MouseLeave += btnToggleRecord_MouseLeave;
             // 
+            // panelBottom
+            // 
+            panelBottom.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            panelBottom.Controls.Add(listBox);
+            panelBottom.Controls.Add(lblInfo);
+            panelBottom.Location = new Point(35, 308);
+            panelBottom.Name = "panelBottom";
+            panelBottom.Size = new Size(615, 216);
+            panelBottom.TabIndex = 15;
+            // 
+            // listBox
+            // 
+            listBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            listBox.Font = new Font("Microsoft Sans Serif", 12F);
+            listBox.FormattingEnabled = true;
+            listBox.ItemHeight = 20;
+            listBox.Location = new Point(0, 30);
+            listBox.Name = "listBox";
+            listBox.Size = new Size(615, 144);
+            listBox.TabIndex = 1;
+            listBox.SelectedIndexChanged += listBox_SelectedIndexChanged;
+            // 
+            // lblInfo
+            // 
+            lblInfo.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            lblInfo.Location = new Point(0, 0);
+            lblInfo.Name = "lblInfo";
+            lblInfo.Size = new Size(615, 20);
+            lblInfo.TabIndex = 0;
+            lblInfo.Text = "Status: Stopped";
+            lblInfo.TextAlign = ContentAlignment.MiddleLeft;
+            lblInfo.TextChanged += lblInfo_TextChanged;
+            // 
             // lblDisplay
             // 
             lblDisplay.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
@@ -226,7 +259,7 @@ namespace TbEinkSuperFlushTurbo
             lblDisplay.Name = "lblDisplay";
             lblDisplay.Size = new Size(186, 50);
             lblDisplay.TabIndex = 13;
-            lblDisplay.Text = Localization.GetText("DisplaySelection");
+            lblDisplay.Text = "Display Selection:";
             lblDisplay.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // comboDisplay
@@ -242,49 +275,20 @@ namespace TbEinkSuperFlushTurbo
             // 
             // btnSettings
             // 
-            btnSettings.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            btnSettings.Location = new Point(573, 260);
+            btnSettings.BackColor = Color.White;
+            btnSettings.Cursor = Cursors.Hand;
+            btnSettings.FlatStyle = FlatStyle.Flat;
+            btnSettings.Font = new Font("Microsoft Sans Serif", 16F);
+            btnSettings.ForeColor = SystemColors.ControlText;
+            btnSettings.Location = new Point(573, 251);
             btnSettings.Name = "btnSettings";
-            btnSettings.Size = new Size(34, 28);
+            btnSettings.Size = new Size(43, 40);
             btnSettings.TabIndex = 16;
             btnSettings.Text = "⚙";
-            btnSettings.UseVisualStyleBackColor = true;
+            btnSettings.UseVisualStyleBackColor = false;
             btnSettings.Click += btnSettings_Click;
-            // 
-            // panelBottom
-            // 
-            panelBottom.Controls.Add(listBox);
-            panelBottom.Controls.Add(lblInfo);
-            panelBottom.Location = new Point(35, 308);
-            panelBottom.Name = "panelBottom";
-            panelBottom.Size = new Size(615, 216);
-            panelBottom.TabIndex = 15;
-            panelBottom.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            // 
-            // lblInfo
-            // 
-            lblInfo.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblInfo.Location = new Point(0, 0);
-            lblInfo.Name = "lblInfo";
-            lblInfo.Size = new Size(615, 20);
-            lblInfo.TabIndex = 0;
-            lblInfo.Text = "Status: Stopped";
-            lblInfo.TextAlign = ContentAlignment.MiddleLeft;
-            lblInfo.AutoEllipsis = false;
-            lblInfo.AutoSize = false;
-            lblInfo.TextChanged += lblInfo_TextChanged;
-            // 
-            // listBox
-            // 
-            listBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            listBox.Font = new Font("Microsoft Sans Serif", 12F);
-            listBox.FormattingEnabled = true;
-            listBox.ItemHeight = 20;
-            listBox.Location = new Point(0, 30);
-            listBox.Name = "listBox";
-            listBox.Size = new Size(615, 184);
-            listBox.TabIndex = 1;
-            listBox.SelectedIndexChanged += listBox_SelectedIndexChanged;
+            btnSettings.MouseEnter += btnSettings_MouseEnter;
+            btnSettings.MouseLeave += btnSettings_MouseLeave;
             // 
             // _trayIcon
             // 
@@ -342,7 +346,6 @@ namespace TbEinkSuperFlushTurbo
             ((System.ComponentModel.ISupportInitialize)trackPixelDelta).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackPollInterval).EndInit();
             panelBottom.ResumeLayout(false);
-            panelBottom.PerformLayout();
             contextMenuStrip1.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();

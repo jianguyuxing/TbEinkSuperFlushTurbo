@@ -1694,12 +1694,6 @@ namespace TbEinkSuperFlushTurbo
             // 绘制背景
             e.Graphics.Clear(btn.BackColor);
 
-            // 绘制黑色边框
-            using (var borderPen = new Pen(Color.Black, 2))
-            {
-                e.Graphics.DrawRectangle(borderPen, 1, 1, btn.Width - 2, btn.Height - 2);
-            }
-
             // 根据文本内容选择不同的绘制方式，确保都基于中心对齐
             using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
             {
@@ -1872,6 +1866,24 @@ namespace TbEinkSuperFlushTurbo
             if (sender is Button btn)
             {
                 btn.BackColor = Color.White; // 离开时恢复白色
+            }
+        }
+
+        private void btnSettings_MouseEnter(object? sender, EventArgs e)
+        {
+            if (sender is Button btn)
+            {
+                btn.BackColor = Color.DarkBlue; // 悬停时背景变为深蓝色
+                btn.ForeColor = Color.White; // 悬停时齿轮文本变为白色
+            }
+        }
+
+        private void btnSettings_MouseLeave(object? sender, EventArgs e)
+        {
+            if (sender is Button btn)
+            {
+                btn.BackColor = Color.White; // 离开时恢复白色背景
+                btn.ForeColor = SystemColors.ControlText; // 离开时恢复系统默认文本颜色
             }
         }
 

@@ -70,11 +70,11 @@ This algorithm fully leverages GPU parallel computing power to achieve high proc
 - **Smart Screen Detection**: Automatically detects screen refresh rates, DPI scaling factors, and supports
   multi-monitor environments
 - **E-ink Screen Auto-Recognition**: Intelligently identifies e-ink display devices through refresh rate
-  characteristics (less than 55Hz)
+  characteristics (less than 59Hz)
 - **Smart Screen Detection**: Automatically detects screen refresh rates, DPI scaling factors, and supports
   multi-monitor environments
 - **E-ink Screen Auto-Recognition**: Intelligently identifies e-ink display devices through refresh rate
-  characteristics (less than 55Hz)
+  characteristics (less than 59Hz)
 
 ## Usage
 
@@ -158,7 +158,7 @@ dotnet run
 - **Memory Usage**: < 100MB
 
 ### Refresh Optimization
-- **Reduced Refresh Count**: 60-80% reduction compared to traditional methods
+- **Reduced Full Refresh Count**: 60-80% reduction compared to traditional methods
 - **Reduced Flickering**: Smart protection period mechanism
 - **Extended Screen Life**: Minimizes unnecessary refresh operations
 
@@ -170,7 +170,7 @@ dotnet run
 
 - **Refresh Rate Detection**: Automatically scans all connected displays to identify refresh rate characteristics
 - **E-ink Screen Recognition**: Intelligently identifies e-ink display devices through low refresh rate
-  characteristics (less than 55Hz)
+  characteristics (less than 59Hz)
 - **Multi-monitor Support**: Automatically selects E-ink screens for processing in multi-monitor environments
 - **DPI Adaptation**: Automatically detects and adapts to different DPI scaling settings
 
