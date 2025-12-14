@@ -1243,7 +1243,7 @@ namespace TbEinkSuperFlushTurbo
                     _debugLogger?.Invoke($"尝试获取显示器 {_targetScreenIndex} ({targetScreen.DeviceName}) 的DPI设置");
                     _debugLogger?.Invoke($"显示器边界: {targetScreen.Bounds}");
                     
-                    // 方法1: 使用Win10+的GetDpiForMonitorV2 API获取准确的显示器DPI（首选方法）
+                    // 方法1: 使用GetDpiForMonitor API获取准确的显示器DPI（首选方法）
                     try
                     {
                         var bounds = targetScreen.Bounds;
@@ -1255,17 +1255,17 @@ namespace TbEinkSuperFlushTurbo
                         if (hMonitor != IntPtr.Zero)
                         {
                             uint monitorDpiX, monitorDpiY;
-                            int result = NativeMethods.GetDpiForMonitorV2(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out monitorDpiX, out monitorDpiY);
+                            int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out monitorDpiX, out monitorDpiY);
                             
                             if (result == 0) // S_OK
                             {
                                 dpiX = monitorDpiX;
                                 dpiY = monitorDpiY;
-                                _debugLogger?.Invoke($"方法1成功: GetDpiForMonitorV2 返回 DPI {dpiX}x{dpiY}");
+                                _debugLogger?.Invoke($"方法1成功: GetDpiForMonitor 返回 DPI {dpiX}x{dpiY}");
                             }
                             else
                             {
-                                _debugLogger?.Invoke($"方法1: GetDpiForMonitorV2 失败，错误码: 0x{result:X8}，将尝试备用方法");
+                                _debugLogger?.Invoke($"方法1: GetDpiForMonitor 失败，错误码: 0x{result:X8}，将尝试备用方法");
                             }
                         }
                         else
