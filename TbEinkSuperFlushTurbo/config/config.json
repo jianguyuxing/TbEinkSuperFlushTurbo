@@ -3,5 +3,6 @@
   "PollInterval": 500,
   "TileSize": 8,
   "ScreenIndex": 0,
-  "ToggleHotkey": 0
+  "ToggleHotkey": 0,
+  "stopOver59hz": 1
 }

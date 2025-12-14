@@ -73,6 +73,9 @@ namespace TbEinkSuperFlushTurbo
         // 显示器选择相关字段
         private int _targetScreenIndex = 0; // 默认使用主显示器
         
+        // 超过59Hz自动停止功能
+        private int _stopOver59hz = 1; // 默认开启（1开启，0关闭）
+        
         // 显示器变化监控相关字段
         private string[]? _lastDisplaySignatures; // 存储上次检测的显示器签名
         private int _displayCheckCounter = 0; // 显示器检测计数器
@@ -228,6 +231,11 @@ namespace TbEinkSuperFlushTurbo
                     {
                         _toggleHotkey = (Keys)hotkeyElement.GetInt32();
                     }
+                    // 加载超过59Hz自动停止配置
+                    if (root.TryGetProperty("stopOver59hz", out JsonElement stopOver59hzElement))
+                    {
+                        _stopOver59hz = Math.Max(0, Math.Min(1, stopOver59hzElement.GetInt32()));
+                    }
                 }
                 else
                 {
@@ -299,11 +307,12 @@ namespace TbEinkSuperFlushTurbo
                     PollInterval = _pollInterval,
                     TileSize = _tileSize,
                     ScreenIndex = _targetScreenIndex,
-                    ToggleHotkey = (int)_toggleHotkey
+                    ToggleHotkey = (int)_toggleHotkey,
+                    stopOver59hz = _stopOver59hz
                 };
                 string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(configJsonPath, json);
-                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}, SCREEN_INDEX={_targetScreenIndex}, HOTKEY={(int)_toggleHotkey}");
+                Log($"Saved config: PIXEL_DELTA={_pixelDelta}, POLL_INTERVAL={_pollInterval}ms, TILE_SIZE={_tileSize}, SCREEN_INDEX={_targetScreenIndex}, HOTKEY={(int)_toggleHotkey}, STOP_OVER_59HZ={_stopOver59hz}");
             }
             catch (Exception ex)
             {
@@ -1297,6 +1306,24 @@ namespace TbEinkSuperFlushTurbo
                 return;
             }
 
+            // 检查显示器刷新率（超过59Hz自动停止功能）
+            if (_stopOver59hz == 1)
+            {
+                double refreshRate = GetRefreshRateFromApi(_targetScreenIndex);
+                if (refreshRate >= 59.0)
+                {
+                    string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                        $"为了避免误操作，不允许在超过59Hz的显示器上运行。当前显示器刷新率为{refreshRate:F1}Hz。若您的墨水屏超过59Hz，请到配置文件修改stopOver59hz为0。" :
+                        $"To avoid accidental operation, screen capture is not allowed on displays over 59Hz. Current display refresh rate is {refreshRate:F1}Hz. If your e-ink display is over 59Hz, please modify stopOver59hz to 0 in the config file.";
+                    string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                        "刷新率限制" : 
+                        "Refresh Rate Limit";
+                    MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Log($"Blocked start due to high refresh rate: {refreshRate:F1}Hz (stopOver59hz={_stopOver59hz})");
+                    return;
+                }
+            }
+
             btnStart.Enabled = false;
             _cts = new CancellationTokenSource();
             _frameCounter = 0; // Reset frame counter on start
@@ -1803,9 +1830,9 @@ namespace TbEinkSuperFlushTurbo
             if (_d3d != null)
             {
                 double refreshRate = _d3d.GetCurrentPrimaryDisplayRefreshRate();
-                if (refreshRate >= 59.0)
+                if (refreshRate >= 59.0 && _stopOver59hz == 1)
                 {
-                    Log($"High refresh rate detected ({refreshRate:F2}Hz), stopping capture.");
+                    Log($"High refresh rate detected ({refreshRate:F2}Hz), stopping capture. (stopOver59hz={_stopOver59hz})");
                     StopCapture();
                 }
             }
