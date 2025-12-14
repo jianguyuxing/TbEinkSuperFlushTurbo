@@ -1623,18 +1623,57 @@ namespace TbEinkSuperFlushTurbo
                 // 创建GDI+位图 - 使用物理尺寸
                 try
                 {
+                    // RELEASE模式修复：添加更严格的参数验证
+                    if (_screenW <= 0 || _screenH <= 0 || _screenW > 16384 || _screenH > 16384)
+                    {
+                        _debugLogger?.Invoke($"GDI+位图尺寸无效: {_screenW}x{_screenH}");
+                        return false;
+                    }
+                    
                     _gdiBitmap = new Bitmap(_screenW, _screenH, PixelFormat.Format32bppArgb);
+                    if (_gdiBitmap == null)
+                    {
+                        _debugLogger?.Invoke("GDI+位图创建失败：位图为null");
+                        return false;
+                    }
+                    
                     _gdiGraphics = Graphics.FromImage(_gdiBitmap);
+                    if (_gdiGraphics == null)
+                    {
+                        _debugLogger?.Invoke("GDI+图形对象创建失败：图形对象为null");
+                        _gdiBitmap.Dispose();
+                        _gdiBitmap = null;
+                        return false;
+                    }
                 }
                 catch (OutOfMemoryException ex)
                 {
-                    _debugLogger?.Invoke($"DEBUG: GDI+位图创建失败 - 内存不足: {ex.Message}");
+                    _debugLogger?.Invoke($"GDI+位图创建失败 - 内存不足: {ex.Message}");
+                    return false;
+                }
+                catch (ArgumentException ex)
+                {
+                    _debugLogger?.Invoke($"GDI+位图创建失败 - 参数错误: {ex.Message}");
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    _debugLogger?.Invoke($"GDI+位图创建失败 - 未知错误: {ex.Message}");
                     return false;
                 }
                 
                 // 设置GDI+的DPI以匹配系统设置
-                _gdiGraphics.PageUnit = GraphicsUnit.Pixel;
-                _debugLogger?.Invoke($"GDI+位图创建成功，物理尺寸: {_screenW}x{_screenH}");
+                try
+                {
+                    _gdiGraphics.PageUnit = GraphicsUnit.Pixel;
+                    _debugLogger?.Invoke($"GDI+位图创建成功，物理尺寸: {_screenW}x{_screenH}");
+                }
+                catch (Exception ex)
+                {
+                    _debugLogger?.Invoke($"GDI+设置失败: {ex.Message}");
+                    CleanupGdiObjects();
+                    return false;
+                }
                 
                 _debugLogger?.Invoke("GDI+捕获初始化成功");
                 return true;
@@ -1725,23 +1764,43 @@ namespace TbEinkSuperFlushTurbo
                     {
                         // 使用GDI+捕获屏幕 - 统一使用目标显示器的本地坐标
                         // 从目标显示器的绝对位置开始，捕获到Bitmap的(0,0)位置
+                        // RELEASE模式修复：添加额外的空值检查和异常处理
+                        if (_gdiGraphics == null || _gdiBitmap == null)
+                        {
+                            _debugLogger?.Invoke("GDI+对象在捕获前被释放");
+                            return false;
+                        }
+                        
                         await Task.Run(() => 
                         {
-                            _gdiGraphics.CopyFromScreen(
-                                _screenBounds.X,        // 源坐标：目标显示器在虚拟屏幕中的X位置
-                                _screenBounds.Y,        // 源坐标：目标显示器在虚拟屏幕中的Y位置  
-                                0, 0,                   // 目标坐标：Bitmap的左上角
-                                safeCaptureBounds.Size, // 尺寸：显示器的完整尺寸
-                                CopyPixelOperation.SourceCopy);
+                            try
+                            {
+                                // 确保所有对象在使用时仍然有效
+                                if (_gdiGraphics != null && _gdiBitmap != null)
+                                {
+                                    _gdiGraphics.CopyFromScreen(
+                                        _screenBounds.X,        // 源坐标：目标显示器在虚拟屏幕中的X位置
+                                        _screenBounds.Y,        // 源坐标：目标显示器在虚拟屏幕中的Y位置  
+                                        0, 0,                   // 目标坐标：Bitmap的左上角
+                                        safeCaptureBounds.Size, // 尺寸：显示器的完整尺寸
+                                        CopyPixelOperation.SourceCopy);
+                                }
+                            }
+                            catch (Exception innerEx)
+                            {
+                                // RELEASE模式：捕获所有异常，防止闪退
+                                _debugLogger?.Invoke($"GDI+捕获内部异常: {innerEx.Message}");
+                                throw; // 重新抛出以便重试机制处理
+                            }
                         });
                         
                         captureSuccess = true;
                         _debugLogger?.Invoke($"CopyFromScreen完成，捕获区域: {safeCaptureBounds.X},{safeCaptureBounds.Y} -> 0,0 大小: {safeCaptureBounds.Width}x{safeCaptureBounds.Height}");
                     }
-                    catch (ArgumentException ex)
+                    catch (Exception ex) // RELEASE模式：捕获所有异常类型
                     {
                         retryCount++;
-                        _debugLogger?.Invoke($"DEBUG: GDI+捕获失败，正在重试 ({retryCount}/{MAX_RETRY_COUNT}): {ex.Message}");
+                        _debugLogger?.Invoke($"GDI+捕获失败，正在重试 ({retryCount}/{MAX_RETRY_COUNT}): {ex.Message}");
                         
                         if (retryCount < MAX_RETRY_COUNT)
                         {
@@ -1762,13 +1821,34 @@ namespace TbEinkSuperFlushTurbo
                     _debugLogger?.Invoke($"警告: 位图尺寸不匹配 - 实际: {_gdiBitmap.Width}x{_gdiBitmap.Height}, 期望: {_screenW}x{_screenH}");
                 }
                 
-                // 将GDI+位图数据复制到D3D纹理
-                var bitmapData = _gdiBitmap.LockBits(new Rectangle(0, 0, _screenW, _screenH), 
-                    ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+                // RELEASE模式修复：添加额外的位图锁定安全检查
+                if (_gdiBitmap == null)
+                {
+                    _debugLogger?.Invoke("GDI+位图对象为空，无法锁定");
+                    return false;
+                }
                 
+                // 将GDI+位图数据复制到D3D纹理
+                BitmapData? bitmapData = null;
                 try
                 {
+                    bitmapData = _gdiBitmap.LockBits(new Rectangle(0, 0, _screenW, _screenH), 
+                        ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+                    
+                    if (bitmapData == null || bitmapData.Scan0 == IntPtr.Zero)
+                    {
+                        _debugLogger?.Invoke("位图数据锁定失败或扫描指针为空");
+                        return false;
+                    }
+                    
                     _debugLogger?.Invoke($"位图数据锁定成功，Stride: {bitmapData.Stride}, 扫描线大小: {bitmapData.Stride * _screenH}");
+                    
+                    // RELEASE模式修复：添加D3D对象空值检查
+                    if (_device == null || _context == null)
+                    {
+                        _debugLogger?.Invoke("D3D设备或上下文为空，无法更新纹理");
+                        return false;
+                    }
                     
                     // 更新D3D纹理
                     var texDesc = new Texture2DDescription 
@@ -1794,31 +1874,65 @@ namespace TbEinkSuperFlushTurbo
                         if (oldTex != null)
                         {
                             _debugLogger?.Invoke("释放旧纹理，创建新纹理");
-                            // 延迟释放以避免立即内存压力
-                            Task.Delay(50).ContinueWith(_ => oldTex.Dispose());
+                            // 延迟释放以避免立即内存压力 - 修复async警告
+                            var _ = Task.Delay(50).ContinueWith(t => oldTex.Dispose());
                         }
                         
-                        _gpuTexCurr = _device!.CreateTexture2D(texDesc);
-                        _debugLogger?.Invoke($"D3D纹理创建成功: {_screenW}x{_screenH}");
+                        try
+                        {
+                            _gpuTexCurr = _device.CreateTexture2D(texDesc);
+                            _debugLogger?.Invoke($"D3D纹理创建成功: {_screenW}x{_screenH}");
+                        }
+                        catch (Exception texEx)
+                        {
+                            _debugLogger?.Invoke($"D3D纹理创建失败: {texEx.Message}");
+                            return false;
+                        }
                     }
                     
-                    // 更新纹理数据
-                    var box = new MappedSubresource
+                    // RELEASE模式修复：安全的纹理数据更新
+                    try
                     {
-                        DataPointer = bitmapData.Scan0,
-                        RowPitch = (uint)bitmapData.Stride,
-                        DepthPitch = (uint)(bitmapData.Stride * _screenH)
-                    };
-                    
-                    _context?.UpdateSubresource(_gpuTexCurr, 0, null, box.DataPointer, box.RowPitch, box.DepthPitch);
-                    
-                    _debugLogger?.Invoke($"D3D纹理更新成功，RowPitch: {box.RowPitch}");
+                        var box = new MappedSubresource
+                        {
+                            DataPointer = bitmapData.Scan0,
+                            RowPitch = (uint)bitmapData.Stride,
+                            DepthPitch = (uint)(bitmapData.Stride * _screenH)
+                        };
+                        
+                        if (box.DataPointer != IntPtr.Zero && _gpuTexCurr != null)
+                        {
+                            _context.UpdateSubresource(_gpuTexCurr, 0, null, box.DataPointer, box.RowPitch, box.DepthPitch);
+                            _debugLogger?.Invoke($"D3D纹理更新成功，RowPitch: {box.RowPitch}");
+                        }
+                        else
+                        {
+                            _debugLogger?.Invoke("纹理数据指针为空或纹理对象为空");
+                            return false;
+                        }
+                    }
+                    catch (Exception updateEx)
+                    {
+                        _debugLogger?.Invoke($"D3D纹理更新失败: {updateEx.Message}");
+                        return false;
+                    }
                     
                     return true;
                 }
                 finally
                 {
-                    _gdiBitmap.UnlockBits(bitmapData);
+                    // RELEASE模式修复：安全的位图解锁
+                    if (bitmapData != null)
+                    {
+                        try
+                        {
+                            _gdiBitmap.UnlockBits(bitmapData);
+                        }
+                        catch (Exception unlockEx)
+                        {
+                            _debugLogger?.Invoke($"位图解锁失败: {unlockEx.Message}");
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -2138,7 +2252,46 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke("WARN: Could not determine primary display refresh rate, returning 0.0.");
             return 0.0;
         }
-
+        
+        // RELEASE模式修复：添加专门的GDI+对象清理方法
+        private void CleanupGdiObjects()
+        {
+            try
+            {
+                // 安全地清理GDI+图形对象
+                if (_gdiGraphics != null)
+                {
+                    try
+                    {
+                        _gdiGraphics.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        _debugLogger?.Invoke($"GDI+图形对象清理失败: {ex.Message}");
+                    }
+                    _gdiGraphics = null;
+                }
+                
+                // 安全地清理GDI+位图对象
+                if (_gdiBitmap != null)
+                {
+                    try
+                    {
+                        _gdiBitmap.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        _debugLogger?.Invoke($"GDI+位图对象清理失败: {ex.Message}");
+                    }
+                    _gdiBitmap = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _debugLogger?.Invoke($"GDI+对象清理时发生异常: {ex.Message}");
+            }
+        }
+        
         public void Dispose()
         {
             _computeShader?.Dispose();
@@ -2177,8 +2330,7 @@ namespace TbEinkSuperFlushTurbo
             _device?.Dispose();
             
             // 释放GDI+资源
-            _gdiGraphics?.Dispose();
-            _gdiBitmap?.Dispose();
+            CleanupGdiObjects();
         }
     }
 }

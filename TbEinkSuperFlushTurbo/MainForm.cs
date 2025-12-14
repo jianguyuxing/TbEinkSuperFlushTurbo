@@ -334,7 +334,13 @@ namespace TbEinkSuperFlushTurbo
             {
                 string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]:  {message}";
                 _logWriter?.WriteLine(logEntry);
-                System.Diagnostics.Debug.WriteLine(logEntry);
+                
+                // RELEASE模式修复：确保日志在release模式下也能工作
+                // 使用Trace代替Debug，因为Trace在release模式下仍然有效
+                System.Diagnostics.Trace.WriteLine(logEntry);
+                
+                // 强制刷新日志写入器，确保日志立即写入文件
+                _logWriter?.Flush();
             }
             catch { /* Ignore logging errors */ }
         }
