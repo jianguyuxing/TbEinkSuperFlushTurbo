@@ -1230,7 +1230,7 @@ namespace TbEinkSuperFlushTurbo
                     }
                     else
                     {
-                        // 配置文件中的索引无效，选择刷新率最小的显示器
+                         // 配置文件中的索引无效，选择刷新率最小的显示器
                         int targetIndex = FindLowestRefreshRateDisplay(screens);
                         Log($"配置文件中的显示器索引 {_targetScreenIndex} 无效，选择刷新率最小的显示器索引 {targetIndex}");
                         comboDisplay.SelectedIndex = targetIndex;

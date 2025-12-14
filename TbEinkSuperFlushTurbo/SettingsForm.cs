@@ -7,9 +7,9 @@ namespace TbEinkSuperFlushTurbo
 {
     public partial class SettingsForm : Form
     {
-        private CheckBox checkBoxStopOver59Hz;
-        private Button btnOK;
-        private Button btnCancel;
+        private CheckBox? checkBoxStopOver59Hz;
+        private Button? btnOK;
+        private Button? btnCancel;
         
         public bool StopOver59Hz { get; private set; }
 
@@ -22,12 +22,12 @@ namespace TbEinkSuperFlushTurbo
 
         private void LoadSettings()
         {
-            checkBoxStopOver59Hz.Checked = StopOver59Hz;
+            checkBoxStopOver59Hz!.Checked = StopOver59Hz;
         }
 
         private void btnOK_Click(object? sender, EventArgs e)
         {
-            StopOver59Hz = checkBoxStopOver59Hz.Checked;
+            StopOver59Hz = checkBoxStopOver59Hz!.Checked;
             DialogResult = DialogResult.OK;
             Close();
         }
