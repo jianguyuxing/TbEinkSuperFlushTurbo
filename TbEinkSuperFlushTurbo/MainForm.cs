@@ -1374,6 +1374,7 @@ namespace TbEinkSuperFlushTurbo
             // 禁用设置项修改
             trackPixelDelta.Enabled = false;
             trackPollInterval.Enabled = false;
+            // 注意：齿轮按钮保持启用状态，通过点击事件拦截来处理禁用逻辑
 
             lblInfo.Text = "Status: Initializing GPU capture...";
             Log("Initializing GPU capture...");
@@ -1493,6 +1494,7 @@ namespace TbEinkSuperFlushTurbo
                 Log(errorMessage + "\n" + ex.StackTrace);
                 MessageBox.Show(errorMessage);
                 btnStart.Enabled = true;
+                // 齿轮按钮保持启用状态，无需特别处理
                 lblInfo.Text = "Status: Failed";
                 _cts?.Cancel();
                 _cts?.Dispose();
@@ -1517,10 +1519,24 @@ namespace TbEinkSuperFlushTurbo
             // 重新启用设置项修改
             trackPixelDelta.Enabled = true;
             trackPollInterval.Enabled = true;
+            // 齿轮按钮保持启用状态，无需特别处理
         }
 
         private void btnSettings_Click(object? sender, EventArgs e)
         {
+            // 检查是否正在截屏
+            if (_pollTimer != null && _pollTimer.Enabled)
+            {
+                string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                    "截屏运行中，请先停止截屏再修改设置。" :
+                    "Screen capture is running, please stop screen capture first before modifying settings.";
+                string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
+                    "提示" : 
+                    "Information";
+                MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             using (var settingsForm = new SettingsForm(_stopOver59hz == 1))
             {
                 if (settingsForm.ShowDialog() == DialogResult.OK)
