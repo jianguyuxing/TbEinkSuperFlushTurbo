@@ -54,7 +54,7 @@ namespace TbEinkSuperFlushTurbo
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / 500) + ADDITIONAL_COOLDOWN_FRAMES; // Use default 500ms for protection calculation
 
         private const double RESET_THRESHOLD_PERCENT = 95;
-        private bool _forceDirectXCapture;  // 强制使用GDI+截屏 (从config.json读取)
+        private bool _forceDirectXCapture;  // 强制使用DirectX截屏 (从config.json读取)
 
         public bool ForceDirectXCapture
         {

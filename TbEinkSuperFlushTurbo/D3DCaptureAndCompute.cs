@@ -142,6 +142,15 @@ namespace TbEinkSuperFlushTurbo
         private readonly SemaphoreSlim _captureSemaphore = new SemaphoreSlim(1, 1); // 防止并发捕获
         private int _isCapturing = 0; // 原子标志，防止重入
 
+        // DXGI捕获优化相关
+        private int _consecutiveTimeouts = 0; // 连续超时计数
+        private int _consecutiveFailures = 0; // 连续失败计数
+        private int _captureAttemptCount = 0; // 捕获尝试次数
+        private int _captureSuccessCount = 0; // 捕获成功次数
+        private DateTime _lastSuccessfulCapture = DateTime.MinValue; // 上次成功捕获时间
+        private int _baseTimeoutMs = 100; // 基础超时时间
+        private int _maxTimeoutMs = 500; // 最大超时时间
+
         // Eink屏幕兼容性支持
         private bool _useGdiCapture = false; // 是否使用GDI+捕获
         private bool _isEinkScreen = false; // 是否为eink屏幕
@@ -877,28 +886,110 @@ namespace TbEinkSuperFlushTurbo
                 }
                 else
                 {
-                    // 使用DirectX桌面复制模式
-                    var acquireResult = _deskDup!.AcquireNextFrame(100, out _, out IDXGIResource desktopResource);
-                    if (!acquireResult.Success)
+                    // 使用DirectX桌面复制模式 - 添加参数验证和超时处理
+                    if (_deskDup == null)
                     {
-                        _debugLogger?.Invoke($"DEBUG: AcquireNextFrame failed.");
+                        _debugLogger?.Invoke($"ERROR: _deskDup is null, cannot acquire frame");
                         return (result, new float[_tilesX * _tilesY]);
                     }
+
+                    // 验证设备状态 - 确保设备仍然有效
+                    if (_device == null || _context == null)
+                    {
+                        _debugLogger?.Invoke($"ERROR: D3D11 device or context is null");
+                        return (result, new float[_tilesX * _tilesY]);
+                    }
+
+                    // 动态超时处理 - 根据之前的捕获成功率调整超时时间
+                    uint timeoutMs = (uint)GetOptimizedTimeout();
+                    var acquireResult = _deskDup.AcquireNextFrame(timeoutMs, out var frameInfo, out IDXGIResource desktopResource);
+                    
+                    if (!acquireResult.Success)
+                    {
+                        // 更详细的错误处理，并更新统计信息
+                        _consecutiveFailures++;
+                        
+                        // 根据错误码进行不同的处理
+                        if (acquireResult.Code < 0) // 一般错误情况
+                        {
+                            if ((uint)acquireResult.Code == 0x887A0027) // DXGI_ERROR_WAIT_TIMEOUT
+                            {
+                                _consecutiveTimeouts++;
+                                _debugLogger?.Invoke($"WARNING: AcquireNextFrame timed out after {timeoutMs}ms (consecutive timeouts: {_consecutiveTimeouts})");
+                                // 超时不是致命错误，可以继续尝试
+                                return (result, new float[_tilesX * _tilesY]);
+                            }
+                            else if ((uint)acquireResult.Code == 0x887A0026) // DXGI_ERROR_ACCESS_LOST
+                            {
+                                _debugLogger?.Invoke($"ERROR: Desktop duplication access lost. Need to reinitialize. (consecutive failures: {_consecutiveFailures})");
+                                // 访问丢失是严重错误，需要重新初始化
+                                return (result, new float[_tilesX * _tilesY]);
+                            }
+                            else
+                            {
+                                _debugLogger?.Invoke($"ERROR: AcquireNextFrame failed with code: 0x{(uint)acquireResult.Code:X8} (consecutive failures: {_consecutiveFailures})");
+                                return (result, new float[_tilesX * _tilesY]);
+                            }
+                        }
+                        else
+                        {
+                            _debugLogger?.Invoke($"ERROR: AcquireNextFrame failed with code: {acquireResult.Code} (consecutive failures: {_consecutiveFailures})");
+                            return (result, new float[_tilesX * _tilesY]);
+                        }
+                    }
+
+                    // 验证获取的资源是否有效
+                    if (desktopResource == null)
+                    {
+                        _debugLogger?.Invoke($"ERROR: AcquireNextFrame returned null desktopResource");
+                        return (result, new float[_tilesX * _tilesY]);
+                    }
+
                     using var tex = desktopResource.QueryInterface<ID3D11Texture2D>();
+                    
+                    // 验证纹理对象是否有效
+                    if (tex == null)
+                    {
+                        _debugLogger?.Invoke($"ERROR: Failed to query ID3D11Texture2D interface from desktopResource");
+                        return (result, new float[_tilesX * _tilesY]);
+                    }
                     
                     // Log desktopResource description
                     var desktopTexDesc = tex.Description;
                     _debugLogger?.Invoke($"DEBUG: desktopResource acquired. W:{desktopTexDesc.Width}, H:{desktopTexDesc.Height}, Format:{desktopTexDesc.Format}");
 
-                    // 首次检测实际格式
+                    // 纹理尺寸验证 - 检查获取的桌面纹理尺寸是否有效
+                    if (desktopTexDesc.Width <= 0 || desktopTexDesc.Height <= 0)
+                    {
+                        _debugLogger?.Invoke($"ERROR: Invalid desktop texture dimensions: {desktopTexDesc.Width}x{desktopTexDesc.Height}");
+                        return (result, new float[_tilesX * _tilesY]);
+                    }
+
+                    // 检查纹理尺寸是否与屏幕尺寸匹配（允许一定的容差）
+                    const int maxDimensionDifference = 10; // 允许的最大尺寸差异
+                    if (Math.Abs((int)desktopTexDesc.Width - _screenW) > maxDimensionDifference || 
+                        Math.Abs((int)desktopTexDesc.Height - _screenH) > maxDimensionDifference)
+                    {
+                        _debugLogger?.Invoke($"WARNING: Desktop texture size mismatch. Expected: {_screenW}x{_screenH}, Got: {desktopTexDesc.Width}x{desktopTexDesc.Height}");
+                        // 不立即返回失败，继续处理但记录警告
+                    }
+
+                    // 首次检测实际格式 - 添加格式验证
                     if (!_formatDetected)
                     {
                         _actualDesktopFormat = desktopTexDesc.Format;
                         _formatDetected = true;
                         _debugLogger?.Invoke($"DEBUG: Actual desktop format detected: {_actualDesktopFormat}");
+
+                        // 格式验证 - 确保桌面格式与预期格式兼容
+                        if (!IsValidDesktopFormat(_actualDesktopFormat))
+                        {
+                            _debugLogger?.Invoke($"ERROR: Unsupported desktop format: {_actualDesktopFormat}. Falling back to B8G8R8A8_UNorm");
+                            _actualDesktopFormat = Format.B8G8R8A8_UNorm; // 回退到安全格式
+                        }
                         
                         // 如果实际格式与纹理格式不匹配，需要重新创建纹理
-                        if (_actualDesktopFormat != _gpuTexCurr!.Description.Format)
+                        if (_gpuTexCurr != null && _actualDesktopFormat != _gpuTexCurr.Description.Format)
                         {
                             _debugLogger?.Invoke($"DEBUG: Recreating textures with actual format: {_actualDesktopFormat}");
                             
@@ -952,12 +1043,47 @@ namespace TbEinkSuperFlushTurbo
                     }
                     
                     _debugLogger?.Invoke($"DEBUG: Copying with format: {desktopTexDesc.Format}");
-                    _context!.CopyResource(_gpuTexCurr!, tex);
                     
-                    // 添加GPU同步点，确保复制操作完成
-                    _context.Flush();
+                    // 验证目标纹理是否有效
+                    if (_gpuTexCurr == null)
+                    {
+                        _debugLogger?.Invoke($"ERROR: _gpuTexCurr is null, cannot copy resource");
+                        _consecutiveFailures++;
+                        return (result, new float[_tilesX * _tilesY]);
+                    }
                     
-                    _deskDup.ReleaseFrame();
+                    try
+                    {
+                        _context!.CopyResource(_gpuTexCurr, tex);
+                        
+                        // 添加GPU同步点，确保复制操作完成
+                        _context.Flush();
+                        
+                        // 成功复制，更新统计信息
+                        _captureSuccessCount++;
+                        _lastSuccessfulCapture = DateTime.Now;
+                        _consecutiveFailures = 0;
+                        _consecutiveTimeouts = 0;
+                        
+                        _debugLogger?.Invoke($"DEBUG: Resource copied successfully");
+                    }
+                    catch (Exception copyEx)
+                    {
+                        _debugLogger?.Invoke($"ERROR: Failed to copy resource: {copyEx.Message}");
+                        _consecutiveFailures++;
+                        return (result, new float[_tilesX * _tilesY]);
+                    }
+                    
+                    // 安全地释放帧
+                    try
+                    {
+                        _deskDup.ReleaseFrame();
+                    }
+                    catch (Exception releaseEx)
+                    {
+                        _debugLogger?.Invoke($"WARNING: Failed to release frame: {releaseEx.Message}");
+                        // 释放帧失败不是致命错误，继续处理
+                    }
                 }
             }
 
@@ -2290,6 +2416,60 @@ namespace TbEinkSuperFlushTurbo
             {
                 _debugLogger?.Invoke($"GDI+对象清理时发生异常: {ex.Message}");
             }
+        }
+
+        // DXGI格式验证方法 - 检查桌面格式是否受支持
+        private bool IsValidDesktopFormat(Format format)
+        {
+            // 定义支持的桌面格式列表
+            var supportedFormats = new[]
+            {
+                Format.B8G8R8A8_UNorm,     // 最常见的桌面格式
+                Format.B8G8R8A8_UNorm_SRgb, // sRGB版本
+                Format.R8G8B8A8_UNorm,     // RGBA格式
+                Format.R8G8B8A8_UNorm_SRgb, // sRGB版本
+                Format.B8G8R8X8_UNorm,     // 无alpha通道格式
+                Format.B8G8R8X8_UNorm_SRgb, // sRGB版本
+                Format.R10G10B10A2_UNorm,  // 10位色深格式
+                Format.R16G16B16A16_UNorm  // 16位色深格式（较少见）
+            };
+
+            return supportedFormats.Contains(format);
+        }
+
+        // 动态超时优化 - 根据捕获历史调整超时时间
+        private int GetOptimizedTimeout()
+        {
+            _captureAttemptCount++;
+            
+            // 计算成功率
+            double successRate = _captureAttemptCount > 0 ? (double)_captureSuccessCount / _captureAttemptCount : 1.0;
+            
+            // 如果最近有成功捕获，使用基础超时
+            if ((DateTime.Now - _lastSuccessfulCapture).TotalSeconds < 5.0 && successRate > 0.8)
+            {
+                _consecutiveTimeouts = 0;
+                _consecutiveFailures = 0;
+                return _baseTimeoutMs;
+            }
+            
+            // 如果连续失败，逐步增加超时时间
+            if (_consecutiveFailures > 3)
+            {
+                int increasedTimeout = Math.Min(_baseTimeoutMs + (_consecutiveFailures - 3) * 50, _maxTimeoutMs);
+                _debugLogger?.Invoke($"WARNING: Increasing timeout to {increasedTimeout}ms due to {_consecutiveFailures} consecutive failures");
+                return increasedTimeout;
+            }
+            
+            // 如果连续超时，增加超时时间
+            if (_consecutiveTimeouts > 2)
+            {
+                int increasedTimeout = Math.Min(_baseTimeoutMs + _consecutiveTimeouts * 25, _maxTimeoutMs);
+                _debugLogger?.Invoke($"WARNING: Increasing timeout to {increasedTimeout}ms due to {_consecutiveTimeouts} consecutive timeouts");
+                return increasedTimeout;
+            }
+            
+            return _baseTimeoutMs;
         }
         
         public void Dispose()
