@@ -1517,12 +1517,19 @@ namespace TbEinkSuperFlushTurbo
             // 重新启用设置项修改
             trackPixelDelta.Enabled = true;
             trackPollInterval.Enabled = true;
+        }
 
-            _cts?.Dispose();
-            _cts = null;
-
-            _overlayForm?.HideOverlay();
-            Log("GPU capture stopped");
+        private void btnSettings_Click(object? sender, EventArgs e)
+        {
+            using (var settingsForm = new SettingsForm(_stopOver59hz == 1))
+            {
+                if (settingsForm.ShowDialog() == DialogResult.OK)
+                {
+                    _stopOver59hz = settingsForm.StopOver59Hz ? 1 : 0;
+                    SaveConfig();
+                    Log($"设置已更新：停止超过59Hz显示器 = {(settingsForm.StopOver59Hz ? "开启" : "关闭")}");
+                }
+            }
         }
 
         private void trackPixelDelta_ValueChanged(object? sender, EventArgs e)

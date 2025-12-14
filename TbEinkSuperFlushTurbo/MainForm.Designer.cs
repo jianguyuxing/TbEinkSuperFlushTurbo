@@ -47,6 +47,7 @@ namespace TbEinkSuperFlushTurbo
             listBox = new ListBox();
             lblDisplay = new Label();
             comboDisplay = new ComboBox();
+            btnSettings = new Button();
             _trayIcon = new NotifyIcon(components);
             _displayChangeTimer = new System.Windows.Forms.Timer(components);
             contextMenuStrip1 = new ContextMenuStrip(components);
@@ -234,9 +235,20 @@ namespace TbEinkSuperFlushTurbo
             comboDisplay.FormattingEnabled = true;
             comboDisplay.Location = new Point(227, 260);
             comboDisplay.Name = "comboDisplay";
-            comboDisplay.Size = new Size(380, 28);
+            comboDisplay.Size = new Size(340, 28);
             comboDisplay.TabIndex = 14;
             comboDisplay.SelectedIndexChanged += comboDisplay_SelectedIndexChanged;
+            // 
+            // btnSettings
+            // 
+            btnSettings.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            btnSettings.Location = new Point(573, 260);
+            btnSettings.Name = "btnSettings";
+            btnSettings.Size = new Size(34, 28);
+            btnSettings.TabIndex = 16;
+            btnSettings.Text = "⚙";
+            btnSettings.UseVisualStyleBackColor = true;
+            btnSettings.Click += btnSettings_Click;
             // 
             // panelBottom
             // 
@@ -300,6 +312,7 @@ namespace TbEinkSuperFlushTurbo
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(686, 509);
+            Controls.Add(btnSettings);
             Controls.Add(comboDisplay);
             Controls.Add(lblDisplay);
             Controls.Add(panelBottom);
@@ -359,5 +372,6 @@ namespace TbEinkSuperFlushTurbo
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.Label lblDisplay;
         private System.Windows.Forms.ComboBox comboDisplay;
+        private System.Windows.Forms.Button btnSettings;
     }
 }

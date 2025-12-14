@@ -128,6 +128,35 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseSimplified] = "？",
                 [Language.ChineseTraditional] = "？"
             },
+
+            // 设置窗体
+            ["SettingsTitle"] = new()
+            {
+                [Language.English] = "Settings - 设置",
+                [Language.ChineseSimplified] = "设置",
+                [Language.ChineseTraditional] = "設置"
+            },
+
+            ["StopOver59Hz"] = new()
+            {
+                [Language.English] = "Stop capture on displays over 59Hz",
+                [Language.ChineseSimplified] = "停止超过59Hz显示器的捕获",
+                [Language.ChineseTraditional] = "停止超過59Hz顯示器的捕獲"
+            },
+
+            ["OK"] = new()
+            {
+                [Language.English] = "OK",
+                [Language.ChineseSimplified] = "确定",
+                [Language.ChineseTraditional] = "確定"
+            },
+
+            ["Cancel"] = new()
+            {
+                [Language.English] = "Cancel",
+                [Language.ChineseSimplified] = "取消",
+                [Language.ChineseTraditional] = "取消"
+            },
             
             // 显示器选择
             ["DisplaySelection"] = new()
