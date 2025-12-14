@@ -1356,8 +1356,8 @@ namespace TbEinkSuperFlushTurbo
                 if (refreshRate >= 59.0)
                 {
                     string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                        $"为了避免误操作，不允许在超过59Hz的显示器上运行。当前显示器刷新率为{refreshRate:F1}Hz。若您的墨水屏超过59Hz，请到配置文件修改stopOver59hz为0。" :
-                        $"To avoid accidental operation, screen capture is not allowed on displays over 59Hz. Current display refresh rate is {refreshRate:F1}Hz. If your e-ink display is over 59Hz, please modify stopOver59hz to 0 in the config file.";
+                        $"为了避免误选择，默认禁止在超过59Hz的显示器上运行。当前显示器刷新率为{refreshRate:F1}Hz。若您的墨水屏超过59Hz或刷新率检测错误，请点击齿轮关闭此限制" :
+                        $"To avoid mis-selection, screen capture is disabled by default on displays over 59Hz. Current display refresh rate is {refreshRate:F1}Hz. If your e-ink display is over 59Hz or refresh rate detection is incorrect, please click the gear button to disable this restriction.";
                     string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                         "刷新率限制" : 
                         "Refresh Rate Limit";

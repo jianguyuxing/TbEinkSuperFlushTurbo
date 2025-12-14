@@ -139,9 +139,9 @@ namespace TbEinkSuperFlushTurbo
 
             ["StopOver59Hz"] = new()
             {
-                [Language.English] = "Stop capture on displays over 59Hz",
-                [Language.ChineseSimplified] = "停止超过59Hz显示器的捕获",
-                [Language.ChineseTraditional] = "停止超過59Hz顯示器的捕獲"
+                [Language.English] = "Disallow operation on displays over 59Hz",
+                [Language.ChineseSimplified] = "禁止在超过59Hz的显示器上运行",
+                [Language.ChineseTraditional] = "禁止在超過59Hz的顯示器上運行"
             },
 
             ["OK"] = new()
