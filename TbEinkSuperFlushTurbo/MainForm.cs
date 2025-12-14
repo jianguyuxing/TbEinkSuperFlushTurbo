@@ -1098,6 +1098,48 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
+        // 查找刷新率最小的显示器索引
+        private int FindLowestRefreshRateDisplay(Screen[] screens)
+        {
+            try
+            {
+                if (screens.Length == 0)
+                    return 0;
+                
+                if (screens.Length == 1)
+                    return 0;
+
+                double minRefreshRate = double.MaxValue;
+                int minIndex = 0;
+
+                for (int i = 0; i < screens.Length; i++)
+                {
+                    double refreshRate = GetRefreshRateFromApi(i);
+                    
+                    // 如果获取刷新率失败（返回0），给一个默认值60Hz以便比较
+                    if (refreshRate <= 0)
+                        refreshRate = 60.0;
+                    
+                    Log($"检测显示器 {i} 刷新率: {refreshRate:F1}Hz");
+                    
+                    // 选择刷新率最小的显示器
+                    if (refreshRate < minRefreshRate)
+                    {
+                        minRefreshRate = refreshRate;
+                        minIndex = i;
+                    }
+                }
+
+                Log($"选择刷新率最小的显示器: 索引 {minIndex}, 刷新率 {minRefreshRate:F1}Hz");
+                return minIndex;
+            }
+            catch (Exception ex)
+            {
+                Log($"查找最小刷新率显示器失败: {ex.Message}, 默认使用索引0");
+                return 0;
+            }
+        }
+
         private void PopulateDisplayList()
         {
             try
@@ -1188,10 +1230,11 @@ namespace TbEinkSuperFlushTurbo
                     }
                     else
                     {
-                        // 配置文件中的索引无效，选择索引0并更新配置
-                        Log($"配置文件中的显示器索引 {_targetScreenIndex} 无效，使用索引0");
-                        comboDisplay.SelectedIndex = 0;
-                        _targetScreenIndex = 0;
+                        // 配置文件中的索引无效，选择刷新率最小的显示器
+                        int targetIndex = FindLowestRefreshRateDisplay(screens);
+                        Log($"配置文件中的显示器索引 {_targetScreenIndex} 无效，选择刷新率最小的显示器索引 {targetIndex}");
+                        comboDisplay.SelectedIndex = targetIndex;
+                        _targetScreenIndex = targetIndex;
                     }
                 }
             }
