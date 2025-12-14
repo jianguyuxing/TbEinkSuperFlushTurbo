@@ -224,7 +224,7 @@ namespace TbEinkSuperFlushTurbo
             lblDisplay.Name = "lblDisplay";
             lblDisplay.Size = new Size(186, 50);
             lblDisplay.TabIndex = 13;
-            lblDisplay.Text = "Display Selection";
+            lblDisplay.Text = Localization.GetText("DisplaySelection");
             lblDisplay.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // comboDisplay

@@ -1624,6 +1624,7 @@ namespace TbEinkSuperFlushTurbo
             lblToggleHotkey.Text = Localization.GetText("ToggleHotkey");
             lblPollIntervalUnit.Text = Localization.GetText("Milliseconds");
             btnHelpPixelDelta.Text = Localization.GetText("QuestionMark");
+            lblDisplay.Text = Localization.GetText("DisplaySelection");
             
             // 更新按钮文本
             btnStart.Text = Localization.GetText("Start");
