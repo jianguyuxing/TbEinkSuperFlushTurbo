@@ -234,7 +234,7 @@ namespace TbEinkSuperFlushTurbo
             comboDisplay.FormattingEnabled = true;
             comboDisplay.Location = new Point(227, 260);
             comboDisplay.Name = "comboDisplay";
-            comboDisplay.Size = new Size(300, 28);
+            comboDisplay.Size = new Size(550, 28);
             comboDisplay.TabIndex = 14;
             comboDisplay.SelectedIndexChanged += comboDisplay_SelectedIndexChanged;
             // 

@@ -137,6 +137,14 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "顯示器選擇："
             },
             
+            // 主显示器标记
+            ["Primary"] = new()
+            {
+                [Language.English] = "Primary",
+                [Language.ChineseSimplified] = "主",
+                [Language.ChineseTraditional] = "主"
+            },
+            
             // 托盘图标
             ["TrayIconText"] = new()
             {

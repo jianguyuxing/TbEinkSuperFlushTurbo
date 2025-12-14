@@ -322,16 +322,96 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
+                // 使用系统默认顺序（Screen.AllScreens顺序），不特殊处理主显示器
+                // 为了匹配Windows Forms的Screen.AllScreens顺序，我们按照Screen.AllScreens的设备顺序排序
+                var screens = System.Windows.Forms.Screen.AllScreens;
+                var sortedOutputs = new List<IDXGIOutput>();
+                
+                // 按照Screen.AllScreens的顺序来排序DXGI输出
+                foreach (var screen in screens)
+                {
+                    var screenDeviceName = screen.DeviceName;
+                    var matchingOutput = allOutputs.FirstOrDefault(output => {
+                        try {
+                            return output.Description.DeviceName == screenDeviceName;
+                        } catch {
+                            return false;
+                        }
+                    });
+                    
+                    if (matchingOutput != null)
+                    {
+                        sortedOutputs.Add(matchingOutput);
+                    }
+                }
+                
+                // 添加任何未匹配的DXGI输出（以防万一）
+                foreach (var output in allOutputs)
+                {
+                    if (!sortedOutputs.Contains(output))
+                    {
+                        sortedOutputs.Add(output);
+                    }
+                }
+                
+                // 添加调试信息以验证DXGI输出与Screen.AllScreens的顺序匹配
+                _debugLogger?.Invoke($"DEBUG: Windows Forms Screen.AllScreens 顺序:");
+                for (int i = 0; i < screens.Length; i++)
+                {
+                    _debugLogger?.Invoke($"  Screen [{i}]: {screens[i].DeviceName}, 主显示器: {screens[i].Primary}, 边界: {screens[i].Bounds}");
+                }
+                
+                _debugLogger?.Invoke($"DEBUG: DXGI发现 {allOutputs.Count} 个输出:");
+                for (int i = 0; i < allOutputs.Count; i++)
+                {
+                    try
+                    {
+                        var desc = allOutputs[i].Description;
+                        _debugLogger?.Invoke($"  DXGI输出 [{i}]: {desc.DeviceName}, 坐标: {desc.DesktopCoordinates}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _debugLogger?.Invoke($"  DXGI输出 [{i}]: 无法获取详细信息: {ex.Message}");
+                    }
+                }
+                
+                _debugLogger?.Invoke($"DEBUG: 匹配后的DXGI输出顺序（按Screen.AllScreens顺序）:");
+                for (int i = 0; i < sortedOutputs.Count; i++)
+                {
+                    try
+                    {
+                        var desc = sortedOutputs[i].Description;
+                        _debugLogger?.Invoke($"  匹配后 [{i}]: {desc.DeviceName}, 坐标: {desc.DesktopCoordinates}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _debugLogger?.Invoke($"  匹配后 [{i}]: 无法获取详细信息: {ex.Message}");
+                    }
+                }
+                
                 // Select output based on target screen index
                 int selectedScreenIndex = _targetScreenIndex;
-                if (selectedScreenIndex < 0 || selectedScreenIndex >= allOutputs.Count)
+                _debugLogger?.Invoke($"DEBUG: 目标显示器索引参数: {selectedScreenIndex}, 可用输出数量: {sortedOutputs.Count}");
+                
+                if (selectedScreenIndex < 0 || selectedScreenIndex >= sortedOutputs.Count)
                 {
                     _debugLogger?.Invoke($"DEBUG: Invalid target screen index {selectedScreenIndex}, defaulting to primary screen (index 0).");
                     selectedScreenIndex = 0;
                 }
                 
-                var selectedOutput = allOutputs[selectedScreenIndex]; 
+                var selectedOutput = sortedOutputs[selectedScreenIndex]; 
                 _debugLogger?.Invoke($"DEBUG: Selected output {selectedScreenIndex} for duplication.");
+                
+                // 打印选中输出和对应的显示器信息
+                try
+                {
+                    var desc = selectedOutput.Description;
+                    _debugLogger?.Invoke($"DEBUG: 选中输出详细信息 - 设备: {desc.DeviceName}, 坐标: {desc.DesktopCoordinates}");
+                }
+                catch (Exception ex)
+                {
+                    _debugLogger?.Invoke($"DEBUG: 无法获取选中输出详细信息: {ex.Message}");
+                }
 
                 // 重新检测DPI设置，确保使用选中显示器的正确DPI
                 _debugLogger?.Invoke($"重新检测显示器 {selectedScreenIndex} 的DPI设置...");
@@ -1519,6 +1599,25 @@ namespace TbEinkSuperFlushTurbo
                 // 统一坐标系统：使用相对于目标显示器的本地坐标(0,0)
                 // GDI+捕获应该从显示器的左上角(0,0)开始，而不是使用虚拟屏幕的绝对坐标
                 Rectangle localScreenBounds = new Rectangle(0, 0, _screenW, _screenH);
+                
+                // 添加详细的调试信息，对比Screen.AllScreens和DXGI的信息
+                try
+                {
+                    var allScreens = System.Windows.Forms.Screen.AllScreens;
+                    if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
+                    {
+                        var targetScreen = allScreens[_targetScreenIndex];
+                        _debugLogger?.Invoke($"DEBUG: Screen.AllScreens[{_targetScreenIndex}] - 设备: {targetScreen.DeviceName}, 主显示器: {targetScreen.Primary}, 边界: {targetScreen.Bounds}");
+                    }
+                    else
+                    {
+                        _debugLogger?.Invoke($"DEBUG: 目标显示器索引 {_targetScreenIndex} 超出 Screen.AllScreens 范围");
+                    }
+                }
+                catch (Exception screenEx)
+                {
+                    _debugLogger?.Invoke($"DEBUG: 无法获取 Screen.AllScreens 信息: {screenEx.Message}");
+                }
                 
                 _debugLogger?.Invoke($"开始GDI+屏幕捕获，本地坐标: {localScreenBounds}");
                 _debugLogger?.Invoke($"原始虚拟坐标: {_screenBounds}");
