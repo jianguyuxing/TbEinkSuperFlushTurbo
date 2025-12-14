@@ -575,6 +575,45 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
+        // 使用Windows API获取显示器刷新率
+        private double GetRefreshRateFromApi(int screenIndex)
+        {
+            try
+            {
+                var allScreens = Screen.AllScreens;
+                if (screenIndex < 0 || screenIndex >= allScreens.Length)
+                {
+                    return 0.0;
+                }
+                
+                var targetScreen = allScreens[screenIndex];
+                string deviceName = targetScreen.DeviceName;
+                
+                // 使用EnumDisplaySettings获取当前显示模式
+                NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
+                devMode.dmSize = (short)Marshal.SizeOf(devMode);
+                
+                // ENUM_CURRENT_SETTINGS = -1, 获取当前设置
+                if (NativeMethods.EnumDisplaySettings(deviceName, -1, ref devMode))
+                {
+                    // dmDisplayFrequency 包含刷新率（Hz）
+                    if (devMode.dmDisplayFrequency > 0)
+                    {
+                        Log($"使用Windows API成功获取显示器 {screenIndex} 刷新率: {devMode.dmDisplayFrequency}Hz");
+                        return devMode.dmDisplayFrequency;
+                    }
+                }
+                
+                Log($"使用Windows API无法获取显示器 {screenIndex} 刷新率");
+                return 0.0;
+            }
+            catch (Exception ex)
+            {
+                Log($"使用Windows API获取显示器 {screenIndex} 刷新率失败: {ex.Message}");
+                return 0.0;
+            }
+        }
+
         public async void ManualRefresh()
         {
             if (_d3d == null) return;
@@ -882,7 +921,60 @@ namespace TbEinkSuperFlushTurbo
                 for (int i = 0; i < screens.Length; i++)
                 {
                     var screen = screens[i];
-                    string displayName = $"显示器 {i + 1}: {screen.Bounds.Width}x{screen.Bounds.Height} - {screen.DeviceName}";
+                    
+                    // 获取显示器的DPI信息（使用GetDpiForMonitor方法）
+                    uint dpiX = 96;
+                    uint dpiY = 96;
+                    try
+                    {
+                        // 获取显示器中心点
+                        var bounds = screen.Bounds;
+                        var centerPoint = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
+                        
+                        // 获取显示器句柄
+                        IntPtr hMonitor = NativeMethods.MonitorFromPoint(centerPoint, NativeMethods.MONITOR_DEFAULTTONEAREST);
+                        
+                        if (hMonitor != IntPtr.Zero)
+                        {
+                            // 使用GetDpiForMonitor获取DPI信息（不使用V2版本）
+                        int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out dpiX, out dpiY);
+                            
+                            if (result == 0)
+                            {
+                                Log($"成功获取显示器 {i} DPI: {dpiX}x{dpiY}");
+                            }
+                            else
+                            {
+                                Log($"获取显示器 {i} DPI失败，错误码: 0x{result:X8}，使用默认值96 DPI");
+                                dpiX = 96;
+                                dpiY = 96;
+                            }
+                        }
+                        else
+                        {
+                            Log($"无法获取显示器 {i} 的监视器句柄，使用默认值96 DPI");
+                            dpiX = 96;
+                            dpiY = 96;
+                        }
+                    }
+                    catch (Exception dpiEx)
+                    {
+                        Log($"获取显示器 {i} DPI失败: {dpiEx.Message}，使用默认值96 DPI");
+                        dpiX = 96;
+                        dpiY = 96;
+                    }
+                    
+                    // 计算DPI百分比（相对于标准96 DPI）
+                    int dpiScalePercent = (int)(dpiX * 100 / 96);
+                    
+                    // 获取刷新率（使用Windows API）
+                    double refreshRate = GetRefreshRateFromApi(i);
+                    
+                    // 构建显示名称，包含DPI和刷新率信息
+                    string dpiInfo = $"{dpiScalePercent}%";
+                    string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
+                    string primaryMark = screen.Primary ? " [主]" : "";
+                    string displayName = $"显示器 {i + 1}{primaryMark}: {screen.Bounds.Width}×{screen.Bounds.Height} @ {dpiInfo}{refreshInfo}";
                     comboDisplay.Items.Add(displayName);
                 }
                 
@@ -913,7 +1005,7 @@ namespace TbEinkSuperFlushTurbo
             catch (Exception ex)
             {
                 Log($"Error populating display list: {ex.Message}");
-                comboDisplay.Items.Add("默认显示器");
+                comboDisplay.Items.Add("显示器 1 [主]: 1920×1080 @ 100% 60Hz");
                 comboDisplay.SelectedIndex = 0;
                 _targetScreenIndex = 0;
             }
@@ -1090,6 +1182,12 @@ namespace TbEinkSuperFlushTurbo
                 lblInfo.Text = $"{Localization.GetText("StatusRunning")} (Display: {screenFriendlyName}, Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)";
                 btnStop.Enabled = true;
                 Log($"GPU capture initialized successfully. Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight} (DXGI), Scale: {scalePercent}%, DPI: {scaleX:F2}x{scaleY:F2}, Tile Size: {_tileSize}x{_tileSize} pixels");
+                
+                // D3D初始化完成后，重新填充显示器列表以获取刷新率信息
+                this.Invoke(new Action(() =>
+                {
+                    PopulateDisplayList();
+                }));
             }
             catch (Exception ex)
             {
