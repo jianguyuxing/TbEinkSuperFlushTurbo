@@ -1605,9 +1605,8 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke($"系统DPI: {_dpiX}x{_dpiY}, 缩放比例: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
             _debugLogger?.Invoke($"物理分辨率: {dxgiBounds.Width}x{dxgiBounds.Height}");
             
-            // 验证屏幕边界有效性 - 防止无效坐标
-            if (dxgiBounds.X < 0 || dxgiBounds.Y < 0 || 
-                dxgiBounds.Width <= 0 || dxgiBounds.Height <= 0 ||
+            // 验证屏幕边界有效性 - 修正：允许负坐标（多显示器环境正常）
+            if (dxgiBounds.Width <= 0 || dxgiBounds.Height <= 0 ||
                 dxgiBounds.Width > 16384 || dxgiBounds.Height > 16384) // 最大合理分辨率限制
             {
                 _debugLogger?.Invoke($"DEBUG: 无效的DXGI屏幕边界参数: {dxgiBounds}");
@@ -1861,9 +1860,8 @@ namespace TbEinkSuperFlushTurbo
                     return false;
                 }
                 
-                // 验证屏幕边界参数 - 防止CopyFromScreen参数异常
-                if (_screenBounds.X < 0 || _screenBounds.Y < 0 || 
-                    _screenBounds.Width != _screenW || _screenBounds.Height != _screenH ||
+                // 验证屏幕边界参数 - 修正：允许负坐标（多显示器环境正常）
+                if (_screenBounds.Width != _screenW || _screenBounds.Height != _screenH ||
                     _screenBounds.Width <= 0 || _screenBounds.Height <= 0)
                 {
                     _debugLogger?.Invoke($"DEBUG: 无效的屏幕边界参数: Bounds={_screenBounds}, W={_screenW}, H={_screenH}");

@@ -1485,8 +1485,8 @@ namespace TbEinkSuperFlushTurbo
                 // 获取显示器友好名称
                 string screenFriendlyName = GetScreenFriendlyName(_targetScreenIndex);
                 
-                // 使用Windows API获取的DPI重新计算逻辑分辨率，确保与下拉框显示一致
-                // 获取当前显示器的DPI
+                // 使用统一的DPI获取逻辑，确保与下拉框显示一致
+                // 获取当前显示器的DPI（使用与下拉框相同的方法）
                 uint dpiX = 96, dpiY = 96;
                 try
                 {
@@ -1500,8 +1500,20 @@ namespace TbEinkSuperFlushTurbo
                         int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out dpiX, out dpiY);
                         if (result == 0)
                         {
-                            Log($"状态栏使用显示器 {_targetScreenIndex} DPI: {dpiX}x{dpiY}");
+                            Log($"状态栏使用显示器 {_targetScreenIndex} DPI: {dpiX}x{dpiY} (与下拉框一致)");
                         }
+                        else
+                        {
+                            Log($"状态栏获取DPI失败，错误码: 0x{result:X8}，使用默认值96 DPI");
+                            dpiX = 96;
+                            dpiY = 96;
+                        }
+                    }
+                    else
+                    {
+                        Log($"状态栏无法获取显示器 {_targetScreenIndex} 句柄，使用默认值96 DPI");
+                        dpiX = 96;
+                        dpiY = 96;
                     }
                 }
                 catch (Exception ex)
@@ -1511,7 +1523,7 @@ namespace TbEinkSuperFlushTurbo
                     dpiY = 96;
                 }
                 
-                // 使用Windows API的DPI重新计算逻辑分辨率
+                // 使用统一的DPI重新计算逻辑分辨率
                 double scaleX = (double)dpiX / 96.0;
                 double scaleY = (double)dpiY / 96.0;
                 logicalWidth = (int)(physicalWidth / scaleX);

@@ -5,5 +5,5 @@
   "ScreenIndex": -1,
   "ToggleHotkey": 0,
   "stopOver59hz": 1,
-  "ForceDirectXCapture": false
+  "ForceDirectXCapture": true
 }
