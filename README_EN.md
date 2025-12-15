@@ -80,12 +80,14 @@ This algorithm fully leverages GPU parallel computing power to achieve high proc
 
 ### Basic Operation
 1. Run `TbEinkSuperFlushTurbo.exe`
-2. Click **Start** button to begin monitoring
-3. Click **Stop** button to stop monitoring
-4. Use tray icon to control show/hide
+2. (Optional but recommended) Perform a full screen refresh manually before starting
+3. Click **Start** button to begin monitoring
+4. Click **Stop** button to stop monitoring
+5. Use tray icon to control show/hide
+
+> Note: It is recommended to perform a manual full-screen refresh before clicking Start to clear existing ghosting. This program only calculates ghosting that occurs after clicking Start.
 
 ### Advanced Settings
-- Supports command-line parameter configuration
 - Customizable detection parameters (tile size, thresholds, etc.)
 - Adjustable log levels
 
@@ -107,7 +109,6 @@ The application uses a configuration file stored in the application directory:
    - `PixelDelta`: Sensitivity threshold for pixel color differences (2-25)
    - `PollInterval`: Screen capture interval in milliseconds (200-5000)
    - `TileSize`: Size of detection blocks in pixels (8-64)
-   - `ScreenIndex`: Target monitor index for multi-monitor setups (0 for primary)
    - `ToggleHotkey`: Virtual key code for the toggle hotkey (117 = F6)
 
 If this file doesn't exist, the application will create it with default values on first run.
@@ -155,7 +156,6 @@ dotnet run
 ### Detection Performance
 - **Detection Cycle**: 515ms (configurable)
 - **Processing Latency**: < 50ms
-- **Memory Usage**: < 100MB
 
 ### Refresh Optimization
 - **Reduced Full Refresh Count**: 60-80% reduction compared to traditional methods
@@ -188,6 +188,7 @@ dotnet run
 3. **Inaccurate Detection**: Adjust DPI settings or detection parameters
 4. **Cursor Detection Failed**: Some third-party applications use non-standard cursor APIs that cannot be detected
 5. **Poor Display Effect**: Works best with light themes + Intel Graphics Control Center adjusted contrast enhancement to make the interface pure white, or using a white background high contrast theme
+6. **Display Configuration Changes**: If you switch or modify displays (e.g. change primary display, adjust resolution, plug/unplug monitors) and find that detection or refresh areas are inaccurate, it is recommended to exit the program from the system tray and restart it to ensure proper display detection.
 
 ### ⚠️ Special Tips
 - **System Feature Interference**: Power saving mode, night mode, and the following two system brightness options (enabled by default, which also affect E-ink screens) may impact display quality:
