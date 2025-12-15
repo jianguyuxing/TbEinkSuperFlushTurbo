@@ -74,10 +74,10 @@ namespace TbEinkSuperFlushTurbo
         // 显示器选择相关字段
         private int _targetScreenIndex = 0; // 默认使用主显示器
         private string? _targetDisplayDeviceName = null; // 当前选中显示器的设备名称，用于智能匹配
-        
+
         // 超过59Hz自动停止功能
         private int _stopOver59hz = 1; // 默认开启（1开启，0关闭）
-        
+
         // 显示器变化监控相关字段
         private string[]? _lastDisplaySignatures; // 存储上次检测的显示器签名
         private int _displayCheckCounter = 0; // 显示器检测计数器
@@ -121,7 +121,7 @@ namespace TbEinkSuperFlushTurbo
         // 托盘图标相关字段
         private bool _allowVisible = true;     // 允许窗体显示
         private bool _allowClose = false;      // 允许窗体关闭
-        
+
         // 快捷键触发提示相关字段
         private bool _isTriggeredByHotkey = false; // 是否由快捷键触发
 
@@ -270,7 +270,7 @@ namespace TbEinkSuperFlushTurbo
                             _targetScreenIndex = savedScreenIndex;
                         }
                     }
-                    
+
                     // 加载快捷键配置（旧方式）
                     string hotkeyConfigPath = Path.Combine(AppContext.BaseDirectory, "hotkey.json");
                     if (File.Exists(hotkeyConfigPath))
@@ -309,7 +309,7 @@ namespace TbEinkSuperFlushTurbo
                 {
                     Directory.CreateDirectory(configDir);
                 }
-                
+
                 string configJsonPath = Path.Combine(configDir, "config.json");
                 var config = new
                 {
@@ -337,11 +337,11 @@ namespace TbEinkSuperFlushTurbo
             {
                 string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]:  {message}";
                 _logWriter?.WriteLine(logEntry);
-                
+
                 // RELEASE模式修复：确保日志在release模式下也能工作
                 // 使用Trace代替Debug，因为Trace在release模式下仍然有效
                 System.Diagnostics.Trace.WriteLine(logEntry);
-                
+
                 // 强制刷新日志写入器，确保日志立即写入文件
                 _logWriter?.Flush();
             }
@@ -424,26 +424,26 @@ namespace TbEinkSuperFlushTurbo
                 // 获取所有显示器信息
                 var allScreens = Screen.AllScreens;
                 Log($"DPI检测: 总共检测到 {allScreens.Length} 个显示器");
-                
+
                 // 检查目标显示器索引是否有效
                 if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
                 {
                     var targetScreen = allScreens[_targetScreenIndex];
                     Log($"DPI检测: 尝试获取显示器 [{_targetScreenIndex}] 的DPI设置");
-                    
+
                     // 尝试为特定显示器创建Graphics对象以获取其DPI
                     try
                     {
                         // 获取显示器的边界矩形
                         var bounds = targetScreen.Bounds;
                         Log($"DPI检测: 显示器 [{_targetScreenIndex}] 边界 = ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
-                        
+
                         // 创建临时窗口句柄来获取该显示器的DPI
                         var tempHwnd = NativeMethods.CreateWindowEx(
                             0, "STATIC", "", 0,
                             bounds.Left, bounds.Top, 1, 1,
                             IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
-                        
+
                         if (tempHwnd != IntPtr.Zero)
                         {
                             try
@@ -474,7 +474,7 @@ namespace TbEinkSuperFlushTurbo
                 }
                 else
                 {
-                    Log($"DPI检测: 目标显示器索引 {_targetScreenIndex} 超出范围 [0-{allScreens.Length-1}]");
+                    Log($"DPI检测: 目标显示器索引 {_targetScreenIndex} 超出范围 [0-{allScreens.Length - 1}]");
                 }
             }
             catch (Exception ex)
@@ -525,24 +525,24 @@ namespace TbEinkSuperFlushTurbo
                 {
                     screenIndex = 0; // 默认使用主显示器
                 }
-                
+
                 var targetScreen = allScreens[screenIndex];
-                
+
                 // 逻辑分辨率：Screen.Bounds 返回的就是逻辑分辨率（如 2560x1440）
                 int logicalWidth = targetScreen.Bounds.Width;
                 int logicalHeight = targetScreen.Bounds.Height;
-                
+
                 // 物理分辨率：使用 EnumDisplaySettings 获取真实的硬件分辨率
                 int physicalWidth = logicalWidth;
                 int physicalHeight = logicalHeight;
-                
+
                 // 获取设备名称
                 string deviceName = targetScreen.DeviceName;
-                
+
                 // 尝试使用EnumDisplaySettings获取真实的物理分辨率
                 NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
                 devMode.dmSize = (short)Marshal.SizeOf(typeof(NativeMethods.DEVMODE));
-                
+
                 if (NativeMethods.EnumDisplaySettings(deviceName, -1, ref devMode))
                 {
                     physicalWidth = devMode.dmPelsWidth;
@@ -557,17 +557,17 @@ namespace TbEinkSuperFlushTurbo
                 {
                     Log($"DEVMODE获取失败，使用逻辑分辨率作为物理分辨率: {physicalWidth}x{physicalHeight}");
                 }
-                
+
                 // 计算DPI缩放比例
                 double scaleX = (double)physicalWidth / logicalWidth;
                 double scaleY = (double)physicalHeight / logicalHeight;
-                
+
                 // 只在有缩放差异时打印详细信息
                 if (Math.Abs(scaleX - 1.0) > 0.01 || Math.Abs(scaleY - 1.0) > 0.01)
                 {
                     Log($"显示器 [{screenIndex}] DPI缩放: {scaleX:F2}x{scaleY:F2}");
                 }
-                
+
                 return (physicalWidth, physicalHeight, logicalWidth, logicalHeight);
             }
             catch (Exception ex)
@@ -575,12 +575,12 @@ namespace TbEinkSuperFlushTurbo
                 Log($"获取分辨率时发生异常: {ex.Message}");
                 // 回退到使用Screen.Bounds作为逻辑分辨率
                 Screen[] allScreens = Screen.AllScreens;
-                var screen = screenIndex >= 0 && screenIndex < allScreens.Length ? 
+                var screen = screenIndex >= 0 && screenIndex < allScreens.Length ?
                            allScreens[screenIndex] : Screen.PrimaryScreen!;
                 return (screen.Bounds.Width, screen.Bounds.Height, screen.Bounds.Width, screen.Bounds.Height);
             }
         }
-        
+
         // 获取显示器的友好名称
         private string GetScreenFriendlyName(int screenIndex)
         {
@@ -591,14 +591,14 @@ namespace TbEinkSuperFlushTurbo
                 {
                     screenIndex = 0; // 默认使用主显示器
                 }
-                
+
                 var targetScreen = allScreens[screenIndex];
                 string deviceName = targetScreen.DeviceName.Replace("\\\\.\\", ""); // 去掉前缀与下拉框格式一致
-                
+
                 // 使用 EnumDisplayDevices 获取显示器的友好名称
                 NativeMethods.DISPLAY_DEVICE displayDevice = new NativeMethods.DISPLAY_DEVICE();
                 displayDevice.cb = Marshal.SizeOf(displayDevice);
-                
+
                 if (NativeMethods.EnumDisplayDevices(targetScreen.DeviceName, 0, ref displayDevice, 0))
                 {
                     // 如果获取到了友好名称，则返回它
@@ -607,7 +607,7 @@ namespace TbEinkSuperFlushTurbo
                         return displayDevice.DeviceString;
                     }
                 }
-                
+
                 // 如果无法获取友好名称，则返回设备名称（与下拉框格式一致）
                 string primaryMark = targetScreen.Primary ? $" [{Localization.GetText("Primary")}]" : "";
                 return $"{deviceName}{primaryMark}";
@@ -632,14 +632,14 @@ namespace TbEinkSuperFlushTurbo
                 {
                     return 0.0;
                 }
-                
+
                 var targetScreen = allScreens[screenIndex];
                 string deviceName = targetScreen.DeviceName;
-                
+
                 // 使用EnumDisplaySettings获取当前显示模式
                 NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
                 devMode.dmSize = (short)Marshal.SizeOf(devMode);
-                
+
                 // ENUM_CURRENT_SETTINGS = -1, 获取当前设置
                 if (NativeMethods.EnumDisplaySettings(deviceName, -1, ref devMode))
                 {
@@ -650,7 +650,7 @@ namespace TbEinkSuperFlushTurbo
                         return devMode.dmDisplayFrequency;
                     }
                 }
-                
+
                 Log($"使用Windows API无法获取显示器 {screenIndex} 刷新率");
                 return 0.0;
             }
@@ -668,7 +668,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 主要使用设备名称作为唯一标识
                 string deviceName = screen.DeviceName;
-                
+
                 // 尝试获取HardwareID+设备路径作为备选标识
                 string hardwareId = GetHardwareIdWithDevicePath(screenIndex, deviceName);
                 if (!string.IsNullOrEmpty(hardwareId))
@@ -676,7 +676,7 @@ namespace TbEinkSuperFlushTurbo
                     Log($"显示器 [{screenIndex}] 设备名称: {deviceName}, HardwareID+设备路径: {hardwareId}");
                     return $"{deviceName}_HWID_{hardwareId}";
                 }
-                
+
                 // 如果HardwareID获取失败，仅使用设备名称
                 Log($"显示器 [{screenIndex}] 使用设备名称作为标识: {deviceName}");
                 return deviceName;
@@ -695,7 +695,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 将设备名称转换为注册表路径格式
                 string registryDeviceName = deviceName.Replace("\\\\.\\", "");
-                
+
                 // 打开显示设备注册表项
                 using (RegistryKey displayKey = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Enum\DISPLAY"))
                 {
@@ -704,28 +704,28 @@ namespace TbEinkSuperFlushTurbo
                         Log("无法打开DISPLAY注册表项");
                         return string.Empty;
                     }
-                    
+
                     // 遍历所有显示设备
                     foreach (string subKeyName in displayKey.GetSubKeyNames())
                     {
                         using (RegistryKey deviceKey = displayKey.OpenSubKey(subKeyName))
                         {
                             if (deviceKey == null) continue;
-                            
+
                             // 遍历该设备下的所有实例
                             foreach (string instanceName in deviceKey.GetSubKeyNames())
                             {
                                 using (RegistryKey instanceKey = deviceKey.OpenSubKey(instanceName))
                                 {
                                     if (instanceKey == null) continue;
-                                    
+
                                     // 获取HardwareID
                                     object hardwareIdValue = instanceKey.GetValue("HardwareID");
                                     if (hardwareIdValue is string[] hardwareIds && hardwareIds.Length > 0)
                                     {
                                         string hardwareId = hardwareIds[0].Replace("MONITOR\\", "");
                                         string fullDevicePath = $"{subKeyName}_{instanceName.Replace("\\", "_")}";
-                                        
+
                                         // 检查这个设备是否匹配当前显示器
                                         // 这里使用简单的包含检查，实际可能需要更精确的匹配逻辑
                                         if (instanceName.Contains(registryDeviceName) || registryDeviceName.Contains(subKeyName))
@@ -738,7 +738,7 @@ namespace TbEinkSuperFlushTurbo
                         }
                     }
                 }
-                
+
                 Log($"无法找到显示器 [{screenIndex}] 的HardwareID信息");
                 return string.Empty;
             }
@@ -756,7 +756,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 // 获取显示器的唯一硬件标识符
                 string uniqueId = GetDisplayUniqueId(index, screen);
-                
+
                 // 获取DPI信息（使用与下拉框相同的方法）
                 uint dpiX = 96, dpiY = 96;
                 try
@@ -764,20 +764,20 @@ namespace TbEinkSuperFlushTurbo
                     var bounds = screen.Bounds;
                     var centerPoint = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
                     IntPtr hMonitor = NativeMethods.MonitorFromPoint(centerPoint, NativeMethods.MONITOR_DEFAULTTONEAREST);
-                    
+
                     if (hMonitor != IntPtr.Zero)
                     {
                         NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out dpiX, out dpiY);
                     }
                 }
                 catch { }
-                
+
                 // 获取刷新率
                 double refreshRate = GetRefreshRateFromApi(index);
-                
+
                 // 计算DPI百分比
                 int dpiScalePercent = (int)(dpiX * 100 / 96);
-                
+
                 // 构建签名：索引:唯一ID:设备名称:分辨率:DPI:刷新率:主显示器标志
                 return $"{index}:{uniqueId}:{screen.DeviceName}:{screen.Bounds.Width}x{screen.Bounds.Height}:{dpiScalePercent}:{refreshRate:F0}:{screen.Primary}";
             }
@@ -795,7 +795,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 var screens = Screen.AllScreens;
                 _lastDisplaySignatures = new string[screens.Length];
-                
+
                 Log($"记录初始显示器状态，发现 {screens.Length} 个显示器:");
                 for (int i = 0; i < screens.Length; i++)
                 {
@@ -815,11 +815,11 @@ namespace TbEinkSuperFlushTurbo
         {
             if (!_isDisplayMonitoringEnabled || _lastDisplaySignatures == null)
                 return;
-                
+
             try
             {
                 var currentScreens = Screen.AllScreens;
-                
+
                 // 检查数量变化
                 if (currentScreens.Length != _lastDisplaySignatures.Length)
                 {
@@ -827,7 +827,7 @@ namespace TbEinkSuperFlushTurbo
                     AutoStopDueToDisplayChange("显示器数量变化");
                     return;
                 }
-                
+
                 // 检查每个显示器的状态
                 for (int i = 0; i < currentScreens.Length; i++)
                 {
@@ -837,20 +837,20 @@ namespace TbEinkSuperFlushTurbo
                         Log($"检测到显示器 {i} 配置变化：");
                         Log($"  原签名: {_lastDisplaySignatures[i]}");
                         Log($"  新签名: {currentSignature}");
-                        
+
                         // 解析签名变化，特别关注设备名称变化
                         var oldParts = _lastDisplaySignatures[i].Split(':');
                         var newParts = currentSignature.Split(':');
-                        
+
                         if (oldParts.Length >= 3 && newParts.Length >= 3)
                         {
                             string oldDeviceName = oldParts[2];
                             string newDeviceName = newParts[2];
-                            
+
                             if (oldDeviceName != newDeviceName)
                             {
                                 Log($"  设备名称变化: {oldDeviceName} -> {newDeviceName}");
-                                
+
                                 // 如果当前选中的显示器设备名称发生变化，需要特殊处理
                                 if (!string.IsNullOrEmpty(_targetDisplayDeviceName) && _targetDisplayDeviceName == oldDeviceName)
                                 {
@@ -858,12 +858,12 @@ namespace TbEinkSuperFlushTurbo
                                 }
                             }
                         }
-                        
+
                         AutoStopDueToDisplayChange("显示器配置变化");
                         return;
                     }
                 }
-                
+
                 // 只在调试模式下记录无变化的检查（避免频繁日志输出）
                 // Log("显示器配置检查完成，无变化");
             }
@@ -883,21 +883,21 @@ namespace TbEinkSuperFlushTurbo
                     var screen = Screen.AllScreens[_targetScreenIndex];
                     string deviceName = screen.DeviceName.Replace("\\\\.\\", "");
                     string primaryMark = screen.Primary ? $" [{Localization.GetText("Primary")}]" : "";
-                    
+
                     // 获取刷新率
                     double refreshRate = GetRefreshRateFromApi(_targetScreenIndex);
                     string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
-                    
+
                     // 获取分辨率
                     var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
                     string resolutionInfo = $"{physicalWidth}x{physicalHeight}";
-                    
+
                     // 更新状态栏文本 - 根据程序运行状态和语言显示不同的格式
                     string statusText;
                     if (_pollTimer?.Enabled == true)
                     {
                         // 运行中状态
-                        if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || 
+                        if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
                             Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
                         {
                             statusText = $"状态：运行中 - 显示器: {deviceName}{primaryMark}, 分辨率: {resolutionInfo}{refreshInfo}";
@@ -910,7 +910,7 @@ namespace TbEinkSuperFlushTurbo
                     else
                     {
                         // 停止状态
-                        if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || 
+                        if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
                             Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
                         {
                             statusText = $"状态：已停止 - 显示器: {deviceName}{primaryMark}, 分辨率: {resolutionInfo}{refreshInfo}";
@@ -921,7 +921,7 @@ namespace TbEinkSuperFlushTurbo
                         }
                     }
                     lblInfo.Text = statusText;
-                    
+
                     Log($"状态栏已更新：{statusText}");
                 }
                 else
@@ -948,18 +948,18 @@ namespace TbEinkSuperFlushTurbo
                 Log($"忽略重复的显示器变化检测（{reason}），距离上次检测仅{timeSinceLastDetection.TotalMilliseconds:F0}ms");
                 return;
             }
-            
+
             // 检查是否已有显示器变化弹窗正在显示
             if (_displayChangeMessageShown)
             {
                 Log($"忽略重复的显示器变化弹窗（{reason}），已有弹窗未关闭");
                 return;
             }
-            
+
             _lastDisplayChangeDetectionTime = now;
             _displayChangeMessageShown = true; // 标记弹窗已显示
             Log($"由于{reason}，自动停止刷新");
-            
+
             try
             {
                 // 确保在UI线程上安全地停止刷新
@@ -968,7 +968,7 @@ namespace TbEinkSuperFlushTurbo
                     this.Invoke(new Action(() => AutoStopDueToDisplayChange(reason)));
                     return;
                 }
-                
+
                 // 安全地停止刷新
                 if (_pollTimer?.Enabled == true)
                 {
@@ -977,15 +977,15 @@ namespace TbEinkSuperFlushTurbo
                         btnStop.PerformClick();
                     }
                 }
-                
+
                 // 安全地更新状态为已停止
                 SafeUpdateStatusText($"{Localization.GetText("StatusStopped")} - {reason}");
-                
+
                 // 显示提示信息（根据当前语言选择中文或英文）
                 this.BeginInvoke(new Action(() =>
                 {
                     string title, message;
-                    if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || 
+                    if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
                         Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
                     {
                         title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
@@ -997,34 +997,34 @@ namespace TbEinkSuperFlushTurbo
                         message = $"Detected {reason}. Screen refresh has been automatically stopped. Please reselect the display and start.";
                     }
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    
+
                     // 弹窗关闭后立即重置标志
                     _displayChangeMessageShown = false;
                     Log("显示器变化弹窗已关闭，快捷键功能已恢复");
                 }));
-                
+
                 // 完全重新初始化显示器相关状态
                 this.Invoke(new Action(() =>
                 {
                     Log("开始重新初始化显示器配置...");
-                    
+
                     try
                     {
                         // 保存当前选中显示器的设备名称，用于重新匹配
                         string previousDeviceName = _targetDisplayDeviceName;
                         int previousIndex = _targetScreenIndex;
-                        
+
                         Log($"重新初始化前 - 设备名称: '{previousDeviceName}', 索引: {previousIndex}");
-                        
+
                         // 1. 重新填充显示器列表（包含智能匹配逻辑）
                         PopulateDisplayList();
-                        
+
                         // 2. 如果有之前的设备名称，尝试重新匹配
                         if (!string.IsNullOrEmpty(previousDeviceName))
                         {
                             var screens = Screen.AllScreens;
                             bool foundMatch = false;
-                            
+
                             for (int i = 0; i < screens.Length; i++)
                             {
                                 if (screens[i].DeviceName == previousDeviceName)
@@ -1037,38 +1037,38 @@ namespace TbEinkSuperFlushTurbo
                                     break;
                                 }
                             }
-                            
+
                             if (!foundMatch)
                             {
                                 Log($"重新匹配失败：未找到之前的设备 '{previousDeviceName}'");
                             }
                         }
-                        
+
                         // 3. 重新记录显示器签名
                         RecordInitialDisplayState();
-                        
+
                         // 4. 更新状态栏显示当前选中显示器信息
                         UpdateStatusBarDisplayInfo();
-                        
+
                         // 5. 强制重新检测当前显示器的刷新率
                         if (_targetScreenIndex >= 0)
                         {
                             double currentRefreshRate = GetRefreshRateFromApi(_targetScreenIndex);
                             Log($"重新检测后，当前选中显示器 [{_targetScreenIndex}] 刷新率: {currentRefreshRate}Hz");
-                            
+
                             // 6. 如果刷新率超过限制，显示警告
                             if (_stopOver59hz == 1 && currentRefreshRate > 59)
                             {
-                                string warningMessage = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || 
+                                string warningMessage = Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
                                     Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                                     $"当前显示器刷新率为 {currentRefreshRate:F1}Hz，超过59Hz限制。程序将在您点击开始按钮时自动停止。" :
                                     $"Current display refresh rate is {currentRefreshRate:F1}Hz, exceeding 59Hz limit. The program will automatically stop when you click Start.";
-                                
-                                MessageBox.Show(warningMessage, Localization.GetText("WindowTitle"), 
+
+                                MessageBox.Show(warningMessage, Localization.GetText("WindowTitle"),
                                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             }
                         }
-                        
+
                         Log($"显示器配置重新初始化完成 - 最终选择: 索引 {_targetScreenIndex}, 设备 '{_targetDisplayDeviceName}'");
                     }
                     catch (Exception ex)
@@ -1111,19 +1111,19 @@ namespace TbEinkSuperFlushTurbo
 
                 // 获取物理和逻辑分辨率
                 var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
-                
+
                 // 计算物理分辨率到逻辑分辨率的缩放比例
                 double scaleX = (double)physicalWidth / logicalWidth;
                 double scaleY = (double)physicalHeight / logicalHeight;
-                
+
                 Log($"覆盖层创建: 物理分辨率={physicalWidth}x{physicalHeight}, 逻辑分辨率={logicalWidth}x{logicalHeight}, 缩放比例={scaleX:F2}x{scaleY:F2}");
-                
+
                 // 获取目标显示器的位置信息
                 var allScreens = Screen.AllScreens;
-                var targetScreen = _targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length ? 
+                var targetScreen = _targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length ?
                     allScreens[_targetScreenIndex] : Screen.PrimaryScreen!;
                 var screenBounds = targetScreen.Bounds;
-                
+
                 _overlayForm = new OverlayForm(_d3d.TileSize, logicalWidth, logicalHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log, _targetScreenIndex, scaleX, scaleY)
                 {
                     ShowInTaskbar = false,
@@ -1149,26 +1149,26 @@ namespace TbEinkSuperFlushTurbo
                 // 获取所有显示器信息
                 var allScreens = Screen.AllScreens;
                 Log($"GetDpiScale: 总共检测到 {allScreens.Length} 个显示器");
-                
+
                 // 检查目标显示器索引是否有效
                 if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
                 {
                     var targetScreen = allScreens[_targetScreenIndex];
                     Log($"GetDpiScale: 尝试获取显示器 [{_targetScreenIndex}] 的DPI设置");
-                    
+
                     // 尝试为特定显示器创建Graphics对象以获取其DPI
                     try
                     {
                         // 获取显示器的边界矩形
                         var bounds = targetScreen.Bounds;
                         Log($"GetDpiScale: 显示器 [{_targetScreenIndex}] 边界 = ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
-                        
+
                         // 创建临时窗口句柄来获取该显示器的DPI
                         var tempHwnd = NativeMethods.CreateWindowEx(
                             0, "STATIC", "", 0,
                             bounds.Left, bounds.Top, 1, 1,
                             IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
-                        
+
                         if (tempHwnd != IntPtr.Zero)
                         {
                             try
@@ -1199,7 +1199,7 @@ namespace TbEinkSuperFlushTurbo
                 }
                 else
                 {
-                    Log($"GetDpiScale: 目标显示器索引 {_targetScreenIndex} 超出范围 [0-{allScreens.Length-1}]");
+                    Log($"GetDpiScale: 目标显示器索引 {_targetScreenIndex} 超出范围 [0-{allScreens.Length - 1}]");
                 }
             }
             catch (Exception ex)
@@ -1207,7 +1207,7 @@ namespace TbEinkSuperFlushTurbo
                 Log($"GetDpiScale: 枚举显示器信息时发生异常: {ex.Message}");
                 // 如果无法获取特定显示器的DPI，继续使用窗口DPI
             }
-            
+
             // 回退到原来的实现
             uint windowDpi = GetDpiForWindow(this.Handle);
             float fallbackScale = windowDpi / 96f;
@@ -1257,7 +1257,7 @@ namespace TbEinkSuperFlushTurbo
                 // 注册系统级快捷键
                 bool result = RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modFlags, (int)keyCode);
                 _isHotkeyRegistered = result;
-                
+
                 if (!result)
                 {
                     Log($"Failed to register hotkey: {_toggleHotkey}");
@@ -1308,8 +1308,8 @@ namespace TbEinkSuperFlushTurbo
             // 检查当前焦点窗口
             IntPtr foregroundWindow = GetForegroundWindow();
             bool isCurrentWindowFocused = (foregroundWindow == this.Handle);
-            
-             // 只有当当前窗口没有焦点时才显示气泡提示
+
+            // 只有当当前窗口没有焦点时才显示气泡提示
             bool shouldShowNotification = !isCurrentWindowFocused;
 
             if (_pollTimer?.Enabled != true)
@@ -1358,7 +1358,7 @@ namespace TbEinkSuperFlushTurbo
             lblPixelDeltaValue.Text = _pixelDelta.ToString();
             trackPollInterval.Value = _pollInterval;
             lblPollIntervalValue.Text = _pollInterval.ToString();
-            
+
             // 如果没有设置快捷键，显示提示文本
             if (_toggleHotkey == Keys.None)
             {
@@ -1395,7 +1395,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 if (screens.Length == 0)
                     return 0;
-                
+
                 if (screens.Length == 1)
                     return 0;
 
@@ -1405,13 +1405,13 @@ namespace TbEinkSuperFlushTurbo
                 for (int i = 0; i < screens.Length; i++)
                 {
                     double refreshRate = GetRefreshRateFromApi(i);
-                    
+
                     // 如果获取刷新率失败（返回0），给一个默认值60Hz以便比较
                     if (refreshRate <= 0)
                         refreshRate = 60.0;
-                    
+
                     Log($"检测显示器 {i} 刷新率: {refreshRate:F1}Hz");
-                    
+
                     // 选择刷新率最小的显示器
                     if (refreshRate < minRefreshRate)
                     {
@@ -1435,10 +1435,10 @@ namespace TbEinkSuperFlushTurbo
             try
             {
                 comboDisplay.Items.Clear();
-                
+
                 // 获取所有显示器，使用系统默认顺序（不特殊处理主显示器）
                 var screens = Screen.AllScreens;
-                
+
                 // 添加详细的显示器调试信息
                 Log($"系统发现 {screens.Length} 个显示器:");
                 for (int debugIdx = 0; debugIdx < screens.Length; debugIdx++)
@@ -1447,11 +1447,11 @@ namespace TbEinkSuperFlushTurbo
                     Log($"  显示器 [{debugIdx}]: {debugScreen.DeviceName}, 主显示器: {debugScreen.Primary}, 边界: {debugScreen.Bounds}");
                 }
                 Log($"配置文件中的目标显示器索引: {_targetScreenIndex}");
-                
+
                 for (int i = 0; i < screens.Length; i++)
                 {
                     var screen = screens[i];
-                    
+
                     // 获取显示器的DPI信息（使用GetDpiForMonitor方法）
                     uint dpiX = 96;
                     uint dpiY = 96;
@@ -1460,15 +1460,15 @@ namespace TbEinkSuperFlushTurbo
                         // 获取显示器中心点
                         var bounds = screen.Bounds;
                         var centerPoint = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
-                        
+
                         // 获取显示器句柄
                         IntPtr hMonitor = NativeMethods.MonitorFromPoint(centerPoint, NativeMethods.MONITOR_DEFAULTTONEAREST);
-                        
+
                         if (hMonitor != IntPtr.Zero)
                         {
                             // 使用GetDpiForMonitor获取DPI信息（不使用V2版本）
-                        int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out dpiX, out dpiY);
-                            
+                            int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out dpiX, out dpiY);
+
                             if (result == 0)
                             {
                                 Log($"成功获取显示器 {i} DPI: {dpiX}x{dpiY}");
@@ -1493,17 +1493,17 @@ namespace TbEinkSuperFlushTurbo
                         dpiX = 96;
                         dpiY = 96;
                     }
-                    
+
                     // 计算DPI百分比（相对于标准96 DPI）
                     int dpiScalePercent = (int)(dpiX * 100 / 96);
-                    
+
                     // 获取刷新率（使用Windows API）
                     double refreshRate = GetRefreshRateFromApi(i);
-                    
+
                     // 获取物理分辨率（避免发布包与调试模式的差异）
                     int physicalWidth = screen.Bounds.Width;
                     int physicalHeight = screen.Bounds.Height;
-                    
+
                     // 如果DPI缩放不为100%，尝试获取真实的物理分辨率
                     if (dpiScalePercent != 100)
                     {
@@ -1527,7 +1527,7 @@ namespace TbEinkSuperFlushTurbo
                     {
                         Log($"显示器 {i} DPI缩放 100%，物理分辨率与逻辑分辨率相同: {physicalWidth}×{physicalHeight}");
                     }
-                    
+
                     // 构建显示名称，包含DPI和刷新率信息
                     string dpiInfo = $"{dpiScalePercent}%";
                     string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
@@ -1537,18 +1537,18 @@ namespace TbEinkSuperFlushTurbo
                     string displayName = $"{deviceName}{primaryMark}: {physicalWidth}×{physicalHeight} @ {dpiInfo}{refreshInfo}";
                     comboDisplay.Items.Add(displayName);
                 }
-                
+
                 // 根据配置文件选择显示器（使用智能匹配逻辑）
                 if (comboDisplay.Items.Count > 0)
                 {
                     int targetIndex = -1;
-                    
+
                     // 智能匹配策略：多层次匹配显示器
                     // 1. 首先尝试按设备名称匹配（最可靠的标识）
                     if (!string.IsNullOrEmpty(_targetDisplayDeviceName))
                     {
                         Log($"尝试按设备名称 '{_targetDisplayDeviceName}' 匹配显示器");
-                        
+
                         for (int i = 0; i < screens.Length; i++)
                         {
                             if (screens[i].DeviceName == _targetDisplayDeviceName)
@@ -1558,26 +1558,26 @@ namespace TbEinkSuperFlushTurbo
                                 break;
                             }
                         }
-                        
+
                         if (targetIndex == -1)
                         {
                             Log($"设备名称匹配失败：未找到设备 '{_targetDisplayDeviceName}' 的显示器");
                         }
                     }
-                    
+
                     // 2. 如果设备名称匹配失败，尝试按刷新率和分辨率匹配
                     if (targetIndex == -1 && _targetScreenIndex >= 0 && _targetScreenIndex < screens.Length)
                     {
                         var (prevWidth, prevHeight, prevLogicalWidth, prevLogicalHeight) = GetScreenResolutions(_targetScreenIndex);
                         double prevRefreshRate = GetRefreshRateFromApi(_targetScreenIndex);
-                        
+
                         Log($"尝试按刷新率 {prevRefreshRate}Hz 和分辨率 {prevWidth}x{prevHeight} 匹配显示器");
-                        
+
                         for (int i = 0; i < screens.Length; i++)
                         {
                             var (currWidth, currHeight, currLogicalWidth, currLogicalHeight) = GetScreenResolutions(i);
                             double currRefreshRate = GetRefreshRateFromApi(i);
-                            
+
                             // 匹配刷新率和分辨率
                             if (currRefreshRate == prevRefreshRate && currWidth == prevWidth && currHeight == prevHeight)
                             {
@@ -1586,31 +1586,31 @@ namespace TbEinkSuperFlushTurbo
                                 break;
                             }
                         }
-                        
+
                         if (targetIndex == -1)
                         {
                             Log($"刷新率分辨率匹配失败：未找到刷新率 {prevRefreshRate}Hz 分辨率 {prevWidth}x{prevHeight} 的显示器");
                         }
                     }
-                    
+
                     // 3. 如果都失败，按索引匹配（如果索引有效）
                     if (targetIndex == -1 && _targetScreenIndex >= 0 && _targetScreenIndex < comboDisplay.Items.Count)
                     {
                         targetIndex = _targetScreenIndex;
                         Log($"使用索引匹配：{_targetScreenIndex}");
                     }
-                    
+
                     // 4. 最后失败，选择刷新率最小的显示器
                     if (targetIndex == -1)
                     {
                         targetIndex = FindLowestRefreshRateDisplay(screens);
                         Log($"使用默认匹配：选择刷新率最小的显示器索引 {targetIndex}");
                     }
-                    
+
                     // 应用最终选择
                     comboDisplay.SelectedIndex = targetIndex;
                     _targetScreenIndex = targetIndex;
-                    
+
                     // 更新设备名称记录（仅运行时使用）
                     if (targetIndex >= 0 && targetIndex < screens.Length)
                     {
@@ -1643,7 +1643,7 @@ namespace TbEinkSuperFlushTurbo
                             "Screen capture is running. Please stop capture first before switching display.";
                         string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                         MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        
+
                         // 恢复原来的选择，但不阻止用户操作
                         comboDisplay.SelectedIndex = _targetScreenIndex;
                         return;
@@ -1661,7 +1661,7 @@ namespace TbEinkSuperFlushTurbo
                             Log($"Display changed to index: {_targetScreenIndex}, device: {_targetDisplayDeviceName}");
                         }
                         SaveConfig(); // 保存配置到文件
-                        
+
                         // 销毁现有的覆盖层，确保下次会在新显示器上重新创建
                         if (_overlayForm != null)
                         {
@@ -1759,10 +1759,10 @@ namespace TbEinkSuperFlushTurbo
 
             SafeUpdateStatusText("Status: Initializing GPU capture...");
             Log("Initializing GPU capture...");
-            
+
             // 记录初始显示器状态（用于变化检测）
             RecordInitialDisplayState();
-            
+
             try
             {
                 _d3d = new D3DCaptureAndCompute(DebugLogger, _tileSize, _pixelDelta, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
@@ -1829,7 +1829,7 @@ namespace TbEinkSuperFlushTurbo
                     {
                         Log($"Error in poll timer: {ex.Message}");
                         Log($"Stack trace: {ex.StackTrace}");
-                        
+
                         // 如果发生严重错误，自动停止捕获
                         if (ex is ArgumentException || ex is OutOfMemoryException)
                         {
@@ -1848,10 +1848,10 @@ namespace TbEinkSuperFlushTurbo
 
                 // 获取物理和逻辑分辨率
                 var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
-                
+
                 // 获取显示器友好名称
                 string screenFriendlyName = GetScreenFriendlyName(_targetScreenIndex);
-                
+
                 // 使用统一的DPI获取逻辑，确保与下拉框显示一致
                 // 获取当前显示器的DPI（使用与下拉框相同的方法）
                 uint dpiX = 96, dpiY = 96;
@@ -1861,7 +1861,7 @@ namespace TbEinkSuperFlushTurbo
                     var bounds = targetScreen.Bounds;
                     var centerPoint = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
                     IntPtr hMonitor = NativeMethods.MonitorFromPoint(centerPoint, NativeMethods.MONITOR_DEFAULTTONEAREST);
-                    
+
                     if (hMonitor != IntPtr.Zero)
                     {
                         int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out dpiX, out dpiY);
@@ -1889,13 +1889,13 @@ namespace TbEinkSuperFlushTurbo
                     dpiX = 96;
                     dpiY = 96;
                 }
-                
+
                 // 使用统一的DPI重新计算逻辑分辨率
                 double scaleX = (double)dpiX / 96.0;
                 double scaleY = (double)dpiY / 96.0;
                 logicalWidth = (int)(physicalWidth / scaleX);
                 logicalHeight = (int)(physicalHeight / scaleY);
-                
+
                 // 计算DPI缩放比例：物理分辨率 ÷ 逻辑分辨率
                 double dpiScaleX = (double)physicalWidth / logicalWidth;
                 double dpiScaleY = (double)physicalHeight / logicalHeight;
@@ -1904,7 +1904,7 @@ namespace TbEinkSuperFlushTurbo
                 SafeUpdateStatusText($"{Localization.GetText("StatusRunning")} (Display: {screenFriendlyName}, Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)");
                 btnStop.Enabled = true;
                 Log($"GPU capture initialized successfully. Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight} (DXGI), Scale: {scalePercent}%, DPI: {dpiScaleX:F2}x{dpiScaleY:F2}, Tile Size: {_tileSize}x{_tileSize} pixels");
-                
+
                 // D3D初始化完成后，重新填充显示器列表以获取刷新率信息
                 this.Invoke(new Action(() =>
                 {
@@ -2201,7 +2201,7 @@ namespace TbEinkSuperFlushTurbo
                         // 计算居中位置
                         int x = (width - image.Width) / 2;
                         int y = (height - image.Height) / 2;
-                        
+
                         // 确保图片不会超出按钮边界
                         if (image.Width <= width && image.Height <= height)
                         {
@@ -2226,7 +2226,7 @@ namespace TbEinkSuperFlushTurbo
                 // 如果加载图片失败，继续使用绘制的绿色方块
                 System.Diagnostics.Debug.WriteLine($"Failed to load checkmark image: {ex.Message}");
             }
-            
+
             // 如果没有找到图片或加载失败，使用绿色方块作为备选
             using (var brush = new SolidBrush(Color.Green))
             {
@@ -2237,7 +2237,7 @@ namespace TbEinkSuperFlushTurbo
                 g.FillRectangle(brush, x, y, squareSize, squareSize);
             }
         }
-        
+
         private void DrawRecordButton(Graphics g, int width, int height)
         {
             // 首先尝试加载自定义图片
@@ -2251,7 +2251,7 @@ namespace TbEinkSuperFlushTurbo
                         // 计算居中位置
                         int x = (width - image.Width) / 2;
                         int y = (height - image.Height) / 2;
-                        
+
                         // 确保图片不会超出按钮边界
                         if (image.Width <= width && image.Height <= height)
                         {
@@ -2276,7 +2276,7 @@ namespace TbEinkSuperFlushTurbo
                 // 如果加载图片失败，继续使用绘制的红色圆点
                 System.Diagnostics.Debug.WriteLine($"Failed to load record button image: {ex.Message}");
             }
-            
+
             // 如果没有找到图片或加载失败，使用红色圆点作为备选
             using (var brush = new SolidBrush(Color.Red))
             {
@@ -2287,7 +2287,7 @@ namespace TbEinkSuperFlushTurbo
                 g.FillEllipse(brush, x, y, diameter, diameter);
             }
         }
-        
+
         private void btnToggleRecord_MouseEnter(object? sender, EventArgs e)
         {
             if (sender is Button btn)
@@ -2295,7 +2295,7 @@ namespace TbEinkSuperFlushTurbo
                 btn.BackColor = Color.LightGray; // 悬停时背景变灰
             }
         }
-        
+
         private void btnToggleRecord_MouseLeave(object? sender, EventArgs e)
         {
             if (sender is Button btn)
@@ -2341,26 +2341,26 @@ namespace TbEinkSuperFlushTurbo
             _trayIcon.Icon = this.Icon ?? SystemIcons.Application;
             _trayIcon.Visible = true;
             _trayIcon.Text = Localization.GetText("TrayIconText");
-            
+
             // 创建托盘菜单
             ContextMenuStrip trayMenu = new ContextMenuStrip();
-            
+
             // 显示面板菜单项
             ToolStripMenuItem showItem = new ToolStripMenuItem(Localization.GetText("ShowPanel"));
             showItem.Click += (sender, e) => ShowMainForm();
             trayMenu.Items.Add(showItem);
-            
+
             // 分隔符
             trayMenu.Items.Add(new ToolStripSeparator());
-            
+
             // 退出菜单项
             ToolStripMenuItem exitItem = new ToolStripMenuItem(Localization.GetText("Exit"));
             exitItem.Click += (sender, e) => ExitApplication();
             trayMenu.Items.Add(exitItem);
-            
+
             // 设置托盘图标上下文菜单
             _trayIcon.ContextMenuStrip = trayMenu;
-            
+
             // 设置托盘图标点击事件
             _trayIcon.MouseClick += TrayIcon_MouseClick;
             _trayIcon.MouseDoubleClick += TrayIcon_MouseDoubleClick;
@@ -2415,12 +2415,12 @@ namespace TbEinkSuperFlushTurbo
                 // 用户点击关闭按钮[X]，隐藏窗口但保持托盘图标
                 e.Cancel = true;
                 this.Hide(); // 隐藏窗口而不是最小化
-                
+
                 // 显示托盘提示
                 _trayIcon.BalloonTipTitle = Localization.GetText("MinimizedToTrayTitle");
                 _trayIcon.BalloonTipText = Localization.GetText("MinimizedToTrayMessage");
                 _trayIcon.ShowBalloonTip(2000);
-                
+
                 return;
             }
 
@@ -2477,7 +2477,7 @@ namespace TbEinkSuperFlushTurbo
                 {
                     text = Localization.GetText("StatusStopped");
                 }
-                
+
                 lblInfo.Text = text;
                 Log($"状态更新: {text}");
             }
@@ -2494,7 +2494,7 @@ namespace TbEinkSuperFlushTurbo
         {
             // 更新窗口标题
             this.Text = Localization.GetText("WindowTitle");
-            
+
             // 更新标签文本
             lblPixelDelta.Text = Localization.GetText("PixelColorDiff");
             lblPollInterval.Text = Localization.GetText("DetectInterval");
@@ -2502,16 +2502,16 @@ namespace TbEinkSuperFlushTurbo
             lblPollIntervalUnit.Text = Localization.GetText("Milliseconds");
             btnHelpPixelDelta.Text = Localization.GetText("QuestionMark");
             lblDisplay.Text = Localization.GetText("DisplaySelection");
-            
+
             // 更新按钮文本
             btnStart.Text = Localization.GetText("Start");
             btnStop.Text = Localization.GetText("Stop");
-            
+
             // 安全地更新状态标签 - 处理空文本和意外值
             try
             {
                 string currentText = lblInfo.Text ?? "";
-                
+
                 // 如果当前文本为空，设置为默认停止状态
                 if (string.IsNullOrEmpty(currentText))
                 {
@@ -2529,7 +2529,7 @@ namespace TbEinkSuperFlushTurbo
                         "Status: Failed" => Localization.GetText("StatusFailed"),
                         _ => currentText // 保持原有文本，避免数据丢失
                     };
-                    
+
                     // 只有在文本确实需要更新时才更新
                     if (newText != currentText && !string.IsNullOrEmpty(newText))
                     {
@@ -2543,11 +2543,11 @@ namespace TbEinkSuperFlushTurbo
                 // 作为后备方案，设置为默认停止状态
                 lblInfo.Text = Localization.GetText("StatusStopped");
             }
-            
+
             // 调整状态标签属性以支持换行
             AdjustStatusLabelProperties();
         }
-        
+
         // 确保状态标签能够正确换行显示
         private void AdjustStatusLabelProperties()
         {
@@ -2555,23 +2555,23 @@ namespace TbEinkSuperFlushTurbo
             {
                 lblInfo.AutoSize = false;
                 lblInfo.MaximumSize = new Size(panelBottom.Width - 10, 0); // 留一些边距
-                
+
                 // 处理空文本情况
                 if (string.IsNullOrEmpty(lblInfo.Text))
                 {
                     lblInfo.Text = Localization.GetText("StatusStopped");
                     Log("AdjustStatusLabelProperties: 检测到空文本，已重置为停止状态");
                 }
-                
+
                 // 测量文本所需的高度
-                var textSize = TextRenderer.MeasureText(lblInfo.Text, lblInfo.Font, 
+                var textSize = TextRenderer.MeasureText(lblInfo.Text, lblInfo.Font,
                     new Size(lblInfo.MaximumSize.Width, int.MaxValue), TextFormatFlags.WordBreak);
                 lblInfo.Height = textSize.Height;
-                
+
                 // 调整listBox的位置，使其始终在lblInfo下方
                 listBox.Location = new Point(listBox.Location.X, lblInfo.Height + 5);
                 listBox.Height = panelBottom.ClientSize.Height - listBox.Location.Y - 5;
-                
+
                 // 强制面板重新布局，使listBox跟随lblInfo的高度变化
                 panelBottom.PerformLayout();
             }
