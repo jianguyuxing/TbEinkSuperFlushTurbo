@@ -685,9 +685,9 @@ namespace TbEinkSuperFlushTurbo
             // --- 创建新的 GPU 缓冲区 ---
             // The shader uses RWStructuredBuffer<uint> with values per tile for history
             // The actual number of history frames is determined by the AverageWindowSize parameter passed from MainForm
-            // Note: Currently supports up to 4-frame average window size (AVERAGE_WINDOW_SIZE in MainForm)
+            // Note: Currently supports up to 2-frame average window size (AVERAGE_WINDOW_SIZE in MainForm)
             const int historyElementSize = sizeof(uint); // sizeof(uint)
-            int historyArraySize = 4; // Maximum supported history frames (must match shader)
+            int historyArraySize = 2; // Maximum supported history frames (must match shader)
 
             var stateBufferDesc = new BufferDescription
             {

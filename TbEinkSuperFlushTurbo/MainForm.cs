@@ -34,8 +34,8 @@ namespace TbEinkSuperFlushTurbo
         // --- Refresh parameters ---
         private int _tileSize = 8; // 区块的像素边长数，默认值8代表8*8像素
         private int _pixelDelta = 10;
-        // Average window size for frame difference calculation (maximum supported: 4 frames)
-        private const uint AVERAGE_WINDOW_SIZE = 3;
+        // Average window size for frame difference calculation (maximum supported: 2 frames)
+        private const uint AVERAGE_WINDOW_SIZE = 2;
         private const uint STABLE_FRAMES_REQUIRED = 4;
         private const uint ADDITIONAL_COOLDOWN_FRAMES = 2;
         private const uint FIRST_REFRESH_EXTRA_DELAY = 1;

@@ -38,7 +38,7 @@ RWStructuredBuffer<uint> g_boundingAreaTileChangeCount : register(u7);
 
 // Maximum supported history frame count - can be increased if needed
 // Note: This should be kept in sync with the C# code buffer allocation
-#define HISTORY_FRAME_COUNT 4
+#define HISTORY_FRAME_COUNT 2
 
 [numthreads(8, 8, 1)]
 void CSMain(uint3 dispatchThreadId : SV_DispatchThreadID)
