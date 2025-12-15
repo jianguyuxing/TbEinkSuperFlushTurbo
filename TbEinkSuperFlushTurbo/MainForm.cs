@@ -1224,13 +1224,37 @@ namespace TbEinkSuperFlushTurbo
                     // 获取刷新率（使用Windows API）
                     double refreshRate = GetRefreshRateFromApi(i);
                     
+                    // 获取物理分辨率（避免发布包与调试模式的差异）
+                    int physicalWidth = screen.Bounds.Width;
+                    int physicalHeight = screen.Bounds.Height;
+                    
+                    // 如果DPI缩放不为100%，尝试获取物理分辨率
+                    if (dpiScalePercent != 100)
+                    {
+                        try
+                        {
+                            // 使用现有的GetScreenResolutions方法获取物理分辨率
+                            var (physicalResWidth, physicalResHeight, logicalResWidth, logicalResHeight) = GetScreenResolutions(i);
+                            if (physicalResWidth > 0 && physicalResHeight > 0)
+                            {
+                                physicalWidth = physicalResWidth;
+                                physicalHeight = physicalResHeight;
+                                Log($"显示器 {i} 使用物理分辨率: {physicalWidth}×{physicalHeight} (替代逻辑分辨率 {screen.Bounds.Width}×{screen.Bounds.Height})");
+                            }
+                        }
+                        catch (Exception resEx)
+                        {
+                            Log($"获取显示器 {i} 物理分辨率失败: {resEx.Message}，使用逻辑分辨率");
+                        }
+                    }
+                    
                     // 构建显示名称，包含DPI和刷新率信息
                     string dpiInfo = $"{dpiScalePercent}%";
                     string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
                     string primaryMark = screen.Primary ? $" [{Localization.GetText("Primary")}]" : "";
                     // 使用设备名称确保正确匹配，但保持格式简洁
                     string deviceName = screen.DeviceName.Replace("\\\\.\\", ""); // 去掉前缀使显示更简洁
-                    string displayName = $"{deviceName}{primaryMark}: {screen.Bounds.Width}×{screen.Bounds.Height} @ {dpiInfo}{refreshInfo}";
+                    string displayName = $"{deviceName}{primaryMark}: {physicalWidth}×{physicalHeight} @ {dpiInfo}{refreshInfo}";
                     comboDisplay.Items.Add(displayName);
                 }
                 
