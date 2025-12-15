@@ -137,6 +137,7 @@ namespace TbEinkSuperFlushTurbo
         private ID3D11Buffer? _paramBuffer;
 
         private Action<string>? _debugLogger; // Field to store the logger
+        private bool _enableDetailedDebugLogs = false; // 控制是否打印详细的DEBUG日志
         
         // 异步操作同步控制
         private readonly SemaphoreSlim _captureSemaphore = new SemaphoreSlim(1, 1); // 防止并发捕获
@@ -287,19 +288,31 @@ namespace TbEinkSuperFlushTurbo
                         var outputDesc = output.Description;
                         int width = outputDesc.DesktopCoordinates.Right - outputDesc.DesktopCoordinates.Left;
                         int height = outputDesc.DesktopCoordinates.Bottom - outputDesc.DesktopCoordinates.Top;
-                        _debugLogger?.Invoke($"DEBUG: Output {i}: Name='{outputDesc.DeviceName}', Physical Resolution: {width}x{height}");
+                        // 仅在详细模式下打印详细的输出信息
+                        if (_enableDetailedDebugLogs)
+                        {
+                            _debugLogger?.Invoke($"DEBUG: Output {i}: Name='{outputDesc.DeviceName}', Physical Resolution: {width}x{height}");
+                        }
                         
                         // 获取显示器友好名称
                         string friendlyName = GetFriendlyDisplayName(outputDesc.DeviceName);
                         if (!string.IsNullOrEmpty(friendlyName))
                         {
-                            _debugLogger?.Invoke($"DEBUG: Output {i}: Friendly Name='{friendlyName}'");
+                            // 仅在详细模式下打印友好名称
+                            if (_enableDetailedDebugLogs)
+                            {
+                                _debugLogger?.Invoke($"DEBUG: Output {i}: Friendly Name='{friendlyName}'");
+                            }
                         }
                         
                         // 计算逻辑分辨率（如果适用）
                         float logicalWidth = width / _dpiScaleX;
                         float logicalHeight = height / _dpiScaleY;
-                        _debugLogger?.Invoke($"DEBUG: Output {i}: Logical Resolution (approx): {logicalWidth:F0}x{logicalHeight:F0} (based on DPI scale {_dpiScaleX:F2}x{_dpiScaleY:F2})");
+                        // 仅在详细模式下打印逻辑分辨率信息
+                        if (_enableDetailedDebugLogs)
+                        {
+                            _debugLogger?.Invoke($"DEBUG: Output {i}: Logical Resolution (approx): {logicalWidth:F0}x{logicalHeight:F0} (based on DPI scale {_dpiScaleX:F2}x{_dpiScaleY:F2})");
+                        }
 
                         // 尝试获取显示模式列表，但要处理可能的失败
                         try
@@ -311,13 +324,17 @@ namespace TbEinkSuperFlushTurbo
                             {
                                 modeCount++;
                             }
-                            _debugLogger?.Invoke("Successfully got " + modeCount.ToString() + " display modes for output " + i.ToString());
+                            _debugLogger?.Invoke($"成功获取输出 {i} 的显示模式列表，共 {modeCount} 个模式");
                             
-                            // 打印所有显示模式而不是仅仅前5个
-                            foreach (var mode in displayModeList)
+                            // 仅在启用详细日志时打印所有显示模式
+                            if (_enableDetailedDebugLogs)
                             {
-                                double refreshRate = (double)mode.RefreshRate.Numerator / mode.RefreshRate.Denominator;
-                                _debugLogger?.Invoke($"DEBUG:   Mode: {mode.Width}x{mode.Height}@{refreshRate:F2}Hz, Format:{mode.Format}");
+                                _debugLogger?.Invoke("详细显示模式信息:");
+                                foreach (var mode in displayModeList)
+                                {
+                                    double refreshRate = (double)mode.RefreshRate.Numerator / mode.RefreshRate.Denominator;
+                                    _debugLogger?.Invoke($"DEBUG:   Mode: {mode.Width}x{mode.Height}@{refreshRate:F2}Hz, Format:{mode.Format}");
+                                }
                             }
                         }
                         catch (Exception ex)

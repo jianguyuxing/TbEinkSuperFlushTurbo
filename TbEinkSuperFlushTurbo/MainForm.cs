@@ -547,21 +547,26 @@ namespace TbEinkSuperFlushTurbo
                 {
                     physicalWidth = devMode.dmPelsWidth;
                     physicalHeight = devMode.dmPelsHeight;
-                    Log($"通过DEVMODE获取物理分辨率: {physicalWidth}x{physicalHeight}");
+                    // 简化日志，只在有差异时才打印详细信息
+                    if (physicalWidth != logicalWidth || physicalHeight != logicalHeight)
+                    {
+                        Log($"DEVMODE获取物理分辨率: {physicalWidth}x{physicalHeight} (与逻辑分辨率不同)");
+                    }
                 }
                 else
                 {
-                    Log($"DEVMODE获取失败，物理分辨率使用逻辑分辨率: {physicalWidth}x{physicalHeight}");
+                    Log($"DEVMODE获取失败，使用逻辑分辨率作为物理分辨率: {physicalWidth}x{physicalHeight}");
                 }
                 
                 // 计算DPI缩放比例
                 double scaleX = (double)physicalWidth / logicalWidth;
                 double scaleY = (double)physicalHeight / logicalHeight;
                 
-                Log($"显示器 [{screenIndex}] 分辨率信息:");
-                Log($"  逻辑分辨率: {logicalWidth}x{logicalHeight} (Screen.Bounds)");
-                Log($"  物理分辨率: {physicalWidth}x{physicalHeight} (DEVMODE)");
-                Log($"  DPI缩放比例: {scaleX:F2}x{scaleY:F2}");
+                // 只在有缩放差异时打印详细信息
+                if (Math.Abs(scaleX - 1.0) > 0.01 || Math.Abs(scaleY - 1.0) > 0.01)
+                {
+                    Log($"显示器 [{screenIndex}] DPI缩放: {scaleX:F2}x{scaleY:F2}");
+                }
                 
                 return (physicalWidth, physicalHeight, logicalWidth, logicalHeight);
             }
@@ -656,27 +661,30 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 获取显示器的简化唯一标识符（使用EDID数据）
+        // 获取显示器的简化唯一标识符（优先使用设备名称，EDID作为备选）
         private string GetDisplayUniqueId(int screenIndex, Screen screen)
         {
             try
             {
-                // 直接使用EDID数据获取显示器的唯一标识
-                string edidSerial = GetEdidSerialNumber(screen.DeviceName);
+                // 优先使用设备名称作为唯一标识，因为EEID可能在相同型号的显示器中重复
+                string deviceName = screen.DeviceName;
+                
+                // 尝试获取EDID作为辅助标识
+                string edidSerial = GetEdidSerialNumber(deviceName);
                 
                 if (!string.IsNullOrEmpty(edidSerial))
                 {
-                    Log($"显示器 [{screenIndex}] EDID序列号: {edidSerial}");
-                    return $"EDID_{edidSerial}";
+                    Log($"显示器 [{screenIndex}] 设备名称: {deviceName}, EDID序列号: {edidSerial}");
+                    return $"{deviceName}_EDID_{edidSerial}";
                 }
                 
-                // 如果EDID获取失败，使用设备名称作为备选方案
-                Log($"显示器 [{screenIndex}] 无法获取EDID，使用设备名称作为标识");
-                return screen.DeviceName;
+                // 如果EDID获取失败，仅使用设备名称
+                Log($"显示器 [{screenIndex}] 无法获取EDID，使用设备名称作为标识: {deviceName}");
+                return deviceName;
             }
             catch (Exception ex)
             {
-                Log($"获取显示器 [{screenIndex}] EDID唯一标识失败: {ex.Message}");
+                Log($"获取显示器 [{screenIndex}] 唯一标识失败: {ex.Message}，回退到设备名称");
                 return $"{screen.DeviceName}_fallback";
             }
         }
@@ -918,6 +926,28 @@ namespace TbEinkSuperFlushTurbo
                         Log($"检测到显示器 {i} 配置变化：");
                         Log($"  原签名: {_lastDisplaySignatures[i]}");
                         Log($"  新签名: {currentSignature}");
+                        
+                        // 解析签名变化，特别关注设备名称变化
+                        var oldParts = _lastDisplaySignatures[i].Split(':');
+                        var newParts = currentSignature.Split(':');
+                        
+                        if (oldParts.Length >= 3 && newParts.Length >= 3)
+                        {
+                            string oldDeviceName = oldParts[2];
+                            string newDeviceName = newParts[2];
+                            
+                            if (oldDeviceName != newDeviceName)
+                            {
+                                Log($"  设备名称变化: {oldDeviceName} -> {newDeviceName}");
+                                
+                                // 如果当前选中的显示器设备名称发生变化，需要特殊处理
+                                if (!string.IsNullOrEmpty(_targetDisplayDeviceName) && _targetDisplayDeviceName == oldDeviceName)
+                                {
+                                    Log($"  当前选中的显示器设备名称发生变化，将尝试重新匹配");
+                                }
+                            }
+                        }
+                        
                         AutoStopDueToDisplayChange("显示器配置变化");
                         return;
                     }
@@ -1069,22 +1099,53 @@ namespace TbEinkSuperFlushTurbo
                     
                     try
                     {
-                        // 1. 重新填充显示器列表（包含EDID匹配）
+                        // 保存当前选中显示器的设备名称，用于重新匹配
+                        string previousDeviceName = _targetDisplayDeviceName;
+                        int previousIndex = _targetScreenIndex;
+                        
+                        Log($"重新初始化前 - 设备名称: '{previousDeviceName}', 索引: {previousIndex}");
+                        
+                        // 1. 重新填充显示器列表（包含智能匹配逻辑）
                         PopulateDisplayList();
                         
-                        // 2. 重新记录显示器签名
+                        // 2. 如果有之前的设备名称，尝试重新匹配
+                        if (!string.IsNullOrEmpty(previousDeviceName))
+                        {
+                            var screens = Screen.AllScreens;
+                            bool foundMatch = false;
+                            
+                            for (int i = 0; i < screens.Length; i++)
+                            {
+                                if (screens[i].DeviceName == previousDeviceName)
+                                {
+                                    Log($"重新匹配成功：找到之前的设备 '{previousDeviceName}'，新索引 {i}");
+                                    _targetScreenIndex = i;
+                                    _targetDisplayDeviceName = previousDeviceName;
+                                    comboDisplay.SelectedIndex = i;
+                                    foundMatch = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (!foundMatch)
+                            {
+                                Log($"重新匹配失败：未找到之前的设备 '{previousDeviceName}'");
+                            }
+                        }
+                        
+                        // 3. 重新记录显示器签名
                         RecordInitialDisplayState();
                         
-                        // 3. 更新状态栏显示当前选中显示器信息
+                        // 4. 更新状态栏显示当前选中显示器信息
                         UpdateStatusBarDisplayInfo();
                         
-                        // 4. 强制重新检测当前显示器的刷新率
+                        // 5. 强制重新检测当前显示器的刷新率
                         if (_targetScreenIndex >= 0)
                         {
                             double currentRefreshRate = GetRefreshRateFromApi(_targetScreenIndex);
                             Log($"重新检测后，当前选中显示器 [{_targetScreenIndex}] 刷新率: {currentRefreshRate}Hz");
                             
-                            // 5. 如果刷新率超过限制，显示警告
+                            // 6. 如果刷新率超过限制，显示警告
                             if (_stopOver59hz == 1 && currentRefreshRate > 59)
                             {
                                 string warningMessage = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || 
@@ -1097,7 +1158,7 @@ namespace TbEinkSuperFlushTurbo
                             }
                         }
                         
-                        Log("显示器配置重新初始化完成");
+                        Log($"显示器配置重新初始化完成 - 最终选择: 索引 {_targetScreenIndex}, 设备 '{_targetDisplayDeviceName}'");
                     }
                     catch (Exception ex)
                     {
@@ -1532,7 +1593,7 @@ namespace TbEinkSuperFlushTurbo
                     int physicalWidth = screen.Bounds.Width;
                     int physicalHeight = screen.Bounds.Height;
                     
-                    // 如果DPI缩放不为100%，尝试获取物理分辨率
+                    // 如果DPI缩放不为100%，尝试获取真实的物理分辨率
                     if (dpiScalePercent != 100)
                     {
                         try
@@ -1543,13 +1604,17 @@ namespace TbEinkSuperFlushTurbo
                             {
                                 physicalWidth = physicalResWidth;
                                 physicalHeight = physicalResHeight;
-                                Log($"显示器 {i} 使用物理分辨率: {physicalWidth}×{physicalHeight} (替代逻辑分辨率 {screen.Bounds.Width}×{screen.Bounds.Height})");
+                                Log($"显示器 {i} DPI缩放 {dpiScalePercent}%，使用物理分辨率: {physicalWidth}×{physicalHeight} (逻辑分辨率 {screen.Bounds.Width}×{screen.Bounds.Height})");
                             }
                         }
                         catch (Exception resEx)
                         {
                             Log($"获取显示器 {i} 物理分辨率失败: {resEx.Message}，使用逻辑分辨率");
                         }
+                    }
+                    else
+                    {
+                        Log($"显示器 {i} DPI缩放 100%，物理分辨率与逻辑分辨率相同: {physicalWidth}×{physicalHeight}");
                     }
                     
                     // 构建显示名称，包含DPI和刷新率信息
@@ -1567,9 +1632,30 @@ namespace TbEinkSuperFlushTurbo
                 {
                     int targetIndex = -1;
                     
-                    // 智能匹配策略：根据显示器的物理特性匹配
-                    // 1. 先尝试按刷新率匹配（最稳定的特征）
-                    if (_targetScreenIndex >= 0 && _targetScreenIndex < screens.Length)
+                    // 智能匹配策略：多层次匹配显示器
+                    // 1. 首先尝试按设备名称匹配（最可靠的标识）
+                    if (!string.IsNullOrEmpty(_targetDisplayDeviceName))
+                    {
+                        Log($"尝试按设备名称 '{_targetDisplayDeviceName}' 匹配显示器");
+                        
+                        for (int i = 0; i < screens.Length; i++)
+                        {
+                            if (screens[i].DeviceName == _targetDisplayDeviceName)
+                            {
+                                targetIndex = i;
+                                Log($"设备名称匹配成功：找到设备 '{_targetDisplayDeviceName}' 的显示器，索引 {targetIndex}");
+                                break;
+                            }
+                        }
+                        
+                        if (targetIndex == -1)
+                        {
+                            Log($"设备名称匹配失败：未找到设备 '{_targetDisplayDeviceName}' 的显示器");
+                        }
+                    }
+                    
+                    // 2. 如果设备名称匹配失败，尝试按刷新率和分辨率匹配
+                    if (targetIndex == -1 && _targetScreenIndex >= 0 && _targetScreenIndex < screens.Length)
                     {
                         var (prevWidth, prevHeight, prevLogicalWidth, prevLogicalHeight) = GetScreenResolutions(_targetScreenIndex);
                         double prevRefreshRate = GetRefreshRateFromApi(_targetScreenIndex);
@@ -1585,25 +1671,25 @@ namespace TbEinkSuperFlushTurbo
                             if (currRefreshRate == prevRefreshRate && currWidth == prevWidth && currHeight == prevHeight)
                             {
                                 targetIndex = i;
-                                Log($"智能匹配成功：找到刷新率 {currRefreshRate}Hz 分辨率 {currWidth}x{currHeight} 的显示器，索引 {targetIndex}");
+                                Log($"刷新率分辨率匹配成功：找到刷新率 {currRefreshRate}Hz 分辨率 {currWidth}x{currHeight} 的显示器，索引 {targetIndex}");
                                 break;
                             }
                         }
                         
                         if (targetIndex == -1)
                         {
-                            Log($"智能匹配失败：未找到刷新率 {prevRefreshRate}Hz 分辨率 {prevWidth}x{prevHeight} 的显示器");
+                            Log($"刷新率分辨率匹配失败：未找到刷新率 {prevRefreshRate}Hz 分辨率 {prevWidth}x{prevHeight} 的显示器");
                         }
                     }
                     
-                    // 2. 如果智能匹配失败，按索引匹配（如果索引有效）
+                    // 3. 如果都失败，按索引匹配（如果索引有效）
                     if (targetIndex == -1 && _targetScreenIndex >= 0 && _targetScreenIndex < comboDisplay.Items.Count)
                     {
                         targetIndex = _targetScreenIndex;
                         Log($"使用索引匹配：{_targetScreenIndex}");
                     }
                     
-                    // 3. 如果都失败，选择刷新率最小的显示器
+                    // 4. 最后失败，选择刷新率最小的显示器
                     if (targetIndex == -1)
                     {
                         targetIndex = FindLowestRefreshRateDisplay(screens);
