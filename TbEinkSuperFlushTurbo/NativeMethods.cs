@@ -238,5 +238,8 @@ namespace TbEinkSuperFlushTurbo
         {
             return rect.Width > 0 && rect.Height > 0;
         }
+
+        // EDID相关注册表路径（简化版）
+        public const string DISPLAY_REGISTRY_KEY = @"SYSTEM\CurrentControlSet\Enum\DISPLAY";
     }
 }

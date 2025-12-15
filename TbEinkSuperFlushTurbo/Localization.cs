@@ -106,6 +106,13 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "狀態：失敗"
             },
             
+            ["StatusReady"] = new()
+            {
+                [Language.English] = "Status: Ready",
+                [Language.ChineseSimplified] = "状态：就绪",
+                [Language.ChineseTraditional] = "狀態：就緒"
+            },
+            
             // 热键相关
             ["ClickButtonToSet"] = new()
             {
