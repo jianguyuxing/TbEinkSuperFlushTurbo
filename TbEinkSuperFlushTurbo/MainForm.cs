@@ -119,11 +119,15 @@ namespace TbEinkSuperFlushTurbo
         private const int OVERLAY_BORDER_ALPHA = 100;
 
         // 托盘图标相关字段
-        private bool _allowVisible = true;     // 允许窗体显示
+#pragma warning disable CS0414 // 抑制未使用字段警告
+        private bool _allowVisible = true;     // 允许窗体显示（预留字段，用于将来功能扩展）
+#pragma warning restore CS0414
         private bool _allowClose = false;      // 允许窗体关闭
 
         // 快捷键触发提示相关字段
-        private bool _isTriggeredByHotkey = false; // 是否由快捷键触发
+#pragma warning disable CS0414 // 抑制未使用字段警告
+        private bool _isTriggeredByHotkey = false; // 是否由快捷键触发（预留字段，用于将来功能扩展）
+#pragma warning restore CS0414
 
         public MainForm()
         {
@@ -942,7 +946,7 @@ namespace TbEinkSuperFlushTurbo
                     try
                     {
                         // 保存当前选中显示器的设备名称，用于重新匹配
-                        string previousDeviceName = _targetDisplayDeviceName;
+                        string previousDeviceName = _targetDisplayDeviceName ?? string.Empty;
                         int previousIndex = _targetScreenIndex;
 
                         Log($"重新初始化前 - 设备名称: '{previousDeviceName}', 索引: {previousIndex}");
@@ -1922,7 +1926,6 @@ namespace TbEinkSuperFlushTurbo
         private void btnHelpPixelDelta_Click(object? sender, EventArgs e)
         {
             string helpText;
-            string title;
 
             // 根据当前语言显示相应语言的帮助内容
             if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
@@ -1933,7 +1936,6 @@ namespace TbEinkSuperFlushTurbo
                     "  （区分白色和浅灰色及浅亮度彩色）\n\n" +
                     "• 较高值(15-25): 适合高对比度主题，忽略微小变化\n\n" +
                     "推荐: 从10开始，根据您的主题进行调整。";
-                title = "像素颜色差异阈值 - 详细说明";
             }
             else
             {
@@ -1943,7 +1945,6 @@ namespace TbEinkSuperFlushTurbo
                     "  (Distinguishes white from light gray and low-brightness colors)\n\n" +
                     "• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\n" +
                     "Recommended: Start with 10 and adjust based on your theme.";
-                title = "Pixel Color Diff Threshold - Help";
             }
 
             MessageBox.Show(helpText, Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None); // 使用程序名称作为标题
