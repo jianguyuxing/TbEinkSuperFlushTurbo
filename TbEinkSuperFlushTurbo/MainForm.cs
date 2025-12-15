@@ -661,25 +661,24 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 获取显示器的简化唯一标识符（优先使用设备名称，EDID作为备选）
+        // 获取显示器的简化唯一标识符（设备名称优先，HardwareID+设备路径作为备选）
         private string GetDisplayUniqueId(int screenIndex, Screen screen)
         {
             try
             {
-                // 优先使用设备名称作为唯一标识，因为EEID可能在相同型号的显示器中重复
+                // 主要使用设备名称作为唯一标识
                 string deviceName = screen.DeviceName;
                 
-                // 尝试获取EDID作为辅助标识
-                string edidSerial = GetEdidSerialNumber(deviceName);
-                
-                if (!string.IsNullOrEmpty(edidSerial))
+                // 尝试获取HardwareID+设备路径作为备选标识
+                string hardwareId = GetHardwareIdWithDevicePath(screenIndex, deviceName);
+                if (!string.IsNullOrEmpty(hardwareId))
                 {
-                    Log($"显示器 [{screenIndex}] 设备名称: {deviceName}, EDID序列号: {edidSerial}");
-                    return $"{deviceName}_EDID_{edidSerial}";
+                    Log($"显示器 [{screenIndex}] 设备名称: {deviceName}, HardwareID+设备路径: {hardwareId}");
+                    return $"{deviceName}_HWID_{hardwareId}";
                 }
                 
-                // 如果EDID获取失败，仅使用设备名称
-                Log($"显示器 [{screenIndex}] 无法获取EDID，使用设备名称作为标识: {deviceName}");
+                // 如果HardwareID获取失败，仅使用设备名称
+                Log($"显示器 [{screenIndex}] 使用设备名称作为标识: {deviceName}");
                 return deviceName;
             }
             catch (Exception ex)
@@ -689,8 +688,8 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 从EDID数据中获取显示器序列号
-        private string GetEdidSerialNumber(string deviceName)
+        // 获取HardwareID+设备路径作为备选标识（使用注册表方式）
+        private string GetHardwareIdWithDevicePath(int screenIndex, string deviceName)
         {
             try
             {
@@ -720,39 +719,18 @@ namespace TbEinkSuperFlushTurbo
                                 {
                                     if (instanceKey == null) continue;
                                     
-                                    // 检查Device Parameters键
-                                    using (RegistryKey deviceParamsKey = instanceKey.OpenSubKey("Device Parameters"))
+                                    // 获取HardwareID
+                                    object hardwareIdValue = instanceKey.GetValue("HardwareID");
+                                    if (hardwareIdValue is string[] hardwareIds && hardwareIds.Length > 0)
                                     {
-                                        if (deviceParamsKey != null)
+                                        string hardwareId = hardwareIds[0].Replace("MONITOR\\", "");
+                                        string fullDevicePath = $"{subKeyName}_{instanceName.Replace("\\", "_")}";
+                                        
+                                        // 检查这个设备是否匹配当前显示器
+                                        // 这里使用简单的包含检查，实际可能需要更精确的匹配逻辑
+                                        if (instanceName.Contains(registryDeviceName) || registryDeviceName.Contains(subKeyName))
                                         {
-                                            // 查找EDID数据
-                                            object edidValue = deviceParamsKey.GetValue("EDID");
-                                            if (edidValue is byte[] edidData && edidData.Length >= 128)
-                                            {
-                                                // 验证EDID数据有效性
-                                                if (edidData[0] == 0x00 && edidData[1] == 0xFF && 
-                                                    edidData[2] == 0xFF && edidData[3] == 0xFF &&
-                                                    edidData[4] == 0xFF && edidData[5] == 0xFF &&
-                                                    edidData[6] == 0xFF && edidData[7] == 0x00)
-                                                {
-                                                    // EDID数据结构：序列号通常在字节[12]到[15]或描述符块中
-                                                    // 先尝试从标准位置获取序列号
-                                                    string serialFromStandard = ExtractSerialFromEdidStandard(edidData);
-                                                    if (!string.IsNullOrEmpty(serialFromStandard))
-                                                    {
-                                                        Log($"从EDID标准位置获取到序列号: {serialFromStandard}");
-                                                        return serialFromStandard;
-                                                    }
-                                                    
-                                                    // 如果标准位置没有，尝试从描述符块获取
-                                                    string serialFromDescriptor = ExtractSerialFromEdidDescriptors(edidData);
-                                                    if (!string.IsNullOrEmpty(serialFromDescriptor))
-                                                    {
-                                                        Log($"从EDID描述符块获取到序列号: {serialFromDescriptor}");
-                                                        return serialFromDescriptor;
-                                                    }
-                                                }
-                                            }
+                                            return $"{hardwareId}_{fullDevicePath}";
                                         }
                                     }
                                 }
@@ -761,79 +739,12 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
                 
-                Log($"未找到设备 {deviceName} 的EDID数据");
+                Log($"无法找到显示器 [{screenIndex}] 的HardwareID信息");
                 return string.Empty;
             }
             catch (Exception ex)
             {
-                Log($"获取设备 {deviceName} 的EDID序列号失败: {ex.Message}");
-                return string.Empty;
-            }
-        }
-
-        // 从EDID标准位置提取序列号（字节12-15）
-        private string ExtractSerialFromEdidStandard(byte[] edidData)
-        {
-            try
-            {
-                if (edidData.Length < 16) return string.Empty;
-                
-                // 字节12-15包含32位序列号
-                uint serialNumber = BitConverter.ToUInt32(edidData, 12);
-                if (serialNumber != 0 && serialNumber != 0xFFFFFFFF)
-                {
-                    return serialNumber.ToString("X8"); // 转换为8位十六进制字符串
-                }
-                
-                return string.Empty;
-            }
-            catch
-            {
-                return string.Empty;
-            }
-        }
-
-        // 从EDID描述符块提取序列号
-        private string ExtractSerialFromEdidDescriptors(byte[] edidData)
-        {
-            try
-            {
-                if (edidData.Length < 128) return string.Empty;
-                
-                // EDID描述符块从字节54开始，每个18字节，共4个
-                for (int descriptorIndex = 0; descriptorIndex < 4; descriptorIndex++)
-                {
-                    int descriptorStart = 54 + descriptorIndex * 18;
-                    
-                    // 检查是否是序列号描述符（标志为0xFF）
-                    if (edidData[descriptorStart] == 0x00 && 
-                        edidData[descriptorStart + 1] == 0x00 && 
-                        edidData[descriptorStart + 2] == 0x00 && 
-                        edidData[descriptorStart + 3] == 0xFF)
-                    {
-                        // 提取文本数据（从第5字节开始，到描述符结束）
-                        StringBuilder serialText = new StringBuilder();
-                        for (int i = descriptorStart + 5; i < descriptorStart + 18; i++)
-                        {
-                            if (edidData[i] == 0x0A) break; // 遇到换行符结束
-                            if (edidData[i] >= 0x20 && edidData[i] <= 0x7E) // 可打印字符
-                            {
-                                serialText.Append((char)edidData[i]);
-                            }
-                        }
-                        
-                        string result = serialText.ToString().Trim();
-                        if (!string.IsNullOrEmpty(result))
-                        {
-                            return result;
-                        }
-                    }
-                }
-                
-                return string.Empty;
-            }
-            catch
-            {
+                Log($"获取显示器 [{screenIndex}] 的HardwareID失败: {ex.Message}");
                 return string.Empty;
             }
         }
