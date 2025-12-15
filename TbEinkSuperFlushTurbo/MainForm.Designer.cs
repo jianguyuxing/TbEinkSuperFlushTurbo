@@ -292,7 +292,7 @@ namespace TbEinkSuperFlushTurbo
             // 
             // _trayIcon
             // 
-            _trayIcon.Text = "EInk Ghost Reducer";
+            _trayIcon.Text = "Eink Ghost Reducer";
             // 
             // _displayChangeTimer
             // 

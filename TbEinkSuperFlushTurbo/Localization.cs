@@ -20,9 +20,9 @@ namespace TbEinkSuperFlushTurbo
             // 窗口标题
             ["WindowTitle"] = new()
             {
-                [Language.English] = "EInk Kaleido Ghost Reducer (GPU)",
-                [Language.ChineseSimplified] = "EInk Kaleido 残影清除器 (GPU)",
-                [Language.ChineseTraditional] = "EInk Kaleido 殘影清除器 (GPU)"
+                [Language.English] = "Eink Kaleido Ghost Reducer (GPU)",
+                [Language.ChineseSimplified] = "Eink Kaleido 残影清除器 (GPU)",
+                [Language.ChineseTraditional] = "Eink Kaleido 殘影清除器 (GPU)"
             },
             
             // 按钮文本
@@ -177,9 +177,9 @@ namespace TbEinkSuperFlushTurbo
             // 托盘图标
             ["TrayIconText"] = new()
             {
-                [Language.English] = "EInk Ghost Reducer",
-                [Language.ChineseSimplified] = "EInk 残影清除器",
-                [Language.ChineseTraditional] = "EInk 殘影清除器"
+                [Language.English] = "Eink Ghost Reducer",
+                [Language.ChineseSimplified] = "Eink 残影清除器",
+                [Language.ChineseTraditional] = "Eink 殘影清除器"
             },
             
             // 托盘菜单项

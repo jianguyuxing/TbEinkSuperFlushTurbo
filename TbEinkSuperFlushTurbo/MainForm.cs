@@ -194,7 +194,7 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to create log file: {ex.Message}", "Logging Error", MessageBoxButtons.OK, MessageBoxIcon.None);
+                MessageBox.Show($"Failed to create log file: {ex.Message}", Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None);
             }
         }
 
@@ -784,13 +784,13 @@ namespace TbEinkSuperFlushTurbo
                     if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || 
                         Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
                     {
-                        title = "显示器配置变化";
-                        message = $"检测到{reason}，刷新已自动停止。请重新选择显示器后重新开始。";
+                        title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                        message = $"检测到{reason}，刷新已自动停止。请重新选择显示器后开始。";
                     }
                     else
                     {
-                        title = "Display Configuration Changed";
-                        message = $"Detected {reason}. Screen refresh has been automatically stopped. Please reselect the display and start again.";
+                        title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                        message = $"Detected {reason}. Screen refresh has been automatically stopped. Please reselect the display and start.";
                     }
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }));
@@ -1298,9 +1298,7 @@ namespace TbEinkSuperFlushTurbo
                         string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                             "截屏运行中，停止截屏后才能切换显示器。" :
                             "Screen capture is running. Please stop capture first before switching display.";
-                        string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                            "提示" :
-                            "Notice";
+                        string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                         MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
                         
                         // 恢复原来的选择，但不阻止用户操作
@@ -1380,9 +1378,7 @@ namespace TbEinkSuperFlushTurbo
                 string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                     "无法在录制热键时启动截屏，请先完成热键录制。" :
                     "Cannot start screen capture while recording hotkey, Please complete hotkey recording first.";
-                string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                    "热键录制进行中" : 
-                    "Hotkey Recording in Progress";
+                string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                 MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.None);
                 return;
             }
@@ -1396,9 +1392,7 @@ namespace TbEinkSuperFlushTurbo
                     string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                         $"为了避免误选择，默认禁止在超过59Hz的显示器上运行。当前显示器刷新率为{refreshRate:F1}Hz。若您的墨水屏超过59Hz或刷新率检测错误，请点击齿轮关闭此限制" :
                         $"To avoid mis-selection, screen capture is disabled by default on displays over 59Hz. Current display refresh rate is {refreshRate:F1}Hz. If your e-ink display is over 59Hz or refresh rate detection is incorrect, please click the gear button to disable this restriction.";
-                    string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                        "刷新率限制" : 
-                        "Refresh Rate Limit";
+                    string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     Log($"Blocked start due to high refresh rate: {refreshRate:F1}Hz (stopOver59hz={_stopOver59hz})");
                     return;
@@ -1572,7 +1566,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 string errorMessage = $"Initialization failed: {ex.Message}";
                 Log(errorMessage + "\n" + ex.StackTrace);
-                MessageBox.Show(errorMessage);
+                MessageBox.Show(errorMessage, Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None); // 使用程序名称作为标题
                 btnStart.Enabled = true;
                 // 齿轮按钮保持启用状态，无需特别处理
                 lblInfo.Text = "Status: Failed";
@@ -1610,9 +1604,7 @@ namespace TbEinkSuperFlushTurbo
                 string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                     "截屏运行中，请先停止截屏再修改设置。" :
                     "Screen capture is running, please stop screen capture first before modifying settings.";
-                string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                    "提示" : 
-                    "Information";
+                string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                 MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -1674,7 +1666,7 @@ namespace TbEinkSuperFlushTurbo
                 title = "Pixel Color Diff Threshold - Help";
             }
 
-            MessageBox.Show(helpText, title, MessageBoxButtons.OK, MessageBoxIcon.None);
+            MessageBox.Show(helpText, Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None); // 使用程序名称作为标题
         }
 
         private void btnHelpPixelDelta_Paint(object? sender, PaintEventArgs e)
@@ -1756,9 +1748,7 @@ namespace TbEinkSuperFlushTurbo
                     string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                         "运行时无法修改热键，请先停止截屏。" :
                         "Cannot modify hotkey while screen capture is running, Please stop screen capture first.";
-                    string title = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                        "警告" : 
-                        "Warning";
+                    string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
