@@ -661,23 +661,13 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 获取显示器的简化唯一标识符（设备名称优先，HardwareID+设备路径作为备选）
+        // 获取显示器的简化唯一标识符（设备名称优先）
         private string GetDisplayUniqueId(int screenIndex, Screen screen)
         {
             try
             {
-                // 主要使用设备名称作为唯一标识
+                // 仅使用设备名称作为唯一标识
                 string deviceName = screen.DeviceName;
-
-                // 尝试获取HardwareID+设备路径作为备选标识
-                string hardwareId = GetHardwareIdWithDevicePath(screenIndex, deviceName);
-                if (!string.IsNullOrEmpty(hardwareId))
-                {
-                    Log($"显示器 [{screenIndex}] 设备名称: {deviceName}, HardwareID+设备路径: {hardwareId}");
-                    return $"{deviceName}_HWID_{hardwareId}";
-                }
-
-                // 如果HardwareID获取失败，仅使用设备名称
                 Log($"显示器 [{screenIndex}] 使用设备名称作为标识: {deviceName}");
                 return deviceName;
             }
@@ -688,66 +678,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 获取HardwareID+设备路径作为备选标识（使用注册表方式）
-        private string GetHardwareIdWithDevicePath(int screenIndex, string deviceName)
-        {
-            try
-            {
-                // 将设备名称转换为注册表路径格式
-                string registryDeviceName = deviceName.Replace("\\\\.\\", "");
 
-                // 打开显示设备注册表项
-                using (RegistryKey displayKey = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Enum\DISPLAY"))
-                {
-                    if (displayKey == null)
-                    {
-                        Log("无法打开DISPLAY注册表项");
-                        return string.Empty;
-                    }
-
-                    // 遍历所有显示设备
-                    foreach (string subKeyName in displayKey.GetSubKeyNames())
-                    {
-                        using (RegistryKey deviceKey = displayKey.OpenSubKey(subKeyName))
-                        {
-                            if (deviceKey == null) continue;
-
-                            // 遍历该设备下的所有实例
-                            foreach (string instanceName in deviceKey.GetSubKeyNames())
-                            {
-                                using (RegistryKey instanceKey = deviceKey.OpenSubKey(instanceName))
-                                {
-                                    if (instanceKey == null) continue;
-
-                                    // 获取HardwareID
-                                    object hardwareIdValue = instanceKey.GetValue("HardwareID");
-                                    if (hardwareIdValue is string[] hardwareIds && hardwareIds.Length > 0)
-                                    {
-                                        string hardwareId = hardwareIds[0].Replace("MONITOR\\", "");
-                                        string fullDevicePath = $"{subKeyName}_{instanceName.Replace("\\", "_")}";
-
-                                        // 检查这个设备是否匹配当前显示器
-                                        // 这里使用简单的包含检查，实际可能需要更精确的匹配逻辑
-                                        if (instanceName.Contains(registryDeviceName) || registryDeviceName.Contains(subKeyName))
-                                        {
-                                            return $"{hardwareId}_{fullDevicePath}";
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Log($"无法找到显示器 [{screenIndex}] 的HardwareID信息");
-                return string.Empty;
-            }
-            catch (Exception ex)
-            {
-                Log($"获取显示器 [{screenIndex}] 的HardwareID失败: {ex.Message}");
-                return string.Empty;
-            }
-        }
 
         // 生成显示器签名（包含索引、名称、分辨率、DPI、刷新率等）
         private string GetDisplaySignature(int index, Screen screen)

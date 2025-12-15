@@ -162,6 +162,7 @@ namespace TbEinkSuperFlushTurbo
         private Rectangle _screenBounds; // 屏幕边界
 
         private bool _isFirstFrame = true; // Flag to handle the first frame capture
+        private bool _needsTextureRecreate = false; // Flag to indicate texture recreation is needed
 
         // 鼠标和输入法相关
         private Point _lastMousePosition = new Point(-1, -1);
@@ -354,11 +355,11 @@ namespace TbEinkSuperFlushTurbo
 
                 // 使用系统默认顺序（Screen.AllScreens顺序），不特殊处理主显示器
                 // 为了匹配Windows Forms的Screen.AllScreens顺序，我们按照Screen.AllScreens的设备顺序排序
-                var screens = System.Windows.Forms.Screen.AllScreens;
+                var systemScreens = System.Windows.Forms.Screen.AllScreens;
                 var sortedOutputs = new List<IDXGIOutput>();
 
                 // 按照Screen.AllScreens的顺序来排序DXGI输出
-                foreach (var screen in screens)
+                foreach (var screen in systemScreens)
                 {
                     var screenDeviceName = screen.DeviceName;
                     var matchingOutput = allOutputs.FirstOrDefault(output =>
@@ -390,9 +391,9 @@ namespace TbEinkSuperFlushTurbo
 
                 // 添加调试信息以验证DXGI输出与Screen.AllScreens的顺序匹配
                 _debugLogger?.Invoke($"DEBUG: Windows Forms Screen.AllScreens 顺序:");
-                for (int i = 0; i < screens.Length; i++)
+                for (int i = 0; i < systemScreens.Length; i++)
                 {
-                    _debugLogger?.Invoke($"  Screen [{i}]: {screens[i].DeviceName}, 主显示器: {screens[i].Primary}, 边界: {screens[i].Bounds}");
+                    _debugLogger?.Invoke($"  Screen [{i}]: {systemScreens[i].DeviceName}, 主显示器: {systemScreens[i].Primary}, 边界: {systemScreens[i].Bounds}");
                 }
 
                 _debugLogger?.Invoke($"DEBUG: DXGI发现 {allOutputs.Count} 个输出:");
@@ -506,6 +507,37 @@ namespace TbEinkSuperFlushTurbo
                         _screenW = desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left;
                         _screenH = desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top;
                         _debugLogger?.Invoke($"DEBUG: Using desktop coordinates for DXGI: {_screenW}x{_screenH}");
+                        
+                        // 交叉验证：与System.Windows.Forms.Screen进行比对
+                        try
+                        {
+                            var systemScreens2 = System.Windows.Forms.Screen.AllScreens;
+                            var matchingScreen = systemScreens2.FirstOrDefault(s => s.DeviceName == desc.DeviceName);
+                            if (matchingScreen != null)
+                            {
+                                var screenBounds = matchingScreen.Bounds;
+                                _debugLogger?.Invoke($"DEBUG: System.Windows.Forms.Screen bounds: {screenBounds.Width}x{screenBounds.Height}");
+                                
+                                // 如果存在显著差异，使用Screen的bounds作为参考
+                                if (Math.Abs(screenBounds.Width - _screenW) > 50 || Math.Abs(screenBounds.Height - _screenH) > 50)
+                                {
+                                    _debugLogger?.Invoke($"DEBUG: Significant difference detected between DXGI and Screen bounds");
+                                    _debugLogger?.Invoke($"DEBUG: DXGI: {_screenW}x{_screenH}, Screen: {screenBounds.Width}x{screenBounds.Height}");
+                                    
+                                    // 记录但不立即修改，让后续的纹理检测来处理实际尺寸
+                                }
+                            }
+                            else
+                            {
+                                _debugLogger?.Invoke($"DEBUG: No matching Screen found for device: {desc.DeviceName}");
+                            }
+                        }
+                        catch (Exception screenEx)
+                        {
+                            _debugLogger?.Invoke($"DEBUG: Error validating with Screen bounds: {screenEx.Message}");
+                        }
+                        _debugLogger?.Invoke($"DEBUG: Desktop coordinates details - Left:{desc.DesktopCoordinates.Left}, Top:{desc.DesktopCoordinates.Top}, Right:{desc.DesktopCoordinates.Right}, Bottom:{desc.DesktopCoordinates.Bottom}");
+                        _debugLogger?.Invoke($"DEBUG: Output device: {desc.DeviceName}");
 
                         _debugLogger?.Invoke($"DEBUG: Successfully created desktop duplication. Screen size: {_screenW}x{_screenH}");
                         _debugLogger?.Invoke($"Desktop coordinates: Left={desc.DesktopCoordinates.Left}, Top={desc.DesktopCoordinates.Top}, Right={desc.DesktopCoordinates.Right}, Bottom={desc.DesktopCoordinates.Bottom}");
@@ -992,7 +1024,19 @@ namespace TbEinkSuperFlushTurbo
                             Math.Abs((int)desktopTexDesc.Height - _screenH) > maxDimensionDifference)
                         {
                             _debugLogger?.Invoke($"WARNING: Desktop texture size mismatch. Expected: {_screenW}x{_screenH}, Got: {desktopTexDesc.Width}x{desktopTexDesc.Height}");
-                            // 不立即返回失败，继续处理但记录警告
+                            
+                            // 动态调整内部尺寸以匹配实际纹理尺寸
+                            _debugLogger?.Invoke($"DEBUG: Adjusting internal dimensions to match actual desktop texture: {desktopTexDesc.Width}x{desktopTexDesc.Height}");
+                            _screenW = (int)desktopTexDesc.Width;
+                            _screenH = (int)desktopTexDesc.Height;
+                            
+                            // 重新计算瓦片数量
+                            _tilesX = (_screenW + TileSize - 1) / TileSize;
+                            _tilesY = (_screenH + TileSize - 1) / TileSize;
+                            _debugLogger?.Invoke($"DEBUG: Recalculated tiles: {_tilesX}x{_tilesY} for new dimensions");
+                            
+                            // 标记需要重新创建纹理
+                            _needsTextureRecreate = true;
                         }
 
                         // 首次检测实际格式 - 添加格式验证
@@ -1009,8 +1053,8 @@ namespace TbEinkSuperFlushTurbo
                                 _actualDesktopFormat = Format.B8G8R8A8_UNorm; // 回退到安全格式
                             }
 
-                            // 如果实际格式与纹理格式不匹配，需要重新创建纹理
-                            if (_gpuTexCurr != null && _actualDesktopFormat != _gpuTexCurr.Description.Format)
+                            // 如果实际格式与纹理格式不匹配，或者需要重新创建纹理（尺寸变化）
+                            if (_gpuTexCurr != null && (_actualDesktopFormat != _gpuTexCurr.Description.Format || _needsTextureRecreate))
                             {
                                 _debugLogger?.Invoke($"DEBUG: Recreating textures with actual format: {_actualDesktopFormat}");
 
@@ -1060,6 +1104,9 @@ namespace TbEinkSuperFlushTurbo
                                         _context?.ClearRenderTargetView(clearView, new Vortice.Mathematics.Color4(0, 0, 0, 0.5f));
                                     }
                                 }, token);
+                                
+                                // 重置纹理重新创建标志
+                                _needsTextureRecreate = false;
                             }
                         }
 
@@ -1276,7 +1323,7 @@ namespace TbEinkSuperFlushTurbo
                             }
                         }
 
-                        _debugLogger.Invoke($"DEBUG: BoundingArea {i}: History=0x{historyData:X8}, ChangeCount={changeCount}/{BoundingArea.HistoryFrames}, Pattern={patternDescription}");
+                        // _debugLogger.Invoke($"DEBUG: BoundingArea {i}: History=0x{historyData:X8}, ChangeCount={changeCount}/{BoundingArea.HistoryFrames}, Pattern={patternDescription}");
                     }
 
                     // 打印总共有多少个合围区域
