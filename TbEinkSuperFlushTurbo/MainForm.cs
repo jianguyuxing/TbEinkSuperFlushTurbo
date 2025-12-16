@@ -266,9 +266,6 @@ namespace TbEinkSuperFlushTurbo
         private const int NOISE_DENSITY = 20;
         private const int NOISE_POINT_INTERVAL = 3;
         private const string OVERLAY_BASE_COLOR = "Black";
-        private const string OVERLAY_BORDER_COLOR = "64,64,64";
-        private const int OVERLAY_BORDER_WIDTH = 0;
-        private const int OVERLAY_BORDER_ALPHA = 100;
 
         // 托盘图标相关字段
 #pragma warning disable CS0414 // 抑制未使用字段警告
@@ -1314,8 +1311,6 @@ namespace TbEinkSuperFlushTurbo
             if (_overlayForm == null)
             {
                 Color overlayBaseColor = Color.FromName(OVERLAY_BASE_COLOR);
-                string[] rgbParts = OVERLAY_BORDER_COLOR.Split(',');
-                Color borderColor = Color.FromArgb(OVERLAY_BORDER_ALPHA, int.Parse(rgbParts[0].Trim()), int.Parse(rgbParts[1].Trim()), int.Parse(rgbParts[2].Trim()));
 
                 // 获取物理和逻辑分辨率
                 var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
@@ -1332,7 +1327,7 @@ namespace TbEinkSuperFlushTurbo
                     allScreens[_targetScreenIndex] : Screen.PrimaryScreen!;
                 var screenBounds = targetScreen.Bounds;
 
-                _overlayForm = new OverlayForm(_d3d.TileSize, logicalWidth, logicalHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, borderColor, OVERLAY_BORDER_WIDTH, Log, _targetScreenIndex, scaleX, scaleY)
+                _overlayForm = new OverlayForm(_d3d.TileSize, logicalWidth, logicalHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, Log, _targetScreenIndex, scaleX, scaleY)
                 {
                     ShowInTaskbar = false,
                     FormBorderStyle = FormBorderStyle.None,

@@ -31,8 +31,7 @@ namespace TbEinkSuperFlushTurbo
         private readonly object _bitmapLock = new object(); // 用于同步访问_bitmap的锁
         private bool _isDisplaying = false; // 标记是否正在显示刷新色
         public int TileCount => _tiles.Count;
-        readonly int _tileSize, _screenW, _screenH, _noiseDensity, _noisePointInterval, _borderWidth;
-        readonly Color _borderColor;
+        readonly int _tileSize, _screenW, _screenH, _noiseDensity, _noisePointInterval;
         readonly int _screenIndex; // 添加屏幕索引字段
         readonly double _scaleX, _scaleY; // 物理分辨率到逻辑分辨率的缩放比例
         // 新增字段
@@ -200,7 +199,7 @@ namespace TbEinkSuperFlushTurbo
         }
 
         public OverlayForm(int tileSize, int screenWidth, int screenHeight, int noiseDensity, int noisePointInterval, 
-            Color overlayBaseColor, Color borderColor, int borderWidth, Action<string> logger, int screenIndex, double scaleX, double scaleY)
+            Color overlayBaseColor, Action<string> logger, int screenIndex, double scaleX, double scaleY)
         {
             _tileSize = tileSize;
             _screenW = screenWidth;
@@ -208,8 +207,6 @@ namespace TbEinkSuperFlushTurbo
             _noiseDensity = noiseDensity;
             _noisePointInterval = noisePointInterval;
             _overlayBaseColor = overlayBaseColor;
-            _borderColor = borderColor;
-            _borderWidth = borderWidth;
             _logger = logger;
             _screenIndex = screenIndex;
             _scaleX = scaleX;
@@ -321,23 +318,6 @@ namespace TbEinkSuperFlushTurbo
                         // 在刷新区域绘制反向亮度颜色的半透明方块
                         using (var br = new SolidBrush(overlayColor))
                             g.FillRectangle(br, sx, sy, w, h);
-
-                        // 只有当边框宽度大于等于1时才绘制边框
-                        if (_borderWidth >= 1)
-                        {
-                            // 添加边框，颜色与填充颜色相反
-                            Color borderColor;
-                            if (brightness > 0.5f)
-                            {
-                                borderColor = Color.FromArgb(180, 255, 255, 255); // 白色边框（与黑色填充相反）
-                            }
-                            else
-                            {
-                                borderColor = Color.FromArgb(180, 0, 0, 0); // 黑色边框（与白色填充相反）
-                            }
-                            using (var pen = new Pen(borderColor, _borderWidth))
-                                g.DrawRectangle(pen, sx, sy, w-1, h-1);
-                        }
                     }
                 }
 
