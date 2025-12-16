@@ -66,6 +66,128 @@ namespace TbEinkSuperFlushTurbo
                 Log($"ForceDirectXCapture set to: {_forceDirectXCapture}");
             }
         }
+
+        // 基于设备名找到显示器索引
+        private int FindScreenIndexByDeviceName(string deviceName)
+        {
+            if (string.IsNullOrEmpty(deviceName))
+                return 0; // 默认返回主显示器
+                
+            var allScreens = Screen.AllScreens;
+            for (int i = 0; i < allScreens.Length; i++)
+            {
+                if (allScreens[i].DeviceName == deviceName)
+                    return i;
+            }
+            
+            Log($"警告：找不到设备名称为 '{deviceName}' 的显示器，使用索引0");
+            return 0; // 找不到时使用主显示器
+        }
+
+        // 获取当前目标显示器的设备名称
+        private string GetCurrentTargetDeviceName()
+        {
+            if (_targetScreenIndex >= 0 && _targetScreenIndex < Screen.AllScreens.Length)
+            {
+                return Screen.AllScreens[_targetScreenIndex].DeviceName;
+            }
+            return string.Empty;
+        }
+
+        // 检测是否发生了主显示器切换
+        private bool DetectPrimaryDisplayChange()
+        {
+            try
+            {
+                var allScreens = Screen.AllScreens;
+                if (allScreens.Length == 0) return false;
+                
+                // 找到当前的主显示器
+                var currentPrimary = allScreens.FirstOrDefault(s => s.Primary);
+                if (currentPrimary == null) return false;
+                
+                // 检查当前选中的显示器是否还是主显示器
+                if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
+                {
+                    var targetScreen = allScreens[_targetScreenIndex];
+                    return targetScreen.Primary != currentPrimary.Primary || 
+                           targetScreen.DeviceName != currentPrimary.DeviceName;
+                }
+                
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"检测主显示器切换失败：{ex.Message}");
+                return false;
+            }
+        }
+
+        // 处理显示器配置变化（包括主显示器切换）
+        private void HandleDisplayConfigurationChange()
+        {
+            try
+            {
+                Log("开始处理显示器配置变化...");
+                
+                // 1. 记录当前目标显示器的设备名（稳定标识）
+                string originalDeviceName = _targetDisplayDeviceName;
+                Log($"原始目标显示器设备名: '{originalDeviceName}'");
+                
+                // 2. 检测是否为主显示器切换
+                bool isPrimaryChanged = DetectPrimaryDisplayChange();
+                if (isPrimaryChanged)
+                {
+                    Log("检测到主显示器切换");
+                    _isPrimaryDisplayChanged = true;
+                }
+                
+                // 3. 等待系统稳定（主显示器切换需要更长时间）
+                int stabilizationDelay = isPrimaryChanged ? 2000 : 1000;
+                Log($"等待系统稳定: {stabilizationDelay}ms");
+                Thread.Sleep(stabilizationDelay);
+                
+                // 4. 重新找到原来的显示器（通过设备名）
+                if (!string.IsNullOrEmpty(originalDeviceName))
+                {
+                    int newIndex = FindScreenIndexByDeviceName(originalDeviceName);
+                    if (newIndex != _targetScreenIndex)
+                    {
+                        Log($"显示器索引重新映射: {_targetScreenIndex} -> {newIndex}");
+                        _targetScreenIndex = newIndex;
+                    }
+                }
+                
+                // 5. 重新获取目标显示器的原子化信息
+                var (dpiX, dpiY, success) = GetDisplayDpiAtomic(_targetScreenIndex);
+                if (success)
+                {
+                    Log($"重新获取DPI成功: {dpiX}x{dpiY}");
+                    // 更新DPI相关参数
+                    float scaleX = dpiX / 96.0f;
+                    float scaleY = dpiY / 96.0f;
+                    // 这里可以更新_d3d或其他依赖DPI的组件
+                }
+                else
+                {
+                    Log("重新获取DPI失败，使用原有参数");
+                }
+                
+                // 6. 更新设备名称缓存
+                _targetDisplayDeviceName = GetCurrentTargetDeviceName();
+                Log($"更新后的目标显示器设备名: '{_targetDisplayDeviceName}'");
+                
+                // 7. 重新初始化显示器状态记录
+                RecordInitialDisplayState();
+                
+                Log("显示器配置变化处理完成");
+                
+            }
+            catch (Exception ex)
+            {
+                Log($"处理显示器配置变化失败：{ex.Message}");
+            }
+        }
         // 快捷键相关字段
         private const int TOGGLE_HOTKEY_ID = 9001;
         private Keys _toggleHotkey = Keys.None; // 默认无快捷键
@@ -86,6 +208,9 @@ namespace TbEinkSuperFlushTurbo
         private DateTime _lastDisplayChangeDetectionTime = DateTime.MinValue; // 上次检测到显示器变化的时间
         private const int DISPLAY_CHANGE_DEDUPLICATION_INTERVAL = 2000; // 去重间隔：2秒内只响应一次显示器变化
         private static bool _displayChangeMessageShown = false; // 显示器变化弹窗是否已显示
+        
+        // 基于设备名的显示器识别相关字段
+        private bool _isPrimaryDisplayChanged = false; // 标记是否发生了主显示器切换
 
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -97,12 +222,39 @@ namespace TbEinkSuperFlushTurbo
         private static extern uint GetDpiForWindow(IntPtr hWnd);
         [DllImport("user32.dll")]
         private static extern uint GetDpiForSystem();
+        
+        // 原子化DPI获取相关API
+        [DllImport("user32.dll")]
+        private static extern IntPtr CreateDC(string lpszDriver, string lpszDevice, string lpszOutput, IntPtr lpInitData);
+        [DllImport("user32.dll")]
+        private static extern bool DeleteDC(IntPtr hdc);
+        [DllImport("gdi32.dll")]
+        private static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
+        
+        private const int LOGPIXELSX = 88;
+        private const int LOGPIXELSY = 90;
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(Point pt, uint dwFlags);
+        private const uint MONITOR_DEFAULTTONEAREST = 2;
+        
+        [DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+        private const int MDT_EFFECTIVE_DPI = 0;
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
         [DllImport("user32.dll")]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
+        
+        // 添加CreateWindowEx和DestroyWindow的P/Invoke声明
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr CreateWindowEx(int dwExStyle, string lpClassName, string lpWindowName, int dwStyle,
+            int x, int y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
+        
+        [DllImport("user32.dll")]
+        private static extern bool DestroyWindow(IntPtr hWnd);
 
         private const int CARET_CHECK_INTERVAL = 400;
         private const int IME_CHECK_INTERVAL = 400;
@@ -518,6 +670,127 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
+        // 原子化获取指定显示器的DPI信息（解决张冠李戴问题）
+        private (int dpiX, int dpiY, bool success) GetDisplayDpiAtomic(int screenIndex)
+        {
+            try
+            {
+                var allScreens = Screen.AllScreens;
+                if (screenIndex < 0 || screenIndex >= allScreens.Length)
+                {
+                    Log($"原子化DPI获取失败：显示器索引 {screenIndex} 超出范围");
+                    return (96, 96, false);
+                }
+
+                var targetScreen = allScreens[screenIndex];
+                string deviceName = targetScreen.DeviceName;
+                
+                Log($"原子化DPI获取：尝试获取显示器 [{screenIndex}] '{deviceName}' 的DPI");
+
+                // 方法1：使用GetDpiForMonitor（Windows 8.1+推荐方法）
+                try
+                {
+                    var centerPoint = new Point(
+                        targetScreen.Bounds.Left + targetScreen.Bounds.Width / 2,
+                        targetScreen.Bounds.Top + targetScreen.Bounds.Height / 2
+                    );
+                    
+                    IntPtr hMonitor = MonitorFromPoint(centerPoint, MONITOR_DEFAULTTONEAREST);
+                    if (hMonitor != IntPtr.Zero)
+                    {
+                        uint dpiX, dpiY;
+                        int result = GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, out dpiX, out dpiY);
+                        if (result == 0) // S_OK
+                        {
+                            Log($"原子化DPI获取成功：使用GetDpiForMonitor，DPI = {dpiX}x{dpiY}");
+                            return ((int)dpiX, (int)dpiY, true);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"GetDpiForMonitor失败：{ex.Message}，回退到CreateDC方法");
+                }
+
+                // 方法2：使用CreateDC获取显示器特定HDC
+                try
+                {
+                    IntPtr hdc = CreateDC(null, deviceName, null, IntPtr.Zero);
+                    if (hdc != IntPtr.Zero)
+                    {
+                        try
+                        {
+                            int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
+                            int dpiY = GetDeviceCaps(hdc, LOGPIXELSY);
+                            Log($"原子化DPI获取成功：使用CreateDC，DPI = {dpiX}x{dpiY}");
+                            return (dpiX, dpiY, true);
+                        }
+                        finally
+                        {
+                            DeleteDC(hdc);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"CreateDC方法失败：{ex.Message}，回退到Graphics方法");
+                }
+
+                // 方法3：回退到Graphics方法（当前使用的方法）
+                return GetDisplayDpiByGraphics(screenIndex);
+            }
+            catch (Exception ex)
+            {
+                Log($"原子化DPI获取失败：{ex.Message}，使用默认值96x96");
+                return (96, 96, false);
+            }
+        }
+
+        // 使用Graphics对象获取DPI（当前方法的改进版）
+        private (int dpiX, int dpiY, bool success) GetDisplayDpiByGraphics(int screenIndex)
+        {
+            try
+            {
+                var allScreens = Screen.AllScreens;
+                if (screenIndex < 0 || screenIndex >= allScreens.Length)
+                    return (96, 96, false);
+
+                var targetScreen = allScreens[screenIndex];
+                var bounds = targetScreen.Bounds;
+
+                // 创建临时窗口句柄来获取该显示器的DPI
+                var tempHwnd = NativeMethods.CreateWindowEx(
+                    0, "STATIC", "", 0,
+                    bounds.Left, bounds.Top, 1, 1,
+                    IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+
+                if (tempHwnd != IntPtr.Zero)
+                {
+                    try
+                    {
+                        using (var graphics = Graphics.FromHwnd(tempHwnd))
+                        {
+                            float dpiX = graphics.DpiX;
+                            float dpiY = graphics.DpiY;
+                            Log($"Graphics方法DPI获取：{dpiX}x{dpiY}");
+                            return ((int)dpiX, (int)dpiY, true);
+                        }
+                    }
+                    finally
+                    {
+                        NativeMethods.DestroyWindow(tempHwnd);
+                    }
+                }
+                
+                return (96, 96, false);
+            }
+            catch (Exception ex)
+            {
+                Log($"Graphics方法DPI获取失败：{ex.Message}");
+                return (96, 96, false);
+            }
+        }
+
         // 获取指定显示器的物理和逻辑分辨率
         private (int physicalWidth, int physicalHeight, int logicalWidth, int logicalHeight) GetScreenResolutions(int screenIndex)
         {
@@ -773,7 +1046,7 @@ namespace TbEinkSuperFlushTurbo
                         Log($"  原签名: {_lastDisplaySignatures[i]}");
                         Log($"  新签名: {currentSignature}");
 
-                        // 解析签名变化，特别关注设备名称变化
+                        // 解析签名变化，特别关注设备名称变化和主显示器切换
                         var oldParts = _lastDisplaySignatures[i].Split(':');
                         var newParts = currentSignature.Split(':');
 
@@ -785,22 +1058,22 @@ namespace TbEinkSuperFlushTurbo
                             if (oldDeviceName != newDeviceName)
                             {
                                 Log($"  设备名称变化: {oldDeviceName} -> {newDeviceName}");
+                            }
 
-                                // 如果当前选中的显示器设备名称发生变化，需要特殊处理
-                                if (!string.IsNullOrEmpty(_targetDisplayDeviceName) && _targetDisplayDeviceName == oldDeviceName)
-                                {
-                                    Log($"  当前选中的显示器设备名称发生变化，将尝试重新匹配");
-                                }
+                            // 检查是否为主显示器切换
+                            bool oldIsPrimary = oldParts.Length > 4 && oldParts[4] == "Primary";
+                            bool newIsPrimary = newParts.Length > 4 && newParts[4] == "Primary";
+                            if (oldIsPrimary != newIsPrimary)
+                            {
+                                Log($"  主显示器状态变化: {oldIsPrimary} -> {newIsPrimary}");
                             }
                         }
 
-                        AutoStopDueToDisplayChange("显示器配置变化");
+                        // 使用新的处理方法
+                        HandleDisplayConfigurationChange();
                         return;
                     }
                 }
-
-                // 只在调试模式下记录无变化的检查（避免频繁日志输出）
-                // Log("显示器配置检查完成，无变化");
             }
             catch (Exception ex)
             {
