@@ -131,7 +131,7 @@ namespace TbEinkSuperFlushTurbo
                 Log("开始处理显示器配置变化...");
                 
                 // 1. 记录当前目标显示器的设备名（稳定标识）
-                string originalDeviceName = _targetDisplayDeviceName;
+                string originalDeviceName = _targetDisplayDeviceName ?? string.Empty;
                 Log($"原始目标显示器设备名: '{originalDeviceName}'");
                 
                 // 2. 检测是否为主显示器切换
@@ -210,7 +210,9 @@ namespace TbEinkSuperFlushTurbo
         private static bool _displayChangeMessageShown = false; // 显示器变化弹窗是否已显示
         
         // 基于设备名的显示器识别相关字段
+        #pragma warning disable CS0414 // 抑制未使用字段警告
         private bool _isPrimaryDisplayChanged = false; // 标记是否发生了主显示器切换
+        #pragma warning restore CS0414
 
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -225,7 +227,7 @@ namespace TbEinkSuperFlushTurbo
         
         // 原子化DPI获取相关API
         [DllImport("user32.dll")]
-        private static extern IntPtr CreateDC(string lpszDriver, string lpszDevice, string lpszOutput, IntPtr lpInitData);
+        private static extern IntPtr CreateDC(string? lpszDriver, string lpszDevice, string? lpszOutput, IntPtr lpInitData);
         [DllImport("user32.dll")]
         private static extern bool DeleteDC(IntPtr hdc);
         [DllImport("gdi32.dll")]
