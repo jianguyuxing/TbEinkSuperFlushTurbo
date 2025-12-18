@@ -138,7 +138,7 @@ namespace TbEinkSuperFlushTurbo
             lblTileSize.Name = "lblTileSize";
             lblTileSize.Size = new Size(186, 50);
             lblTileSize.TabIndex = 6;
-            lblTileSize.Text = "Detect Tile Pixel Length";
+            lblTileSize.Text = "Tile Pixel Length";
             lblTileSize.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // trackTileSize
