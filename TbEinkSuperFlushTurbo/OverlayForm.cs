@@ -39,6 +39,7 @@ namespace TbEinkSuperFlushTurbo
         readonly Action<string>? _logger;
 
         public bool IsDisplaying => _isDisplaying;
+        public int TileSize => _tileSize;
 
         public void UpdateContent(List<(int bx, int by)> tiles, float[]? brightnessData = null)
         {

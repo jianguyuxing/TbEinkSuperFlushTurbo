@@ -33,6 +33,7 @@ namespace TbEinkSuperFlushTurbo
 
         // --- Refresh parameters ---
         private int _tileSize = 8; // 区块的像素边长数，默认值8代表8*8像素
+        private int _lastUsedTileSize = 0; // 记录上次使用的tileSize，用于检测变化
         private int _pixelDelta = 10;
         // Average window size for frame difference calculation (maximum supported: 2 frames)
         private const uint AVERAGE_WINDOW_SIZE = 2;
@@ -1310,6 +1311,16 @@ namespace TbEinkSuperFlushTurbo
         {
             if (_cts?.IsCancellationRequested == true || _d3d == null || tiles == null || tiles.Count == 0) return;
 
+            // 检查是否需要重新创建OverlayForm（tileSize变化时）
+            bool needRecreateOverlay = _overlayForm != null && _d3d != null && _overlayForm.TileSize != _d3d!.TileSize;
+            if (needRecreateOverlay)
+            {
+                Log($"检测到OverlayForm tileSize变化，正在重新创建...");
+                _overlayForm!.Close();
+                _overlayForm.Dispose();
+                _overlayForm = null;
+            }
+
             if (_overlayForm == null)
             {
                 Color overlayBaseColor = Color.FromName(OVERLAY_BASE_COLOR);
@@ -1329,7 +1340,7 @@ namespace TbEinkSuperFlushTurbo
                     allScreens[_targetScreenIndex] : Screen.PrimaryScreen!;
                 var screenBounds = targetScreen.Bounds;
 
-                _overlayForm = new OverlayForm(_d3d.TileSize, logicalWidth, logicalHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, Log, _targetScreenIndex, scaleX, scaleY)
+                _overlayForm = new OverlayForm(_d3d!.TileSize, logicalWidth, logicalHeight, NOISE_DENSITY, NOISE_POINT_INTERVAL, overlayBaseColor, Log, _targetScreenIndex, scaleX, scaleY)
                 {
                     ShowInTaskbar = false,
                     FormBorderStyle = FormBorderStyle.None,
@@ -1970,6 +1981,28 @@ namespace TbEinkSuperFlushTurbo
 
             try
             {
+                // 检查是否需要重新创建D3D对象（tileSize变化时）
+                bool needRecreateD3D = _lastUsedTileSize != _tileSize;
+                if (needRecreateD3D && _lastUsedTileSize > 0)
+                {
+                    Log($"检测到tileSize变化: 从 {_lastUsedTileSize} 到 {_tileSize}，正在重新初始化D3D对象...");
+                }
+                
+                // 如果D3D对象存在且tileSize变化，或者需要重新创建
+                if (_d3d != null && needRecreateD3D)
+                {
+                    _d3d?.Dispose();
+                    _d3d = null;
+                    
+                    // 关闭现有的overlayForm（如果存在）
+                    if (_overlayForm != null)
+                    {
+                        _overlayForm.Close();
+                        _overlayForm.Dispose();
+                        _overlayForm = null;
+                    }
+                }
+
                 _d3d = new D3DCaptureAndCompute(DebugLogger, _tileSize, _pixelDelta, AVERAGE_WINDOW_SIZE, STABLE_FRAMES_REQUIRED, ADDITIONAL_COOLDOWN_FRAMES, FIRST_REFRESH_EXTRA_DELAY, CARET_CHECK_INTERVAL, IME_CHECK_INTERVAL, MOUSE_EXCLUSION_RADIUS_FACTOR,
                     new BoundingAreaConfig(
                         BOUNDING_AREA_WIDTH,
@@ -1977,6 +2010,9 @@ namespace TbEinkSuperFlushTurbo
                         BOUNDING_AREA_HISTORY_FRAMES,
                         BOUNDING_AREA_CHANGE_THRESHOLD,
                         BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture, ProtectionFrames, _targetScreenIndex);
+
+                // 更新上次使用的tileSize
+                _lastUsedTileSize = _tileSize;
 
                 _pollTimer = new System.Windows.Forms.Timer
                 {
