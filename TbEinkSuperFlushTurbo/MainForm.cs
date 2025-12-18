@@ -41,7 +41,7 @@ namespace TbEinkSuperFlushTurbo
         private const uint FIRST_REFRESH_EXTRA_DELAY = 1;
 
         public const int OVERLAY_DISPLAY_TIME = 100; // ms
-        private int _pollInterval = 500; // ms detect period, configurable
+        private int _pollInterval = 600; // ms detect period, configurable
 
         // 合围区域配置，用于抑制滚动区域的刷新 - 单个区域内m帧内n帧变动时，区域内区块不刷新
         private const int BOUNDING_AREA_WIDTH = 45;  // 每个合围区域宽度（区块数量）
@@ -378,7 +378,7 @@ namespace TbEinkSuperFlushTurbo
                     }
                     if (root.TryGetProperty("TileSize", out JsonElement tileSizeElement))
                     {
-                        _tileSize = Math.Max(8, Math.Min(64, tileSizeElement.GetInt32()));
+                        _tileSize = Math.Max(8, Math.Min(32, tileSizeElement.GetInt32()));
                     }
                     if (root.TryGetProperty("ScreenIndex", out JsonElement screenIndexElement))
                     {
@@ -417,7 +417,7 @@ namespace TbEinkSuperFlushTurbo
                         }
                         if (lines.Length >= 3 && int.TryParse(lines[2], out int savedTileSize))
                         {
-                            _tileSize = Math.Max(8, Math.Min(64, savedTileSize));
+                            _tileSize = Math.Max(8, Math.Min(32, savedTileSize));
                         }
                         // 加载显示器索引配置
                         if (lines.Length >= 4 && int.TryParse(lines[3], out int savedScreenIndex))
@@ -1561,8 +1561,8 @@ namespace TbEinkSuperFlushTurbo
             // 更新控件值
             trackPixelDelta.Value = _pixelDelta;
             lblPixelDeltaValue.Text = _pixelDelta.ToString();
-            trackPollInterval.Value = _pollInterval;
-            lblPollIntervalValue.Text = _pollInterval.ToString();
+            trackTileSize.Value = _tileSize;
+            lblTileSizeValue.Text = _tileSize.ToString();
 
             // 如果没有设置快捷键，显示提示文本
             if (_toggleHotkey == Keys.None)
@@ -1959,7 +1959,7 @@ namespace TbEinkSuperFlushTurbo
 
             // 禁用设置项修改
             trackPixelDelta.Enabled = false;
-            trackPollInterval.Enabled = false;
+            trackTileSize.Enabled = false;
             // 注意：齿轮按钮保持启用状态，通过点击事件拦截来处理禁用逻辑
 
             SafeUpdateStatusText("Status: Initializing GPU capture...");
@@ -2146,7 +2146,7 @@ namespace TbEinkSuperFlushTurbo
 
             // 重新启用设置项修改
             trackPixelDelta.Enabled = true;
-            trackPollInterval.Enabled = true;
+            trackTileSize.Enabled = true;
             // 齿轮按钮保持启用状态，无需特别处理
         }
 
@@ -2181,16 +2181,11 @@ namespace TbEinkSuperFlushTurbo
             SaveConfig();
         }
 
-        private void trackPollInterval_ValueChanged(object? sender, EventArgs e)
+        private void trackTileSize_ValueChanged(object? sender, EventArgs e)
         {
-            _pollInterval = trackPollInterval.Value;
-            lblPollIntervalValue.Text = _pollInterval.ToString();
+            _tileSize = trackTileSize.Value;
+            lblTileSizeValue.Text = _tileSize.ToString();
             SaveConfig();
-            // 更新定时器间隔
-            if (_pollTimer != null)
-            {
-                _pollTimer.Interval = _pollInterval;
-            }
         }
 
         private void btnHelpPixelDelta_Click(object? sender, EventArgs e)
@@ -2644,17 +2639,17 @@ namespace TbEinkSuperFlushTurbo
 
         }
 
-        private void trackPollInterval_Scroll(object sender, EventArgs e)
+        private void trackTileSize_Scroll(object sender, EventArgs e)
         {
 
         }
 
-        private void lblPollIntervalUnit_Click(object sender, EventArgs e)
+        private void lblTileSizeUnit_Click(object sender, EventArgs e)
         {
 
         }
 
-        private void lblPollIntervalValue_Click(object sender, EventArgs e)
+        private void lblTileSizeValue_Click(object sender, EventArgs e)
         {
 
         }
@@ -2699,9 +2694,9 @@ namespace TbEinkSuperFlushTurbo
 
             // 更新标签文本
             lblPixelDelta.Text = Localization.GetText("PixelColorDiff");
-            lblPollInterval.Text = Localization.GetText("DetectInterval");
+            lblTileSize.Text = Localization.GetText("DetectInterval");
             lblToggleHotkey.Text = Localization.GetText("ToggleHotkey");
-            lblPollIntervalUnit.Text = Localization.GetText("Milliseconds");
+            lblTileSizeUnit.Text = Localization.GetText("Pixels");
             btnHelpPixelDelta.Text = Localization.GetText("QuestionMark");
             lblDisplay.Text = Localization.GetText("DisplaySelection");
 

@@ -50,9 +50,9 @@ namespace TbEinkSuperFlushTurbo
             
             ["DetectInterval"] = new()
             {
-                [Language.English] = "Detect Interval:",
-                [Language.ChineseSimplified] = "检测间隔：",
-                [Language.ChineseTraditional] = "檢測間隔："
+                [Language.English] = "Detect Tile Pixel Size:",
+                [Language.ChineseSimplified] = "检测区块像素边长：",
+                [Language.ChineseTraditional] = "檢測區塊像素邊長："
             },
             
             ["ToggleHotkey"] = new()

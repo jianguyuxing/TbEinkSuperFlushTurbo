@@ -36,10 +36,10 @@ namespace TbEinkSuperFlushTurbo
             trackPixelDelta = new TrackBar();
             lblPixelDeltaValue = new Label();
             btnHelpPixelDelta = new Button();
-            lblPollInterval = new Label();
-            trackPollInterval = new TrackBar();
-            lblPollIntervalValue = new Label();
-            lblPollIntervalUnit = new Label();
+            lblTileSize = new Label();
+            trackTileSize = new TrackBar();
+            lblTileSizeValue = new Label();
+            lblTileSizeUnit = new Label();
             lblToggleHotkey = new Label();
             txtToggleHotkey = new TextBox();
             btnToggleRecord = new Button();
@@ -54,7 +54,7 @@ namespace TbEinkSuperFlushTurbo
             contextMenuStrip1 = new ContextMenuStrip(components);
             exitToolStripMenuItem = new ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)trackPixelDelta).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)trackPollInterval).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)trackTileSize).BeginInit();
             panelBottom.SuspendLayout();
             contextMenuStrip1.SuspendLayout();
             SuspendLayout();
@@ -131,53 +131,53 @@ namespace TbEinkSuperFlushTurbo
             btnHelpPixelDelta.MouseEnter += btnHelpPixelDelta_MouseEnter;
             btnHelpPixelDelta.MouseLeave += btnHelpPixelDelta_MouseLeave;
             // 
-            // lblPollInterval
+            // lblTileSize
             // 
-            lblPollInterval.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblPollInterval.Location = new Point(35, 123);
-            lblPollInterval.Name = "lblPollInterval";
-            lblPollInterval.Size = new Size(186, 50);
-            lblPollInterval.TabIndex = 6;
-            lblPollInterval.Text = "Detection Interval";
-            lblPollInterval.TextAlign = ContentAlignment.MiddleLeft;
+            lblTileSize.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            lblTileSize.Location = new Point(35, 123);
+            lblTileSize.Name = "lblTileSize";
+            lblTileSize.Size = new Size(186, 50);
+            lblTileSize.TabIndex = 6;
+            lblTileSize.Text = "Detect Tile Pixel Size";
+            lblTileSize.TextAlign = ContentAlignment.MiddleLeft;
             // 
-            // trackPollInterval
+            // trackTileSize
             // 
-            trackPollInterval.LargeChange = 500;
-            trackPollInterval.Location = new Point(227, 128);
-            trackPollInterval.Maximum = 5000;
-            trackPollInterval.Minimum = 200;
-            trackPollInterval.Name = "trackPollInterval";
-            trackPollInterval.Size = new Size(300, 45);
-            trackPollInterval.SmallChange = 50;
-            trackPollInterval.TabIndex = 7;
-            trackPollInterval.TickFrequency = 500;
-            trackPollInterval.TickStyle = TickStyle.TopLeft;
-            trackPollInterval.Value = 500;
-            trackPollInterval.Scroll += trackPollInterval_Scroll;
-            trackPollInterval.ValueChanged += trackPollInterval_ValueChanged;
+            trackTileSize.LargeChange = 4;
+            trackTileSize.Location = new Point(227, 128);
+            trackTileSize.Maximum = 32;
+            trackTileSize.Minimum = 8;
+            trackTileSize.Name = "trackTileSize";
+            trackTileSize.Size = new Size(300, 45);
+            trackTileSize.SmallChange = 1;
+            trackTileSize.TabIndex = 7;
+            trackTileSize.TickFrequency = 4;
+            trackTileSize.TickStyle = TickStyle.TopLeft;
+            trackTileSize.Value = 16;
+            trackTileSize.Scroll += trackTileSize_Scroll;
+            trackTileSize.ValueChanged += trackTileSize_ValueChanged;
             // 
-            // lblPollIntervalValue
+            // lblTileSizeValue
             // 
-            lblPollIntervalValue.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblPollIntervalValue.Location = new Point(532, 123);
-            lblPollIntervalValue.Name = "lblPollIntervalValue";
-            lblPollIntervalValue.Size = new Size(73, 50);
-            lblPollIntervalValue.TabIndex = 8;
-            lblPollIntervalValue.Text = "500";
-            lblPollIntervalValue.TextAlign = ContentAlignment.MiddleCenter;
-            lblPollIntervalValue.Click += lblPollIntervalValue_Click;
+            lblTileSizeValue.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            lblTileSizeValue.Location = new Point(532, 123);
+            lblTileSizeValue.Name = "lblTileSizeValue";
+            lblTileSizeValue.Size = new Size(73, 50);
+            lblTileSizeValue.TabIndex = 8;
+            lblTileSizeValue.Text = "16";
+            lblTileSizeValue.TextAlign = ContentAlignment.MiddleCenter;
+            lblTileSizeValue.Click += lblTileSizeValue_Click;
             // 
-            // lblPollIntervalUnit
+            // lblTileSizeUnit
             // 
-            lblPollIntervalUnit.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            lblPollIntervalUnit.Location = new Point(613, 123);
-            lblPollIntervalUnit.Name = "lblPollIntervalUnit";
-            lblPollIntervalUnit.Size = new Size(60, 50);
-            lblPollIntervalUnit.TabIndex = 9;
-            lblPollIntervalUnit.Text = "ms";
-            lblPollIntervalUnit.TextAlign = ContentAlignment.MiddleCenter;
-            lblPollIntervalUnit.Click += lblPollIntervalUnit_Click;
+            lblTileSizeUnit.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            lblTileSizeUnit.Location = new Point(613, 123);
+            lblTileSizeUnit.Name = "lblTileSizeUnit";
+            lblTileSizeUnit.Size = new Size(60, 50);
+            lblTileSizeUnit.TabIndex = 9;
+            lblTileSizeUnit.Text = "px";
+            lblTileSizeUnit.TextAlign = ContentAlignment.MiddleCenter;
+            lblTileSizeUnit.Click += lblTileSizeUnit_Click;
             // 
             // lblToggleHotkey
             // 
@@ -324,10 +324,10 @@ namespace TbEinkSuperFlushTurbo
             Controls.Add(btnToggleRecord);
             Controls.Add(txtToggleHotkey);
             Controls.Add(lblToggleHotkey);
-            Controls.Add(lblPollIntervalUnit);
-            Controls.Add(lblPollIntervalValue);
-            Controls.Add(trackPollInterval);
-            Controls.Add(lblPollInterval);
+            Controls.Add(lblTileSizeUnit);
+            Controls.Add(lblTileSizeValue);
+            Controls.Add(trackTileSize);
+            Controls.Add(lblTileSize);
             Controls.Add(btnHelpPixelDelta);
             Controls.Add(lblPixelDeltaValue);
             Controls.Add(trackPixelDelta);
@@ -344,7 +344,7 @@ namespace TbEinkSuperFlushTurbo
             KeyDown += MainForm_KeyDown;
             Resize += MainForm_Resize;
             ((System.ComponentModel.ISupportInitialize)trackPixelDelta).EndInit();
-            ((System.ComponentModel.ISupportInitialize)trackPollInterval).EndInit();
+            ((System.ComponentModel.ISupportInitialize)trackTileSize).EndInit();
             panelBottom.ResumeLayout(false);
             contextMenuStrip1.ResumeLayout(false);
             ResumeLayout(false);
@@ -360,10 +360,10 @@ namespace TbEinkSuperFlushTurbo
         private System.Windows.Forms.TrackBar trackPixelDelta;
         private System.Windows.Forms.Label lblPixelDeltaValue;
         private System.Windows.Forms.Button btnHelpPixelDelta;
-        private System.Windows.Forms.Label lblPollInterval;
-        private System.Windows.Forms.TrackBar trackPollInterval;
-        private System.Windows.Forms.Label lblPollIntervalValue;
-        private System.Windows.Forms.Label lblPollIntervalUnit;
+        private System.Windows.Forms.Label lblTileSize;
+        private System.Windows.Forms.TrackBar trackTileSize;
+        private System.Windows.Forms.Label lblTileSizeValue;
+        private System.Windows.Forms.Label lblTileSizeUnit;
         private System.Windows.Forms.Label lblToggleHotkey;
         private System.Windows.Forms.TextBox txtToggleHotkey;
         private System.Windows.Forms.Button btnToggleRecord;
