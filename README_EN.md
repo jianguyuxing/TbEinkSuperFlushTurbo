@@ -1,4 +1,4 @@
-# TbEinkSuperFlushTurbo - E-Ink Screen Ghosting Reduction Tool
+# TbEinkSuperFlushTurbo - E-Ink Screen Ghosting Auto Reduction Tool
 
 <div align="right">
   <strong>Language:</strong> <a href="README.md">中文</a> | English
@@ -7,6 +7,8 @@
 ## Project Overview
 
 TbEinkSuperFlushTurbo is an intelligent ghosting reduction tool specifically designed for e-ink display devices. Through DirectX GPU acceleration and smart area detection algorithms, it effectively reduces screen ghosting and flickering, providing a better visual experience.
+
+📌 **Quick Navigation**: [Usage](#usage)
 
 ### 🖥️ Primary Target Device
 **This tool is specifically developed and optimized for the Kaleido color e-ink display on ThinkBook Plus Gen4 (Twist)**, while maintaining compatibility with other e-ink display devices.
@@ -42,6 +44,45 @@ TbEinkSuperFlushTurbo is an intelligent ghosting reduction tool specifically des
 - **System Tray Icon**: Supports minimizing to system tray
 - **Detailed Logging**: Complete operation logs and performance statistics
 
+## Usage
+
+### Basic Operation
+1. Run `TbEinkSuperFlushTurbo.exe`
+2. (Optional but recommended) Perform a full screen refresh manually before starting
+3. Click **Start** button to begin monitoring
+4. Click **Stop** button to stop monitoring
+5. Use tray icon to control show/hide
+
+> Note: It is recommended to perform a manual full-screen refresh before clicking Start to clear existing ghosting. This program only calculates ghosting that occurs after clicking Start.
+
+### Advanced Settings
+- Customizable detection parameters (tile size, thresholds, etc.)
+- Adjustable log levels
+
+### Configuration Files
+
+The application uses a configuration file stored in the application directory:
+
+1. `config.json` - Contains all application settings:
+   ```json
+   {
+     "PixelDelta": 10,
+     "PollInterval": 500,
+     "TileSize": 8,
+     "ScreenIndex": 0,
+     "ToggleHotkey": 117
+   }
+   ```
+   Where:
+   - `PixelDelta`: Sensitivity threshold for pixel color differences (2-25)
+   - `PollInterval`: Screen capture interval in milliseconds (200-5000)
+   - `TileSize`: Size of detection blocks, pixel edge length, representing an n*n pixel area (8-64)
+   - `ToggleHotkey`: Virtual key code for the toggle hotkey (117 = F6)
+
+> 💡 **Tip**: If you want to reduce refresh frequency and increase refresh area size, you can increase the pixel edge length of detection blocks. However, please note that when increasing the block pixel edge length, you need to decrease the pixel difference threshold (PixelDelta) accordingly, otherwise it may be difficult to trigger ghosting change detection. Larger detection blocks may overlook some smaller ghosting detections, so you can make trade-offs based on your actual experience.
+
+If this file doesn't exist, the application will create it with default values on first run.
+
 ## Technical Features
 
 ### Brightness Difference Detection Algorithm
@@ -75,43 +116,6 @@ This algorithm fully leverages GPU parallel computing power to achieve high proc
   multi-monitor environments
 - **E-ink Screen Auto-Recognition**: Intelligently identifies e-ink display devices through refresh rate
   characteristics (less than 59Hz)
-
-## Usage
-
-### Basic Operation
-1. Run `TbEinkSuperFlushTurbo.exe`
-2. (Optional but recommended) Perform a full screen refresh manually before starting
-3. Click **Start** button to begin monitoring
-4. Click **Stop** button to stop monitoring
-5. Use tray icon to control show/hide
-
-> Note: It is recommended to perform a manual full-screen refresh before clicking Start to clear existing ghosting. This program only calculates ghosting that occurs after clicking Start.
-
-### Advanced Settings
-- Customizable detection parameters (tile size, thresholds, etc.)
-- Adjustable log levels
-
-### Configuration Files
-
-The application uses a configuration file stored in the application directory:
-
-1. `config.json` - Contains all application settings:
-   ```json
-   {
-     "PixelDelta": 10,
-     "PollInterval": 500,
-     "TileSize": 8,
-     "ScreenIndex": 0,
-     "ToggleHotkey": 117
-   }
-   ```
-   Where:
-   - `PixelDelta`: Sensitivity threshold for pixel color differences (2-25)
-   - `PollInterval`: Screen capture interval in milliseconds (200-5000)
-   - `TileSize`: Size of detection blocks in pixels (8-64)
-   - `ToggleHotkey`: Virtual key code for the toggle hotkey (117 = F6)
-
-If this file doesn't exist, the application will create it with default values on first run.
 
 ## System Requirements
 
