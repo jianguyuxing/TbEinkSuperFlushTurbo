@@ -378,7 +378,7 @@ namespace TbEinkSuperFlushTurbo
                     }
                     if (root.TryGetProperty("TileSize", out JsonElement tileSizeElement))
                     {
-                        _tileSize = Math.Max(8, Math.Min(32, tileSizeElement.GetInt32()));
+                        _tileSize = Math.Max(8, Math.Min(64, tileSizeElement.GetInt32()));
                     }
                     if (root.TryGetProperty("ScreenIndex", out JsonElement screenIndexElement))
                     {
@@ -417,7 +417,7 @@ namespace TbEinkSuperFlushTurbo
                         }
                         if (lines.Length >= 3 && int.TryParse(lines[2], out int savedTileSize))
                         {
-                            _tileSize = Math.Max(8, Math.Min(32, savedTileSize));
+                            _tileSize = Math.Max(8, Math.Min(64, savedTileSize));
                         }
                         // 加载显示器索引配置
                         if (lines.Length >= 4 && int.TryParse(lines[3], out int savedScreenIndex))

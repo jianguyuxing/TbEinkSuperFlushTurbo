@@ -143,15 +143,15 @@ namespace TbEinkSuperFlushTurbo
             // 
             // trackTileSize
             // 
-            trackTileSize.LargeChange = 4;
+            trackTileSize.LargeChange = 8;
             trackTileSize.Location = new Point(227, 128);
-            trackTileSize.Maximum = 32;
+            trackTileSize.Maximum = 64;
             trackTileSize.Minimum = 8;
             trackTileSize.Name = "trackTileSize";
             trackTileSize.Size = new Size(300, 45);
             trackTileSize.SmallChange = 1;
             trackTileSize.TabIndex = 7;
-            trackTileSize.TickFrequency = 4;
+            trackTileSize.TickFrequency = 8;
             trackTileSize.TickStyle = TickStyle.TopLeft;
             trackTileSize.Value = 16;
             trackTileSize.Scroll += trackTileSize_Scroll;
