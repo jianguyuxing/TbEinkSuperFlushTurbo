@@ -50,7 +50,7 @@ namespace TbEinkSuperFlushTurbo
             
             ["DetectInterval"] = new()
             {
-                [Language.English] = "Detect Tile Pixel Size:",
+                [Language.English] = "Detect Tile Pixel Length:",
                 [Language.ChineseSimplified] = "检测区块像素边长：",
                 [Language.ChineseTraditional] = "檢測區塊像素邊長："
             },
