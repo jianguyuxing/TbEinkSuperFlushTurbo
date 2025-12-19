@@ -87,9 +87,16 @@ namespace TbEinkSuperFlushTurbo
             
             ["StatusRunning"] = new()
             {
-                [Language.English] = "Status: Running",
-                [Language.ChineseSimplified] = "状态：运行中",
-                [Language.ChineseTraditional] = "狀態：運行中"
+                [Language.English] = "Status: Running - Display: {0}{1}, Resolution: {2}{3}",
+                [Language.ChineseSimplified] = "状态：运行中 - 显示器: {0}{1}, 分辨率: {2}{3}",
+                [Language.ChineseTraditional] = "狀態：運行中 - 顯示器: {0}{1}, 解析度: {2}{3}"
+            },
+            
+            ["StatusStoppedWithDisplay"] = new()
+            {
+                [Language.English] = "Status: Stopped - Display: {0}{1}, Resolution: {2}{3}",
+                [Language.ChineseSimplified] = "状态：已停止 - 显示器: {0}{1}, 分辨率: {2}{3}",
+                [Language.ChineseTraditional] = "狀態：已停止 - 顯示器: {0}{1}, 解析度: {2}{3}"
             },
             
             ["StatusInitializing"] = new()
@@ -179,6 +186,42 @@ namespace TbEinkSuperFlushTurbo
                 [Language.English] = "Primary",
                 [Language.ChineseSimplified] = "主",
                 [Language.ChineseTraditional] = "主"
+            },
+            
+            // 分辨率相关
+            ["Physical"] = new()
+            {
+                [Language.English] = "Physical",
+                [Language.ChineseSimplified] = "物理",
+                [Language.ChineseTraditional] = "物理"
+            },
+            
+            ["Logical"] = new()
+            {
+                [Language.English] = "Logical",
+                [Language.ChineseSimplified] = "逻辑",
+                [Language.ChineseTraditional] = "邏輯"
+            },
+            
+            ["Resolution"] = new()
+            {
+                [Language.English] = "Resolution",
+                [Language.ChineseSimplified] = "分辨率",
+                [Language.ChineseTraditional] = "解析度"
+            },
+            
+            ["Scale"] = new()
+            {
+                [Language.English] = "Scale",
+                [Language.ChineseSimplified] = "缩放",
+                [Language.ChineseTraditional] = "縮放"
+            },
+            
+            ["TileSize"] = new()
+            {
+                [Language.English] = "Tile Size",
+                [Language.ChineseSimplified] = "区块尺寸",
+                [Language.ChineseTraditional] = "區塊尺寸"
             },
             
             // 托盘图标

@@ -1100,33 +1100,24 @@ namespace TbEinkSuperFlushTurbo
                     var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
                     string resolutionInfo = $"{physicalWidth}x{physicalHeight}";
 
+                    // 获取显示器友好名称
+                    string friendlyName = GetScreenFriendlyName(_targetScreenIndex);
+                    if (!string.IsNullOrEmpty(friendlyName))
+                    {
+                        deviceName = friendlyName;
+                    }
+
                     // 更新状态栏文本 - 根据程序运行状态和语言显示不同的格式
                     string statusText;
                     if (_pollTimer?.Enabled == true)
                     {
                         // 运行中状态
-                        if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
-                            Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
-                        {
-                            statusText = $"状态：运行中 - 显示器: {deviceName}{primaryMark}, 分辨率: {resolutionInfo}{refreshInfo}";
-                        }
-                        else
-                        {
-                            statusText = $"Status: Running - Display: {deviceName}{primaryMark}, Resolution: {resolutionInfo}{refreshInfo}";
-                        }
+                        statusText = string.Format(Localization.GetText("StatusRunning"), deviceName, primaryMark, resolutionInfo, refreshInfo);
                     }
                     else
                     {
-                        // 停止状态
-                        if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
-                            Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
-                        {
-                            statusText = $"状态：已停止 - 显示器: {deviceName}{primaryMark}, 分辨率: {resolutionInfo}{refreshInfo}";
-                        }
-                        else
-                        {
-                            statusText = $"Status: Stopped - Display: {deviceName}{primaryMark}, Resolution: {resolutionInfo}{refreshInfo}";
-                        }
+                        // 停止状态 - 只显示"状态：已停止"
+                        statusText = Localization.GetText("StatusStopped");
                     }
                     lblInfo.Text = statusText;
 
@@ -2142,7 +2133,21 @@ namespace TbEinkSuperFlushTurbo
                 double dpiScaleY = (double)physicalHeight / logicalHeight;
                 double dpiScale = Math.Max(dpiScaleX, dpiScaleY); // 使用较大的缩放比例
                 int scalePercent = (int)(dpiScale * 100);
-                SafeUpdateStatusText($"{Localization.GetText("StatusRunning")} (Display: {screenFriendlyName}, Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight}, Scale: {scalePercent}%, Tile Size: {_tileSize}x{_tileSize} pixels)");
+                // 自定义状态文本格式，避免重复的分辨率文字
+                string statusPrefix = Localization.GetText("StatusRunning").Split("分辨率:")[0];
+                double refreshRate = GetRefreshRateFromApi(_targetScreenIndex);
+                string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
+                string statusText = string.Format(statusPrefix, screenFriendlyName, "", "", "");
+                
+                // 使用本地化字符串替换物理、逻辑、缩放、区块尺寸等文本
+                string physical = Localization.GetText("Physical");
+                string logical = Localization.GetText("Logical");
+                string scale = Localization.GetText("Scale");
+                string tileSize = Localization.GetText("TileSize");
+                string pixels = Localization.GetText("Pixels");
+                string resolution = Localization.GetText("Resolution");
+                
+                SafeUpdateStatusText($"{statusText} {resolution}：({physical}: {physicalWidth}x{physicalHeight}, {scale}: {scalePercent}%, {logical}: {logicalWidth}x{logicalHeight}), {refreshInfo}, {tileSize}: {_tileSize}x{_tileSize} {pixels}");
                 btnStop.Enabled = true;
                 Log($"GPU capture initialized successfully. Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight} (DXGI), Scale: {scalePercent}%, DPI: {dpiScaleX:F2}x{dpiScaleY:F2}, Tile Size: {_tileSize}x{_tileSize} pixels");
 
