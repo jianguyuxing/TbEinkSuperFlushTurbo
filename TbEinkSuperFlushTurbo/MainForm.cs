@@ -1183,18 +1183,8 @@ namespace TbEinkSuperFlushTurbo
                 // 显示提示信息（根据当前语言选择中文或英文）
                 this.BeginInvoke(new Action(() =>
                 {
-                    string title, message;
-                    if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
-                        Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
-                    {
-                        title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
-                        message = $"检测到{reason}，刷新已自动停止。请重新选择显示器后开始。";
-                    }
-                    else
-                    {
-                        title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
-                        message = $"Detected {reason}. Screen refresh has been automatically stopped. Please reselect the display and start.";
-                    }
+                    string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                    string message = string.Format(Localization.GetText("DisplayChangeAutoStop"), reason);
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                     // 弹窗关闭后立即重置标志
@@ -1931,9 +1921,7 @@ namespace TbEinkSuperFlushTurbo
             // 检查是否正在录制快捷键
             if (_isRecordingHotkey)
             {
-                string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                    "无法在录制热键时启动截屏，请先完成热键录制。" :
-                    "Cannot start screen capture while recording hotkey, Please complete hotkey recording first.";
+                string message = Localization.GetText("CannotStartWhileRecordingHotkey");
                 string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                 MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.None);
                 return;
@@ -1945,9 +1933,7 @@ namespace TbEinkSuperFlushTurbo
                 double refreshRate = GetRefreshRateFromApi(_targetScreenIndex);
                 if (refreshRate >= 59.0)
                 {
-                    string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                        $"为了避免误选择，默认禁止在超过59Hz的显示器上运行。当前显示器刷新率为{refreshRate:F1}Hz。若您的墨水屏超过59Hz或刷新率检测错误，请点击齿轮关闭此限制" :
-                        $"To avoid mis-selection, screen capture is disabled by default on displays over 59Hz. Current display refresh rate is {refreshRate:F1}Hz. If your e-ink display is over 59Hz or refresh rate detection is incorrect, please click the gear button to disable this restriction.";
+                    string message = string.Format(Localization.GetText("HighRefreshRateWarning"), refreshRate);
                     string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     Log($"Blocked start due to high refresh rate: {refreshRate:F1}Hz (stopOver59hz={_stopOver59hz})");
@@ -2134,7 +2120,22 @@ namespace TbEinkSuperFlushTurbo
                 double dpiScale = Math.Max(dpiScaleX, dpiScaleY); // 使用较大的缩放比例
                 int scalePercent = (int)(dpiScale * 100);
                 // 自定义状态文本格式，避免重复的分辨率文字
-                string statusPrefix = Localization.GetText("StatusRunning").Split("分辨率:")[0];
+                string statusRunning = Localization.GetText("StatusRunning");
+                string statusPrefix = statusRunning;
+                
+                // 根据当前语言移除对应的分辨率部分
+                if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified)
+                {
+                    statusPrefix = statusRunning.Split("分辨率:")[0];
+                }
+                else if (Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
+                {
+                    statusPrefix = statusRunning.Split("解析度:")[0];
+                }
+                else // English
+                {
+                    statusPrefix = statusRunning.Split("Resolution:")[0];
+                }
                 double refreshRate = GetRefreshRateFromApi(_targetScreenIndex);
                 string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
                 string statusText = string.Format(statusPrefix, screenFriendlyName, "", "", "");
@@ -2196,9 +2197,7 @@ namespace TbEinkSuperFlushTurbo
             // 检查是否正在截屏
             if (_pollTimer != null && _pollTimer.Enabled)
             {
-                string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                    "截屏运行中，请先停止截屏再修改设置。" :
-                    "Screen capture is running, please stop screen capture first before modifying settings.";
+                string message = Localization.GetText("CannotModifySettingsWhileRunning");
                 string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
                 MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;

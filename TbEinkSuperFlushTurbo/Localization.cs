@@ -289,6 +289,35 @@ namespace TbEinkSuperFlushTurbo
                 [Language.English] = "Screen capture has stopped.",
                 [Language.ChineseSimplified] = "屏幕捕获已停止。",
                 [Language.ChineseTraditional] = "螢幕捕獲已停止。"
+            },
+            
+            // 错误提示信息
+            ["CannotStartWhileRecordingHotkey"] = new()
+            {
+                [Language.English] = "Cannot start screen capture while recording hotkey, Please complete hotkey recording first.",
+                [Language.ChineseSimplified] = "无法在录制热键时启动截屏，请先完成热键录制。",
+                [Language.ChineseTraditional] = "無法在錄製熱鍵時啟動截圖，請先完成熱鍵錄製。"
+            },
+            
+            ["HighRefreshRateWarning"] = new()
+            {
+                [Language.English] = "To avoid mis-selection, screen capture is disabled by default on displays over 59Hz. Current display refresh rate is {0:F1}Hz. If your e-ink display is over 59Hz or refresh rate detection is incorrect, please click the gear button to disable this restriction.",
+                [Language.ChineseSimplified] = "为了避免误选择，默认禁止在超过59Hz的显示器上运行。当前显示器刷新率为{0:F1}Hz。若您的墨水屏超过59Hz或刷新率检测错误，请点击齿轮关闭此限制",
+                [Language.ChineseTraditional] = "為了避免誤選擇，預設禁止在超過59Hz的顯示器上執行。當前顯示器刷新率為{0:F1}Hz。若您的墨水屏超過59Hz或刷新率偵測錯誤，請點擊齒輪關閉此限制"
+            },
+            
+            ["DisplayChangeAutoStop"] = new()
+            {
+                [Language.English] = "Detected {0}. Screen refresh has been automatically stopped. Please reselect the display and start.",
+                [Language.ChineseSimplified] = "检测到{0}，刷新已自动停止。请重新选择显示器后开始。",
+                [Language.ChineseTraditional] = "偵測到{0}，刷新已自動停止。請重新選擇顯示器後開始。"
+            },
+            
+            ["CannotModifySettingsWhileRunning"] = new()
+            {
+                [Language.English] = "Screen capture is running, please stop capture first before modifying settings.",
+                [Language.ChineseSimplified] = "截屏运行中，请先停止截屏再修改设置。",
+                [Language.ChineseTraditional] = "截圖執行中，請先停止截圖再修改設定。"
             }
         };
 
