@@ -2786,8 +2786,61 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                lblInfo.AutoSize = false;
-                lblInfo.MaximumSize = new Size(panelBottom.Width - 10, 0); // 留一些边距
+               Log($"AdjustStatusLabelProperties: 开始调整 - panelBottom.Width={panelBottom.Width}, lblInfo.Text='{lblInfo.Text}'");
+
+              // 确保标签可见且有宽度
+              lblInfo.Visible = true;
+              lblInfo.AutoSize = true;
+
+              // 声明变量用于文本测量
+              Size textSize;
+
+              // 确保宽度不为0
+              int labelWidth = panelBottom.Width - 10;
+              Log($"AdjustStatusLabelProperties: panelBottom.Width={panelBottom.Width}, labelWidth={labelWidth}");
+              if (labelWidth <= 0)
+              {
+                  // 如果panelBottom宽度无效，尝试使用窗口宽度
+                  labelWidth = this.ClientSize.Width - 20;
+                  Log($"AdjustStatusLabelProperties: this.ClientSize.Width={this.ClientSize.Width}, labelWidth={labelWidth}");
+                  if (labelWidth <= 0)
+                  {
+                      // 如果窗口宽度也无效，计算文本所需的最小宽度
+                      textSize = TextRenderer.MeasureText(lblInfo.Text, lblInfo.Font);
+                      labelWidth = textSize.Width + 20; // 添加20像素的边距
+                      Log($"AdjustStatusLabelProperties: 窗口宽度也无效，使用文本最小宽度 {labelWidth}");
+                  }
+                  Log($"AdjustStatusLabelProperties: panelBottom.Width={panelBottom.Width} 无效，使用窗口宽度 {labelWidth}");
+              }
+              
+              // 计算文本在指定宽度下的实际大小（包括换行和行间距）
+              textSize = TextRenderer.MeasureText(lblInfo.Text, lblInfo.Font, new Size(labelWidth, int.MaxValue), TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
+              
+              // 根据字体大小计算额外的边距，确保第二行完全显示
+              int extraMargin = (int)(lblInfo.Font.Size * 1.5); // 边距为字体大小的1.5倍
+              
+              // 设置标签的最大宽度和高度
+              lblInfo.MaximumSize = new Size(labelWidth, int.MaxValue); // 允许高度自动调整
+              lblInfo.Size = new Size(labelWidth, textSize.Height + extraMargin); // 添加动态计算的边距
+              
+              // 确保面板底部有足够的空间显示整个标签
+              if (panelBottom.Height < lblInfo.Height + 10) // 面板底部需要额外10像素的边距
+              {
+                  panelBottom.Height = lblInfo.Height + 10;
+                  Log($"AdjustStatusLabelProperties: 调整panelBottom.Height为 {panelBottom.Height}");
+              }
+              
+              // 调整日志栏的位置，确保它不会被状态栏覆盖
+              listBox.Location = new Point(listBox.Location.X, lblInfo.Height + 5); // 日志栏位于状态栏下方5像素
+              listBox.Size = new Size(listBox.Size.Width, panelBottom.Height - lblInfo.Height - 10); // 调整日志栏高度，确保它不会超出面板底部
+              
+              Log($"AdjustStatusLabelProperties: 最终labelWidth={labelWidth}, labelHeight={lblInfo.Height}");
+
+              // 添加日志信息，检查控件属性
+              Log($"AdjustStatusLabelProperties: lblInfo.ForeColor={lblInfo.ForeColor}, lblInfo.BackColor={lblInfo.BackColor}");
+              Log($"AdjustStatusLabelProperties: lblInfo.TextAlign={lblInfo.TextAlign}, lblInfo.Font={lblInfo.Font}");
+              Log($"AdjustStatusLabelProperties: lblInfo.Location={lblInfo.Location}, lblInfo.Size={lblInfo.Size}");
+              Log($"AdjustStatusLabelProperties: lblInfo.Visible={lblInfo.Visible}, lblInfo.Enabled={lblInfo.Enabled}");
 
                 // 处理空文本情况
                 if (string.IsNullOrEmpty(lblInfo.Text))
@@ -2796,16 +2849,7 @@ namespace TbEinkSuperFlushTurbo
                     Log("AdjustStatusLabelProperties: 检测到空文本，已重置为停止状态");
                 }
 
-                // 测量文本所需的高度
-                var textSize = TextRenderer.MeasureText(lblInfo.Text, lblInfo.Font,
-                    new Size(lblInfo.MaximumSize.Width, int.MaxValue), TextFormatFlags.WordBreak);
-                lblInfo.Height = textSize.Height;
-
-                // 调整listBox的位置，使其始终在lblInfo下方
-                listBox.Location = new Point(listBox.Location.X, lblInfo.Height + 5);
-                listBox.Height = panelBottom.ClientSize.Height - listBox.Location.Y - 5;
-
-                // 强制面板重新布局，使listBox跟随lblInfo的高度变化
+                // 强制面板重新布局
                 panelBottom.PerformLayout();
             }
             catch (Exception ex)
@@ -2813,6 +2857,7 @@ namespace TbEinkSuperFlushTurbo
                 Log($"调整状态标签属性失败: {ex.Message}");
                 // 确保至少有一个合理的默认高度
                 lblInfo.Height = 25;
+                Log($"调整状态标签属性失败，设置默认高度25");
             }
         }
     }
