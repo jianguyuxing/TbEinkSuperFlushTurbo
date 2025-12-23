@@ -1248,11 +1248,7 @@ namespace TbEinkSuperFlushTurbo
                             // 6. If refresh rate exceeds limit, show warning
                             if (_stopOver59hz == 1 && currentRefreshRate > 59)
                             {
-                                string warningMessage = Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
-                                    Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                                    $"当前显示器刷新率为 {currentRefreshRate:F1}Hz，超过59Hz限制。程序将在您点击开始按钮时自动停止。" :
-                                    $"Current display refresh rate is {currentRefreshRate:F1}Hz, exceeding 59Hz limit. The program will automatically stop when you click Start.";
-
+                                string warningMessage = string.Format(Localization.GetText("HighRefreshRateCurrentWarning"), currentRefreshRate);
                                 MessageBox.Show(warningMessage, Localization.GetText("WindowTitle"),
                                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             }
@@ -1835,10 +1831,8 @@ namespace TbEinkSuperFlushTurbo
                     // Check if screen capture is running
                     if (_pollTimer != null && _pollTimer.Enabled)
                     {
-                        string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                            "截屏运行中，停止截屏后才能切换显示器。" :
-                            "Screen capture is running. Please stop capture first before switching display.";
-                        string title = Localization.GetText("WindowTitle"); // Use program name as title
+                        string message = Localization.GetText("CannotSwitchDisplayWhileCapturing");
+                        string title = Localization.GetText("WindowTitle");
                         MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                         // Restore original selection but don't block user operation
@@ -2124,18 +2118,8 @@ namespace TbEinkSuperFlushTurbo
                 string statusPrefix = statusRunning;
                 
                 // Remove corresponding resolution part based on current language
-                if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified)
-                {
-                    statusPrefix = statusRunning.Split("分辨率:")[0];
-                }
-                else if (Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
-                {
-                    statusPrefix = statusRunning.Split("解析度:")[0];
-                }
-                else // English
-                {
-                    statusPrefix = statusRunning.Split("Resolution:")[0];
-                }
+                string resolutionSeparator = Localization.GetText("ResolutionSeparator");
+                statusPrefix = statusRunning.Split(resolutionSeparator)[0];
                 double refreshRate = GetRefreshRateFromApi(_targetScreenIndex);
                 string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
                 string statusText = string.Format(statusPrefix, screenFriendlyName, "", "", "");
@@ -2230,29 +2214,10 @@ namespace TbEinkSuperFlushTurbo
 
         private void btnHelpPixelDelta_Click(object? sender, EventArgs e)
         {
-            string helpText;
-
             // Display help content in appropriate language based on current language
-            if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
-            {
-                helpText = "像素颜色差异阈值说明:\n\n" +
-                    "控制区块内每个颜色通道(R/G/B)亮度变化的敏感度。\n\n" +
-                    "• 较低值(2-8): 适合默认浅色主题，检测细微变化\n" +
-                    "  （区分白色和浅灰色及浅亮度彩色）\n\n" +
-                    "• 较高值(15-25): 适合高对比度主题，忽略微小变化\n\n" +
-                    "推荐: 从10开始，根据您的主题进行调整。";
-            }
-            else
-            {
-                helpText = "Pixel Color Diff Threshold:\n\n" +
-                    "Controls the sensitivity to luminance changes in individual color channels (R/G/B) for each tile.\n\n" +
-                    "• Lower values (2-8): Better for default light themes, detects subtle changes\n" +
-                    "  (Distinguishes white from light gray and low-brightness colors)\n\n" +
-                    "• Higher values (15-25): Better for high-contrast themes, ignores minor variations\n\n" +
-                    "Recommended: Start with 10 and adjust based on your theme.";
-            }
+            string helpText = Localization.GetText("PixelDiffThresholdHelpContent");
 
-            MessageBox.Show(helpText, Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None); // Use program name as title
+            MessageBox.Show(helpText, Localization.GetText("PixelDiffThresholdHelpTitle"), MessageBoxButtons.OK, MessageBoxIcon.None);
         }
 
         private void btnHelpPixelDelta_Paint(object? sender, PaintEventArgs e)
@@ -2331,9 +2296,7 @@ namespace TbEinkSuperFlushTurbo
                 // If not recording, check if running
                 if (_pollTimer != null && _pollTimer.Enabled)
                 {
-                    string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
-                        "运行时无法修改热键，请先停止截屏。" :
-                        "Cannot modify hotkey while screen capture is running, Please stop screen capture first.";
+                    string message = Localization.GetText("CannotModifyHotkeyWhileRunning");
                     string title = Localization.GetText("WindowTitle");
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;

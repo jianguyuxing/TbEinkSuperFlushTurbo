@@ -318,6 +318,48 @@ namespace TbEinkSuperFlushTurbo
                 [Language.English] = "Screen capture is running, please stop capture first before modifying settings.",
                 [Language.ChineseSimplified] = "截屏运行中，请先停止截屏再修改设置。",
                 [Language.ChineseTraditional] = "截圖執行中，請先停止截圖再修改設定。"
+            },
+
+            ["HighRefreshRateCurrentWarning"] = new()
+            {
+                [Language.English] = "Current display refresh rate is {0:F1}Hz, exceeding 59Hz limit. The program will automatically stop when you click Start.",
+                [Language.ChineseSimplified] = "当前显示器刷新率为 {0:F1}Hz，超过59Hz限制。程序将在您点击开始按钮时自动停止。",
+                [Language.ChineseTraditional] = "當前顯示器刷新率為 {0:F1}Hz，超過59Hz限制。程式將在您點擊開始按鈕時自動停止。"
+            },
+
+            ["CannotSwitchDisplayWhileCapturing"] = new()
+            {
+                [Language.English] = "Screen capture is running. Please stop capture first before switching display.",
+                [Language.ChineseSimplified] = "截屏运行中，停止截屏后才能切换显示器。",
+                [Language.ChineseTraditional] = "截圖執行中，停止截圖後才能切換顯示器。"
+            },
+
+            ["PixelDiffThresholdHelpTitle"] = new()
+            {
+                [Language.English] = "Pixel Color Diff Threshold",
+                [Language.ChineseSimplified] = "像素颜色差异阈值说明",
+                [Language.ChineseTraditional] = "像素顏色差異閾值說明"
+            },
+
+            ["PixelDiffThresholdHelpContent"] = new()
+            {
+                [Language.English] = "Pixel Color Diff Threshold:\n\nControls the sensitivity to luminance changes in individual color channels (R/G/B) for each tile.\n\nLower values (2-8): Better for default light themes, detects subtle changes (Distinguishes white from light gray and low-brightness colors)\n\nHigher values (15-25): Better for high-contrast themes, ignores minor variations\n\nRecommended: Start with 10 and adjust based on your theme.",
+                [Language.ChineseSimplified] = "像素颜色差异阈值说明:\n\n控制区块内每个颜色通道(R/G/B)亮度变化的敏感度。\n\n较低值(2-8): 适合默认浅色主题，检测细微变化（区分白色和浅灰色及浅亮度彩色）\n\n较高值(15-25): 适合高对比度主题，忽略微小变化\n\n推荐: 从10开始，根据您的主题进行调整。",
+                [Language.ChineseTraditional] = "像素顏色差異閾值說明:\n\n控制區塊內每個顏色通道(R/G/B)亮度變化的敏感度。\n\n較低值(2-8): 適合預設淺色主題，檢測細微變化（區分白色和淺灰色及淺亮度彩色）\n\n較高值(15-25): 適合高對比度主題，忽略微小變化\n\n推薦: 從10開始，根據您的主題進行調整。"
+            },
+
+            ["CannotModifyHotkeyWhileRunning"] = new()
+            {
+                [Language.English] = "Cannot modify hotkey while screen capture is running. Please stop screen capture first.",
+                [Language.ChineseSimplified] = "运行时无法修改热键，请先停止截屏。",
+                [Language.ChineseTraditional] = "運行時無法修改熱鍵，請先停止截圖。"
+            },
+
+            ["ResolutionSeparator"] = new()
+            {
+                [Language.English] = "Resolution:",
+                [Language.ChineseSimplified] = "分辨率:",
+                [Language.ChineseTraditional] = "解析度:"
             }
         };
 
