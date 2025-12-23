@@ -9,7 +9,7 @@ namespace TbEinkSuperFlushTurbo
         [STAThread]
         static void Main()
         {
-            // 创建调试输出文件
+            // Create debug output file
             string logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
             if (!Directory.Exists(logDirectory))
             {
@@ -19,7 +19,7 @@ namespace TbEinkSuperFlushTurbo
             
             try
             {
-                // 全局异常捕获
+                // Global exception catching
                 AppDomain.CurrentDomain.UnhandledException += (s, e) =>
                 {
                     var ex = (Exception)e.ExceptionObject;

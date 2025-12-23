@@ -23,18 +23,18 @@ namespace TbEinkSuperFlushTurbo
         private const uint SWP_SHOWWINDOW = 0x0040;
         private const uint SWP_NOACTIVATE = 0x0010;
 
-        // 使用Dictionary存储瓦片，提高查找效率，键为(bx,by)元组，值为亮度数据
+        // Use Dictionary to store tiles for improved lookup efficiency, key is (bx,by) tuple, value is brightness data
         readonly Dictionary<(int bx, int by), float> _tiles = new Dictionary<(int bx, int by), float>();
-        readonly List<(int bx, int by)> _expiredTiles = new List<(int bx, int by)>(); // 用于当前绘制周期的过期瓦片
-        readonly List<CancellationTokenSource> _batchCancellationTokenSources = new List<CancellationTokenSource>(); // 记录每批瓦片的取消令牌
-        Bitmap? _overlayBitmap; // 累积位图
-        private readonly object _bitmapLock = new object(); // 用于同步访问_bitmap的锁
-        private bool _isDisplaying = false; // 标记是否正在显示刷新色
+        readonly List<(int bx, int by)> _expiredTiles = new List<(int bx, int by)>(); // Expired tiles for current drawing cycle
+        readonly List<CancellationTokenSource> _batchCancellationTokenSources = new List<CancellationTokenSource>(); // Record cancellation tokens for each batch of tiles
+        Bitmap? _overlayBitmap; // Accumulated bitmap
+        private readonly object _bitmapLock = new object(); // Lock for synchronized access to _bitmap
+        private bool _isDisplaying = false; // Flag indicating whether refresh color is being displayed
         public int TileCount => _tiles.Count;
         readonly int _tileSize, _screenW, _screenH, _noiseDensity, _noisePointInterval;
-        readonly int _screenIndex; // 添加屏幕索引字段
-        readonly double _scaleX, _scaleY; // 物理分辨率到逻辑分辨率的缩放比例
-        // 新增字段
+        readonly int _screenIndex; // Added screen index field
+        readonly double _scaleX, _scaleY; // Scaling ratio from physical resolution to logical resolution
+        // Added fields
         readonly Color _overlayBaseColor;
         readonly Action<string>? _logger;
 
@@ -45,21 +45,21 @@ namespace TbEinkSuperFlushTurbo
         {
             bool addedNewTiles = false;
 
-            // 添加新瓦片到现有Dictionary中，使用ContainsKey提高查找效率(O(1))
+            // Add new tiles to the existing Dictionary, use ContainsKey for improved lookup efficiency (O(1))
             foreach (var tile in tiles)
             {
-                // 计算瓦片索引
+                // Calculate tile index
                 int tilesX = (_screenW + _tileSize - 1) / _tileSize;
                 int tileIdx = tile.by * tilesX + tile.bx;
 
-                // 获取该瓦片的亮度值
-                float brightness = 0.5f; // 默认亮度
+                // Get the brightness value for this tile
+                float brightness = 0.5f; // Default brightness
                 if (brightnessData != null && tileIdx < brightnessData.Length)
                 {
                     brightness = brightnessData[tileIdx];
                 }
 
-                // 检查瓦片是否已经在显示列表中，使用Dictionary的ContainsKey方法，O(1)复杂度
+                // Check if the tile is already in the display list, using Dictionary's ContainsKey method, O(1) complexity
                 if (!_tiles.ContainsKey(tile))
                 {
                     _tiles[tile] = brightness;
@@ -67,30 +67,30 @@ namespace TbEinkSuperFlushTurbo
                 }
             }
 
-            // 为当前批次的瓦片创建一个统一的定时器，无论是否有新瓦片添加
-            // 确保每次调用都为这批瓦片设置过期时间
+            // Create a unified timer for the current batch of tiles, regardless of whether new tiles are added
+            // Ensure that each batch of tiles has an expiration time set for each call
             if (tiles.Count > 0)
             {
-                // 为这批新的瓦片创建一个统一的定时器
+                // Create a unified timer for this new batch of tiles
                 CancellationTokenSource cts = new CancellationTokenSource();
                 _batchCancellationTokenSources.Add(cts);
 
-                // 启动统一的定时器来清除这批瓦片
+                // Start a unified timer to clear this batch of tiles
                 _ = Task.Run(async () => {
                     try
                     {
                         await Task.Delay(MainForm.OVERLAY_DISPLAY_TIME, cts.Token);
-                        // 时间到了，标记这批瓦片为过期
+                        // Time's up, mark this batch of tiles as expired
                         MarkTilesAsExpired(tiles, cts);
                     }
                     catch (OperationCanceledException)
                     {
-                        // 任务被取消，正常情况
+                        // Task was canceled, normal case
                     }
                 });
             }
 
-            // 更新显示（累积模式，不清除之前的显示）
+            // Update display (accumulative mode, do not clear previous display)
             UpdateVisuals();
             if (!_isDisplaying)
             {
@@ -98,11 +98,11 @@ namespace TbEinkSuperFlushTurbo
             }
             if (addedNewTiles)
             {
-                _logger?.Invoke($"DEBUG: 刷新色显示开始，将显示{MainForm.OVERLAY_DISPLAY_TIME}ms，当前瓦片数: {_tiles.Count}");
+                _logger?.Invoke($"DEBUG: Refresh color display started, will show for {MainForm.OVERLAY_DISPLAY_TIME}ms, current tile count: {_tiles.Count}");
             }
         }
 
-        // 从UI线程安全地标记一批瓦片为过期
+        // Safely mark a batch of tiles as expired from the UI thread
         private void MarkTilesAsExpired(List<(int bx, int by)> tiles, CancellationTokenSource cts)
         {
             if (this.InvokeRequired)
@@ -117,11 +117,11 @@ namespace TbEinkSuperFlushTurbo
 
         private void MarkTilesAsExpiredInternal(List<(int bx, int by)> tiles, CancellationTokenSource cts)
         {
-            // 将这些瓦片标记为过期
+            // Mark these tiles as expired
             int expiredCount = 0;
             foreach (var tile in tiles)
             {
-                // 使用Dictionary的Remove方法，O(1)复杂度
+                // Use Dictionary's Remove method, O(1) complexity
                 if (_tiles.Remove(tile))
                 {
                     _expiredTiles.Add(tile);
@@ -129,30 +129,30 @@ namespace TbEinkSuperFlushTurbo
                 }
             }
 
-            // 从位图上擦除过期的瓦片
+            // Erase expired tiles from the bitmap
             ClearExpiredTilesFromBitmap();
 
-            // 从取消令牌列表中移除这个令牌
+            // Remove this token from the cancellation token list
             _batchCancellationTokenSources.Remove(cts);
             cts.Dispose();
 
-            // 更新显示以清除过期的瓦片
+            // Update display to clear expired tiles
             UpdateVisuals();
 
-            _logger?.Invoke($"DEBUG: 部分刷新色过期，本次过期瓦片数: {expiredCount}，剩余瓦片数: {_tiles.Count}，过期瓦片数: {_expiredTiles.Count}");
-            // 清理临时过期瓦片列表，为下一轮刷新做准备
+            _logger?.Invoke($"DEBUG: Partial refresh color expired, expired tile count this time: {expiredCount}, remaining tile count: {_tiles.Count}, expired tile count: {_expiredTiles.Count}");
+            // Clean up temporary expired tiles list for next refresh cycle
             _expiredTiles.Clear();
         }
 
         public void HideOverlay()
         {
-            // 取消所有正在进行的定时器
+            // Cancel all ongoing timers
             foreach (var cts in _batchCancellationTokenSources)
             {
                 cts.Cancel();
             }
 
-            // 清理所有数据
+            // Clean up all data
             _tiles.Clear();
             _expiredTiles.Clear();
             foreach (var cts in _batchCancellationTokenSources)
@@ -161,7 +161,7 @@ namespace TbEinkSuperFlushTurbo
             }
             _batchCancellationTokenSources.Clear();
 
-            // 清理位图资源
+            // Clean up bitmap resources
             lock (_bitmapLock)
             {
                 _overlayBitmap?.Dispose();
@@ -169,10 +169,10 @@ namespace TbEinkSuperFlushTurbo
             }
             _isDisplaying = false;
             UpdateVisuals();
-            _logger?.Invoke("DEBUG: 刷新色强制隐藏");
+            _logger?.Invoke("DEBUG: Refresh color forcibly hidden");
         }
 
-        // 从位图上清除过期的瓦片
+        // Clear expired tiles from the bitmap
         private void ClearExpiredTilesFromBitmap()
         {
             lock (_bitmapLock)
@@ -185,13 +185,13 @@ namespace TbEinkSuperFlushTurbo
 
                     foreach (var tile in _expiredTiles)
                     {
-                        // 将物理坐标转换为逻辑坐标
+                        // Convert physical coordinates to logical coordinates
                         int sx = (int)(tile.bx * _tileSize / _scaleX);
                         int sy = (int)(tile.by * _tileSize / _scaleY);
                         int w = Math.Min((int)(_tileSize / _scaleX), _screenW - sx);
                         int h = Math.Min((int)(_tileSize / _scaleY), _screenH - sy);
 
-                        // 使用透明色清除过期的瓦片区域
+                        // Use transparent color to clear expired tile areas
                         using (var brush = new SolidBrush(Color.Transparent))
                             g.FillRectangle(brush, sx, sy, w, h);
                     }
@@ -213,7 +213,7 @@ namespace TbEinkSuperFlushTurbo
             _scaleX = scaleX;
             _scaleY = scaleY;
             
-            // 初始化字典
+            // Initialize dictionaries
             _tiles = new Dictionary<(int bx, int by), float>();
             _expiredTiles = new List<(int bx, int by)>();
 
@@ -222,13 +222,13 @@ namespace TbEinkSuperFlushTurbo
             ShowInTaskbar = false;
             TopMost = true;
             
-            // 设置窗口位置和大小以匹配指定的屏幕
+            // Set window position and size to match the specified screen
             Screen[] allScreens = Screen.AllScreens;
             Screen targetScreen = allScreens.Length > screenIndex ? allScreens[screenIndex] : Screen.PrimaryScreen!;
             Location = targetScreen.Bounds.Location;
             Size = targetScreen.Bounds.Size;
 
-            // 设置 WS_EX_LAYERED 扩展样式
+            // Set WS_EX_LAYERED extended style
             int exStyle = GetWindowLong(this.Handle, -20); // GWL_EXSTYLE = -20
             SetWindowLong(this.Handle, -20, exStyle | 0x00080000); // WS_EX_LAYERED = 0x00080000
         }
@@ -245,22 +245,22 @@ namespace TbEinkSuperFlushTurbo
 
         public void UpdateVisuals()
         {
-            // 确保窗口可见且置顶
+            // Ensure window is visible and always on top
             if (!this.Visible)
                 this.Show();
 
-            // 获取目标显示器的位置和大小
+            // Get the position and size of the target display
             Screen[] allScreens = Screen.AllScreens;
             Screen targetScreen = allScreens.Length > _screenIndex ? allScreens[_screenIndex] : Screen.PrimaryScreen!;
             Rectangle bounds = targetScreen.Bounds;
             
-            // 使用SetWindowPos确保窗口在最顶层且位置正确 - 使用目标显示器的实际坐标
+            // Use SetWindowPos to ensure window is always on top and positioned correctly - use actual coordinates of the target display
             SetWindowPos(this.Handle, HWND_TOPMOST, bounds.X, bounds.Y, bounds.Width, bounds.Height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
 
-            // 在位图上绘制内容
+            // Draw content on the bitmap
             DrawOverlayBitmap();
 
-            // 使用UpdateLayeredWindow更新窗口 - 使用目标显示器的实际坐标
+            // Use UpdateLayeredWindow to update the window - use actual coordinates of the target display
             UpdateLayeredWindowFromBitmap(bounds.X, bounds.Y);
         }
 
@@ -268,20 +268,20 @@ namespace TbEinkSuperFlushTurbo
         {
             lock (_bitmapLock)
             {
-                // 只在没有位图或尺寸不匹配时重新创建，避免频繁重建位图
+                // Only recreate bitmap if it doesn't exist or has mismatched dimensions, avoid frequent bitmap reconstruction
                 if (_overlayBitmap == null || _overlayBitmap.Width != _screenW || _overlayBitmap.Height != _screenH)
                 {
-                    // 释放旧位图
+                    // Release old bitmap
                     _overlayBitmap?.Dispose();
-                    // 创建新位图
+                    // Create new bitmap
                     _overlayBitmap = new Bitmap(_screenW, _screenH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 }
                 else
                 {
-                    // 不清空位图，实现累积显示效果，避免闪烁 （目前实测这个是否注释影响不大）
+                    // Don't clear bitmap to achieve cumulative display effect and avoid flickering (currently testing shows minimal impact)
                     // using (Graphics g = Graphics.FromImage(_overlayBitmap))
                     // {
-                    //     // 使用透明色清空位图
+                    //     // Clear bitmap with transparent color
                     //     g.Clear(Color.Transparent);
                     // }
                 }
@@ -290,39 +290,39 @@ namespace TbEinkSuperFlushTurbo
                 {
                     g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
 
-                    // 只在刷新区域绘制亮度反向的半透明白/黑色覆盖
+                    // Draw semi-transparent white/black overlay with inverse brightness only in refresh areas
                     foreach (var tile in _tiles.Keys)
                     {
-                        // 从Dictionary中获取亮度数据
+                        // Get brightness data from Dictionary
                         float brightness = _tiles[tile];
                         int bx = tile.bx;
                         int by = tile.by;
 
-                        // 将物理坐标转换为逻辑坐标
+                        // Convert physical coordinates to logical coordinates
                         int sx = (int)(bx * _tileSize / _scaleX);
                         int sy = (int)(by * _tileSize / _scaleY);
                         int w = Math.Min((int)(_tileSize / _scaleX), _screenW - sx);
                         int h = Math.Min((int)(_tileSize / _scaleY), _screenH - sy);
 
-                        // 根据亮度值决定显示黑色还是白色（反向显示）
+                        // Determine whether to display black or white based on brightness value (inverse display)
                         Color overlayColor;
-                        // 亮度 > 0.5 显示黑色，亮度 <= 0.5 显示白色（反向）
+                        // Brightness > 0.5 displays black, brightness <= 0.5 displays white (inverse)
                         if (brightness > 0.5f)
                         {
-                            overlayColor = Color.FromArgb(85, 0, 0, 0); // 半透明黑色
+                            overlayColor = Color.FromArgb(85, 0, 0, 0); // Semi-transparent black
                         }
                         else
                         {
-                            overlayColor = Color.FromArgb(85, 255, 255, 255); // 半透明白色
+                            overlayColor = Color.FromArgb(85, 255, 255, 255); // Semi-transparent white
                         }
 
-                        // 在刷新区域绘制反向亮度颜色的半透明方块
+                        // Draw semi-transparent squares with inverse brightness color in refresh areas
                         using (var br = new SolidBrush(overlayColor))
                             g.FillRectangle(br, sx, sy, w, h);
                     }
                 }
 
-                // 注意：不要在这里清理_expiredTiles列表，因为在MarkTilesAsExpiredInternal方法中还需要使用它
+                // Note: Don't clear the _expiredTiles list here because it's still needed in the MarkTilesAsExpiredInternal method
                 // _expiredTiles.Clear();
             }
         }
@@ -331,7 +331,7 @@ namespace TbEinkSuperFlushTurbo
         {
             lock (_bitmapLock)
             {
-                // 检查位图是否存在
+                // Check if bitmap exists
                 if (_overlayBitmap == null) return;
 
                 IntPtr hdcScreen = GetDC(IntPtr.Zero);
@@ -341,7 +341,7 @@ namespace TbEinkSuperFlushTurbo
 
                 Win32Point ptSrc = new Win32Point(0, 0);
                 Win32Size sz = new Win32Size(_screenW, _screenH);
-                Win32Point ptDest = new Win32Point(screenX, screenY); // 使用目标显示器的实际坐标
+                Win32Point ptDest = new Win32Point(screenX, screenY); // Use actual coordinates of the target display
 
                 BLENDFUNCTION blend = new BLENDFUNCTION
                 {

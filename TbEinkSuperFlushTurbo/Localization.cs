@@ -4,7 +4,7 @@ using System.Globalization;
 
 namespace TbEinkSuperFlushTurbo
 {
-    // 本地化资源类
+    // Localization resource class
     public static class Localization
     {
         public enum Language
@@ -17,7 +17,7 @@ namespace TbEinkSuperFlushTurbo
         private static Language _currentLanguage = Language.English;
         private static readonly Dictionary<string, Dictionary<Language, string>> _resources = new()
         {
-            // 窗口标题
+            // Window title
             ["WindowTitle"] = new()
             {
                 [Language.English] = "Eink Kaleido Ghost Reducer (GPU)",
@@ -25,7 +25,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "Eink Kaleido 殘影清除器 (GPU)"
             },
             
-            // 按钮文本
+            // Button text
             ["Start"] = new()
             {
                 [Language.English] = "Start",
@@ -40,7 +40,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "停止"
             },
             
-            // 标签文本
+            // Label text
             ["PixelColorDiff"] = new()
             {
                 [Language.English] = "Pixel Color Diff:",
@@ -62,7 +62,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "切換開關快捷鍵："
             },
             
-            // 单位
+            // Units
             ["Milliseconds"] = new()
             {
                 [Language.English] = "ms",
@@ -77,7 +77,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "像素"
             },
             
-            // 状态文本
+            // Status text
             ["StatusStopped"] = new()
             {
                 [Language.English] = "Status: Stopped",
@@ -120,7 +120,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "狀態：就緒"
             },
             
-            // 热键相关
+            // Hotkey related
             ["ClickButtonToSet"] = new()
             {
                 [Language.English] = "click button to set hotkey",
@@ -135,7 +135,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "按下快捷鍵組合..."
             },
             
-            // 问号按钮
+            // Question mark button
             ["QuestionMark"] = new()
             {
                 [Language.English] = "?",
@@ -143,7 +143,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "？"
             },
 
-            // 设置窗体
+            // Settings form
             ["SettingsTitle"] = new()
             {
                 [Language.English] = "Settings - 设置",
@@ -172,7 +172,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "取消"
             },
             
-            // 显示器选择
+            // Display selection
             ["DisplaySelection"] = new()
             {
                 [Language.English] = "Display Selection:",
@@ -180,7 +180,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "顯示器選擇："
             },
             
-            // 主显示器标记
+            // Primary display marker
             ["Primary"] = new()
             {
                 [Language.English] = "Primary",
@@ -188,7 +188,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "主"
             },
             
-            // 分辨率相关
+            // Resolution related
             ["Physical"] = new()
             {
                 [Language.English] = "Physical",
@@ -224,7 +224,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "區塊尺寸"
             },
             
-            // 托盘图标
+            // Tray icon
             ["TrayIconText"] = new()
             {
                 [Language.English] = "Eink Ghost Reducer",
@@ -232,7 +232,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "Eink 殘影清除器"
             },
             
-            // 托盘菜单项
+            // Tray menu items
             ["ShowPanel"] = new()
             {
                 [Language.English] = "Show Panel",
@@ -247,7 +247,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "退出"
             },
             
-            // 托盘提示信息
+            // Tray notification messages
             ["MinimizedToTrayTitle"] = new()
             {
                 [Language.English] = "Minimized to Tray",
@@ -262,7 +262,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "程式已最小化到系統托盤。您可以通過點擊托盤圖標來恢復它。"
             },
             
-            // 捕获状态提示信息
+            // Capture status notification messages
             ["CaptureStartedTitle"] = new()
             {
                 [Language.English] = "Capture Started",
@@ -291,7 +291,7 @@ namespace TbEinkSuperFlushTurbo
                 [Language.ChineseTraditional] = "螢幕捕獲已停止。"
             },
             
-            // 错误提示信息
+            // Error notification messages
             ["CannotStartWhileRecordingHotkey"] = new()
             {
                 [Language.English] = "Cannot start screen capture while recording hotkey, Please complete hotkey recording first.",
@@ -321,7 +321,7 @@ namespace TbEinkSuperFlushTurbo
             }
         };
 
-        // 检测系统语言并设置当前语言
+        // Detect system language and set current language
         public static void DetectAndSetLanguage()
         {
             CultureInfo currentCulture = CultureInfo.CurrentCulture;
@@ -344,7 +344,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 获取本地化文本
+        // Get localized text
         public static string GetText(string key)
         {
             if (_resources.ContainsKey(key) && _resources[key].ContainsKey(_currentLanguage))
@@ -352,16 +352,16 @@ namespace TbEinkSuperFlushTurbo
                 return _resources[key][_currentLanguage];
             }
             
-            // 如果找不到对应的语言，返回英文
+            // If the corresponding language is not found, return English
             if (_resources.ContainsKey(key) && _resources[key].ContainsKey(Language.English))
             {
                 return _resources[key][Language.English];
             }
             
-            return key; // 如果都找不到，返回key本身
+            return key; // If all not found, return the key itself
         }
 
-        // 获取当前语言
+        // Get current language
         public static Language CurrentLanguage => _currentLanguage;
     }
 }

@@ -32,8 +32,8 @@ namespace TbEinkSuperFlushTurbo
         public Action<string>? DebugLogger { get; private set; }
 
         // --- Refresh parameters ---
-        private int _tileSize = 8; // 区块的像素边长数，默认值8代表8*8像素
-        private int _lastUsedTileSize = 0; // 记录上次使用的tileSize，用于检测变化
+        private int _tileSize = 8; // Pixel side length of the tile, default 8 means 8*8 pixels
+        private int _lastUsedTileSize = 0; // Record the last used tileSize for detecting changes
         private int _pixelDelta = 10;
         // Average window size for frame difference calculation (maximum supported: 2 frames)
         private const uint AVERAGE_WINDOW_SIZE = 2;
@@ -44,19 +44,19 @@ namespace TbEinkSuperFlushTurbo
         public const int OVERLAY_DISPLAY_TIME = 100; // ms
         private int _pollInterval = 600; // ms detect period, configurable
 
-        // 合围区域配置，用于抑制滚动区域的刷新 - 单个区域内m帧内n帧变动时，区域内区块不刷新
-        private const int BOUNDING_AREA_WIDTH = 45;  // 每个合围区域宽度（区块数量）
-        private const int BOUNDING_AREA_HEIGHT = 45; // 每个合围区域高度（区块数量）
-        private const int BOUNDING_AREA_HISTORY_FRAMES = 3; // 历史帧数
-        private const int BOUNDING_AREA_CHANGE_THRESHOLD = 3; // 变化帧阈值
-        private const double BOUNDING_AREA_REFRESH_BLOCK_RATIO = 0.75; // 区块比例阈值（75%的区块变化时抑制刷新）
-        private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = (int)(BOUNDING_AREA_WIDTH * BOUNDING_AREA_HEIGHT * BOUNDING_AREA_REFRESH_BLOCK_RATIO); // 区块变化数阈值（由比例计算得出）
+        // Bounding area configuration for suppressing scrolling area refresh - when m frames in n frames change within a single area, tiles in the area are not refreshed
+        private const int BOUNDING_AREA_WIDTH = 45;  // Width of each bounding area (in tiles)
+        private const int BOUNDING_AREA_HEIGHT = 45; // Height of each bounding area (in tiles)
+        private const int BOUNDING_AREA_HISTORY_FRAMES = 3; // Number of history frames
+        private const int BOUNDING_AREA_CHANGE_THRESHOLD = 3; // Frame change threshold
+        private const double BOUNDING_AREA_REFRESH_BLOCK_RATIO = 0.75; // Tile ratio threshold (suppress refresh when 75% of tiles change)
+        private const int BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD = (int)(BOUNDING_AREA_WIDTH * BOUNDING_AREA_HEIGHT * BOUNDING_AREA_REFRESH_BLOCK_RATIO); // Tile change count threshold (calculated from ratio)
 
         private int PollTimerInterval => _pollInterval; // Use configurable poll interval
         private static uint ProtectionFrames => (uint)Math.Ceiling((double)OVERLAY_DISPLAY_TIME / 500) + ADDITIONAL_COOLDOWN_FRAMES; // Use default 500ms for protection calculation
 
         private const double RESET_THRESHOLD_PERCENT = 95;
-        private bool _forceDirectXCapture;  // 强制使用DirectX截屏 (从config.json读取)
+        private bool _forceDirectXCapture;  // Force DirectX capture (read from config.json)
 
         public bool ForceDirectXCapture
         {
@@ -68,11 +68,11 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 基于设备名找到显示器索引
+        // Find display index based on device name
         private int FindScreenIndexByDeviceName(string deviceName)
         {
             if (string.IsNullOrEmpty(deviceName))
-                return 0; // 默认返回主显示器
+                return 0; // Default to primary display
                 
             var allScreens = Screen.AllScreens;
             for (int i = 0; i < allScreens.Length; i++)
@@ -81,11 +81,11 @@ namespace TbEinkSuperFlushTurbo
                     return i;
             }
             
-            Log($"警告：找不到设备名称为 '{deviceName}' 的显示器，使用索引0");
-            return 0; // 找不到时使用主显示器
+            Log($"Warning: Cannot find display with device name '{deviceName}', using index 0");
+            return 0; // Use primary display if not found
         }
 
-        // 获取当前目标显示器的设备名称
+        // Get the device name of the current target display
         private string GetCurrentTargetDeviceName()
         {
             if (_targetScreenIndex >= 0 && _targetScreenIndex < Screen.AllScreens.Length)
@@ -95,7 +95,7 @@ namespace TbEinkSuperFlushTurbo
             return string.Empty;
         }
 
-        // 检测是否发生了主显示器切换
+        // Detect if primary display switch has occurred
         private bool DetectPrimaryDisplayChange()
         {
             try
@@ -103,11 +103,11 @@ namespace TbEinkSuperFlushTurbo
                 var allScreens = Screen.AllScreens;
                 if (allScreens.Length == 0) return false;
                 
-                // 找到当前的主显示器
+                // Find the current primary display
                 var currentPrimary = allScreens.FirstOrDefault(s => s.Primary);
                 if (currentPrimary == null) return false;
                 
-                // 检查当前选中的显示器是否还是主显示器
+                // Check if the currently selected display is still the primary display
                 if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
                 {
                     var targetScreen = allScreens[_targetScreenIndex];
@@ -119,100 +119,100 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                Log($"检测主显示器切换失败：{ex.Message}");
+                Log($"Failed to detect primary display switch: {ex.Message}");
                 return false;
             }
         }
 
-        // 处理显示器配置变化（包括主显示器切换）
+        // Handle display configuration changes (including primary display switch)
         private void HandleDisplayConfigurationChange()
         {
             try
             {
-                Log("开始处理显示器配置变化...");
+                Log("Starting to handle display configuration changes...");
                 
-                // 1. 记录当前目标显示器的设备名（稳定标识）
+                // 1. Record current target display device name (stable identifier)
                 string originalDeviceName = _targetDisplayDeviceName ?? string.Empty;
-                Log($"原始目标显示器设备名: '{originalDeviceName}'");
+                Log($"Original target display device name: '{originalDeviceName}'");
                 
-                // 2. 检测是否为主显示器切换
+                // 2. Detect if it's a primary display switch
                 bool isPrimaryChanged = DetectPrimaryDisplayChange();
                 if (isPrimaryChanged)
                 {
-                    Log("检测到主显示器切换");
+                    Log("Primary display switch detected");
                     _isPrimaryDisplayChanged = true;
                 }
                 
-                // 3. 等待系统稳定（主显示器切换需要更长时间）
+                // 3. Wait for system stabilization (primary display switch takes longer)
                 int stabilizationDelay = isPrimaryChanged ? 2000 : 1000;
-                Log($"等待系统稳定: {stabilizationDelay}ms");
+                Log($"Waiting for system stabilization: {stabilizationDelay}ms");
                 Thread.Sleep(stabilizationDelay);
                 
-                // 4. 重新找到原来的显示器（通过设备名）
+                // 4. Find the original display again (by device name)
                 if (!string.IsNullOrEmpty(originalDeviceName))
                 {
                     int newIndex = FindScreenIndexByDeviceName(originalDeviceName);
                     if (newIndex != _targetScreenIndex)
                     {
-                        Log($"显示器索引重新映射: {_targetScreenIndex} -> {newIndex}");
+                        Log($"Display index remapped: {_targetScreenIndex} -> {newIndex}");
                         _targetScreenIndex = newIndex;
                     }
                 }
                 
-                // 5. 重新获取目标显示器的原子化信息
+                // 5. Re-acquire atomic DPI information for the target display
                 var (dpiX, dpiY, success) = GetDisplayDpiAtomic(_targetScreenIndex);
                 if (success)
                 {
-                    Log($"重新获取DPI成功: {dpiX}x{dpiY}");
-                    // 更新DPI相关参数
+                    Log($"Successfully re-acquired DPI: {dpiX}x{dpiY}");
+                    // Update DPI-related parameters
                     float scaleX = dpiX / 96.0f;
                     float scaleY = dpiY / 96.0f;
-                    // 这里可以更新_d3d或其他依赖DPI的组件
+                    // D3d or other DPI-dependent components can be updated here
                 }
                 else
                 {
-                    Log("重新获取DPI失败，使用原有参数");
+                    Log("Failed to re-acquire DPI, using original parameters");
                 }
                 
-                // 6. 更新设备名称缓存
+                // 6. Update device name cache
                 _targetDisplayDeviceName = GetCurrentTargetDeviceName();
-                Log($"更新后的目标显示器设备名: '{_targetDisplayDeviceName}'");
+                Log($"Updated target display device name: '{_targetDisplayDeviceName}'");
                 
-                // 7. 重新初始化显示器状态记录
+                // 7. Re-initialize display state recording
                 RecordInitialDisplayState();
                 
-                Log("显示器配置变化处理完成");
+                Log("Display configuration change handling completed");
                 
             }
             catch (Exception ex)
             {
-                Log($"处理显示器配置变化失败：{ex.Message}");
+                Log($"Failed to handle display configuration changes: {ex.Message}");
             }
         }
-        // 快捷键相关字段
+        // Hotkey related fields
         private const int TOGGLE_HOTKEY_ID = 9001;
-        private Keys _toggleHotkey = Keys.None; // 默认无快捷键
+        private Keys _toggleHotkey = Keys.None; // No hotkey by default
         private bool _isRecordingHotkey = false;
         private bool _isHotkeyRegistered = false;
-        // 显示器选择相关字段
-        private int _targetScreenIndex = 0; // 默认使用主显示器
-        private string? _targetDisplayDeviceName = null; // 当前选中显示器的设备名称，用于智能匹配
+        // Display selection related fields
+        private int _targetScreenIndex = 0; // Use primary display by default
+        private string? _targetDisplayDeviceName = null; // Device name of currently selected display, used for intelligent matching
 
-        // 超过59Hz自动停止功能
-        private int _stopOver59hz = 1; // 默认开启（1开启，0关闭）
+        // Auto-stop feature for displays over 59Hz
+        private int _stopOver59hz = 1; // Enabled by default (1=enabled, 0=disabled)
 
-        // 显示器变化监控相关字段
-        private string[]? _lastDisplaySignatures; // 存储上次检测的显示器签名
-        private int _displayCheckCounter = 0; // 显示器检测计数器
-        private const int DISPLAY_CHECK_INTERVAL = 2; // 每秒检测一次（假设500ms定时器间隔）
-        private bool _isDisplayMonitoringEnabled = true; // 是否启用显示器变化监控
-        private DateTime _lastDisplayChangeDetectionTime = DateTime.MinValue; // 上次检测到显示器变化的时间
-        private const int DISPLAY_CHANGE_DEDUPLICATION_INTERVAL = 2000; // 去重间隔：2秒内只响应一次显示器变化
-        private static bool _displayChangeMessageShown = false; // 显示器变化弹窗是否已显示
+        // Display change monitoring related fields
+        private string[]? _lastDisplaySignatures; // Store last detected display signatures
+        private int _displayCheckCounter = 0; // Display detection counter
+        private const int DISPLAY_CHECK_INTERVAL = 2; // Check once per second (assuming 500ms timer interval)
+        private bool _isDisplayMonitoringEnabled = true; // Whether to enable display change monitoring
+        private DateTime _lastDisplayChangeDetectionTime = DateTime.MinValue; // Last time display change was detected
+        private const int DISPLAY_CHANGE_DEDUPLICATION_INTERVAL = 2000; // Deduplication interval: only respond once within 2 seconds
+        private static bool _displayChangeMessageShown = false; // Whether display change popup is shown
         
-        // 基于设备名的显示器识别相关字段
-        #pragma warning disable CS0414 // 抑制未使用字段警告
-        private bool _isPrimaryDisplayChanged = false; // 标记是否发生了主显示器切换
+        // Display identification related fields based on device name
+        #pragma warning disable CS0414 // Suppress unused field warning
+        private bool _isPrimaryDisplayChanged = false; // Flag indicating whether primary display switch occurred
         #pragma warning restore CS0414
 
         [DllImport("user32.dll")]
@@ -226,7 +226,7 @@ namespace TbEinkSuperFlushTurbo
         [DllImport("user32.dll")]
         private static extern uint GetDpiForSystem();
         
-        // 原子化DPI获取相关API
+        // Atomic DPI retrieval related APIs
         [DllImport("user32.dll")]
         private static extern IntPtr CreateDC(string? lpszDriver, string lpszDevice, string? lpszOutput, IntPtr lpInitData);
         [DllImport("user32.dll")]
@@ -251,7 +251,7 @@ namespace TbEinkSuperFlushTurbo
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
         
-        // 添加CreateWindowEx和DestroyWindow的P/Invoke声明
+        // Add P/Invoke declarations for CreateWindowEx and DestroyWindow
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr CreateWindowEx(int dwExStyle, string lpClassName, string lpWindowName, int dwStyle,
             int x, int y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
@@ -270,28 +270,28 @@ namespace TbEinkSuperFlushTurbo
         private const int NOISE_POINT_INTERVAL = 3;
         private const string OVERLAY_BASE_COLOR = "Black";
 
-        // 托盘图标相关字段
-#pragma warning disable CS0414 // 抑制未使用字段警告
-        private bool _allowVisible = true;     // 允许窗体显示（预留字段，用于将来功能扩展）
+        // Tray icon related fields
+#pragma warning disable CS0414 // Suppress unused field warning
+        private bool _allowVisible = true;     // Allow form display (reserved field for future functionality expansion)
 #pragma warning restore CS0414
-        private bool _allowClose = false;      // 允许窗体关闭
+        private bool _allowClose = false;      // Allow form closure
 
-        // 快捷键触发提示相关字段
-#pragma warning disable CS0414 // 抑制未使用字段警告
-        private bool _isTriggeredByHotkey = false; // 是否由快捷键触发（预留字段，用于将来功能扩展）
+        // Hotkey trigger prompt related fields
+#pragma warning disable CS0414 // Suppress unused field warning
+        private bool _isTriggeredByHotkey = false; // Whether triggered by hotkey (reserved field for future functionality expansion)
 #pragma warning restore CS0414
 
         public MainForm()
         {
             try
             {
-                // 检测并设置系统语言
+                // Detect and set system language
                 Localization.DetectAndSetLanguage();
 
                 LoadConfig();
                 InitLogFile();
 
-                // Designer会自动调用InitializeComponent()
+                // Designer will automatically call InitializeComponent()
                 InitializeComponent();
 
                 try
@@ -307,17 +307,17 @@ namespace TbEinkSuperFlushTurbo
 
                 _displayChangeTimer.Start();
 
-                // 注册快捷键
+                // Register hotkey
                 RegisterToggleHotkey();
 
-                // 设置窗口属性以支持拖动边框缩放
+                // Set window properties to support resizing by dragging borders
                 this.FormBorderStyle = FormBorderStyle.Sizable;
                 this.MaximizeBox = true;
                 this.MinimizeBox = true;
                 this.DoubleBuffered = true;
                 this.SetStyle(ControlStyles.ResizeRedraw, true);
 
-                // 初始化托盘图标
+                // Initialize tray icon
                 InitializeTrayIcon();
             }
             catch (Exception ex)
@@ -361,7 +361,7 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                // 先尝试加载新的JSON格式配置文件
+                // First try to load the new JSON format configuration file
                 string configJsonPath = Path.Combine(AppContext.BaseDirectory, "config", "config.json");
                 if (File.Exists(configJsonPath))
                 {
@@ -385,17 +385,17 @@ namespace TbEinkSuperFlushTurbo
                     {
                         _targetScreenIndex = screenIndexElement.GetInt32();
                     }
-                    // 加载快捷键配置
+                    // Load hotkey configuration
                     if (root.TryGetProperty("ToggleHotkey", out JsonElement hotkeyElement))
                     {
                         _toggleHotkey = (Keys)hotkeyElement.GetInt32();
                     }
-                    // 加载超过59Hz自动停止配置
+                    // Load auto-stop configuration for displays over 59Hz
                     if (root.TryGetProperty("stopOver59hz", out JsonElement stopOver59hzElement))
                     {
                         _stopOver59hz = Math.Max(0, Math.Min(1, stopOver59hzElement.GetInt32()));
                     }
-                    // 加载强制DirectX截屏配置
+                    // Load force DirectX capture configuration
                     if (root.TryGetProperty("ForceDirectXCapture", out JsonElement forceDirectXCaptureElement))
                     {
                         _forceDirectXCapture = forceDirectXCaptureElement.GetBoolean();
@@ -403,7 +403,7 @@ namespace TbEinkSuperFlushTurbo
                 }
                 else
                 {
-                    // 如果不存在JSON配置文件，则尝试加载旧的文本格式配置文件
+                    // If JSON config file doesn't exist, try to load old text format config file
                     string configTxtPath = Path.Combine(AppContext.BaseDirectory, "config.txt");
                     if (File.Exists(configTxtPath))
                     {
@@ -420,14 +420,14 @@ namespace TbEinkSuperFlushTurbo
                         {
                             _tileSize = Math.Max(8, Math.Min(64, savedTileSize));
                         }
-                        // 加载显示器索引配置
+                        // Load display index configuration
                         if (lines.Length >= 4 && int.TryParse(lines[3], out int savedScreenIndex))
                         {
                             _targetScreenIndex = savedScreenIndex;
                         }
                     }
 
-                    // 加载快捷键配置（旧方式）
+                    // Load hotkey configuration (old way)
                     string hotkeyConfigPath = Path.Combine(AppContext.BaseDirectory, "hotkey.json");
                     if (File.Exists(hotkeyConfigPath))
                     {
@@ -450,7 +450,7 @@ namespace TbEinkSuperFlushTurbo
             {
                 Log($"Failed to load config: {ex.Message}");
                 _toggleHotkey = Keys.None;
-                // 设置默认值
+                // Set default values
                 _forceDirectXCapture = false;
             }
         }
@@ -459,7 +459,7 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                // 保存为新的JSON格式配置文件（包含所有配置）
+                // Save as new JSON format configuration file (includes all configurations)
                 string configDir = Path.Combine(AppContext.BaseDirectory, "config");
                 if (!Directory.Exists(configDir))
                 {
@@ -494,11 +494,11 @@ namespace TbEinkSuperFlushTurbo
                 string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]:  {message}";
                 _logWriter?.WriteLine(logEntry);
 
-                // RELEASE模式修复：确保日志在release模式下也能工作
-                // 使用Trace代替Debug，因为Trace在release模式下仍然有效
+                // RELEASE mode fix: Ensure logging works in release mode as well
+                // Use Trace instead of Debug because Trace is still effective in release mode
                 System.Diagnostics.Trace.WriteLine(logEntry);
 
-                // 强制刷新日志写入器，确保日志立即写入文件
+                // Force flush the log writer to ensure logs are written to file immediately
                 _logWriter?.Flush();
             }
             catch { /* Ignore logging errors */ }
@@ -524,8 +524,8 @@ namespace TbEinkSuperFlushTurbo
 
         private void OnDisplaySettingsChanged(object? sender, EventArgs e)
         {
-            Log("检测到显示器设置变化事件 (SystemEvents.DisplaySettingsChanged)");
-            AutoStopDueToDisplayChange("显示器设置变化");
+            Log("Detected display settings change event (SystemEvents.DisplaySettingsChanged)");
+            AutoStopDueToDisplayChange("Display settings change");
         }
 
         private void StopCapture()
@@ -550,12 +550,12 @@ namespace TbEinkSuperFlushTurbo
 
             if (m.Msg == WM_DISPLAYCHANGE || m.Msg == WM_DPICHANGED)
             {
-                Log("检测到显示器变化消息 (WM_DISPLAYCHANGE or WM_DPICHANGED)");
-                AutoStopDueToDisplayChange("显示器配置变化");
+                Log("Detected display change message (WM_DISPLAYCHANGE or WM_DPICHANGED)");
+                AutoStopDueToDisplayChange("Display configuration change");
             }
             else if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == TOGGLE_HOTKEY_ID)
             {
-                // 全局快捷键触发（仅在非录制状态下且没有显示器变化弹窗时响应）
+                // Global hotkey triggered (only respond when not in recording state and no display change popup is shown)
                 if (!_isRecordingHotkey && !_displayChangeMessageShown)
                 {
                     _isTriggeredByHotkey = true;
@@ -564,7 +564,7 @@ namespace TbEinkSuperFlushTurbo
                 }
                 else if (_displayChangeMessageShown)
                 {
-                    Log("忽略快捷键触发：显示器变化弹窗正在显示");
+                    Log("Ignoring hotkey trigger: Display change popup is currently showing");
                 }
                 return;
             }
@@ -574,27 +574,27 @@ namespace TbEinkSuperFlushTurbo
 
         private float GetSystemDpiScale()
         {
-            // 优先尝试获取指定显示器的DPI设置
+            // Prioritize getting DPI settings for the specified display
             try
             {
-                // 获取所有显示器信息
+                // Get information about all displays
                 var allScreens = Screen.AllScreens;
-                Log($"DPI检测: 总共检测到 {allScreens.Length} 个显示器");
+                Log($"DPI detection: Total detected displays: {allScreens.Length}");
 
-                // 检查目标显示器索引是否有效
+                // Check if target display index is valid
                 if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
                 {
                     var targetScreen = allScreens[_targetScreenIndex];
-                    Log($"DPI检测: 尝试获取显示器 [{_targetScreenIndex}] 的DPI设置");
+                    Log($"DPI detection: Attempting to get DPI settings for display [{_targetScreenIndex}]");
 
-                    // 尝试为特定显示器创建Graphics对象以获取其DPI
+                    // Try to create Graphics object for specific display to get its DPI
                     try
                     {
-                        // 获取显示器的边界矩形
+                        // Get the bounds rectangle of the display
                         var bounds = targetScreen.Bounds;
-                        Log($"DPI检测: 显示器 [{_targetScreenIndex}] 边界 = ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
+                        Log($"DPI detection: Display [{_targetScreenIndex}] bounds = ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
 
-                        // 创建临时窗口句柄来获取该显示器的DPI
+                        // Create temporary window handle to get DPI for this display
                         var tempHwnd = NativeMethods.CreateWindowEx(
                             0, "STATIC", "", 0,
                             bounds.Left, bounds.Top, 1, 1,
@@ -608,7 +608,7 @@ namespace TbEinkSuperFlushTurbo
                                 {
                                     float dpiX = graphics.DpiX;
                                     float scale = dpiX / 96f;
-                                    Log($"DPI检测: 成功获取显示器 [{_targetScreenIndex}] DPI = {dpiX}, Scale = {scale:F2}");
+                                    Log($"DPI detection: Successfully got display [{_targetScreenIndex}] DPI = {dpiX}, Scale = {scale:F2}");
                                     return scale;
                                 }
                             }
@@ -619,58 +619,58 @@ namespace TbEinkSuperFlushTurbo
                         }
                         else
                         {
-                            Log($"DPI检测: 无法为显示器 [{_targetScreenIndex}] 创建临时窗口句柄");
+                            Log($"DPI detection: Unable to create temporary window handle for display [{_targetScreenIndex}]");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Log($"DPI检测: 获取显示器 [{_targetScreenIndex}] DPI时发生异常: {ex.Message}");
-                        // 如果无法获取特定DPI，继续使用其他方法
+                        Log($"DPI detection: Exception occurred while getting display [{_targetScreenIndex}] DPI: {ex.Message}");
+                        // If unable to get specific DPI, continue using other methods
                     }
                 }
                 else
                 {
-                    Log($"DPI检测: 目标显示器索引 {_targetScreenIndex} 超出范围 [0-{allScreens.Length - 1}]");
+                    Log($"DPI detection: Target display index {_targetScreenIndex} out of range [0-{allScreens.Length - 1}]");
                 }
             }
             catch (Exception ex)
             {
-                Log($"DPI检测: 枚举显示器信息时发生异常: {ex.Message}");
-                // 如果无法获取特定显示器的DPI，继续使用其他方法
+                Log($"DPI detection: Exception occurred while enumerating display information: {ex.Message}");
+                // If unable to get specific display's DPI, continue using other methods
             }
 
-            // 方法1: 使用GetDpiForWindow（如果窗口句柄有效）
+            // Method 1: Use GetDpiForWindow (if window handle is valid)
             if (this.Handle != IntPtr.Zero)
             {
                 uint windowDpi = GetDpiForWindow(this.Handle);
                 if (windowDpi > 0)
                 {
                     float scale = windowDpi / 96f;
-                    Log($"DPI检测: Window DPI = {windowDpi}, Scale = {scale:F2}");
+                    Log($"DPI detection: Window DPI = {windowDpi}, Scale = {scale:F2}");
                     return scale;
                 }
             }
 
-            // 方法2: 使用GetDpiForSystem
+            // Method 2: Use GetDpiForSystem
             uint systemDpi = GetDpiForSystem();
             if (systemDpi > 0)
             {
                 float scale = systemDpi / 96f;
-                Log($"DPI检测: System DPI = {systemDpi}, Scale = {scale:F2}");
+                Log($"DPI detection: System DPI = {systemDpi}, Scale = {scale:F2}");
                 return scale;
             }
 
-            // 方法3: 使用Graphics对象检测主显示器DPI
+            // Method 3: Use Graphics object to detect primary display DPI
             using (Graphics graphics = Graphics.FromHwnd(IntPtr.Zero))
             {
                 float dpiX = graphics.DpiX;
                 float scale = dpiX / 96f;
-                Log($"DPI检测: Primary Screen DPI = {dpiX}, Scale = {scale:F2}");
+                Log($"DPI detection: Primary Screen DPI = {dpiX}, Scale = {scale:F2}");
                 return scale;
             }
         }
 
-        // 原子化获取指定显示器的DPI信息（解决张冠李戴问题）
+        // Atomically get DPI information for the specified display (to avoid misidentification)
         private (int dpiX, int dpiY, bool success) GetDisplayDpiAtomic(int screenIndex)
         {
             try
@@ -678,16 +678,16 @@ namespace TbEinkSuperFlushTurbo
                 var allScreens = Screen.AllScreens;
                 if (screenIndex < 0 || screenIndex >= allScreens.Length)
                 {
-                    Log($"原子化DPI获取失败：显示器索引 {screenIndex} 超出范围");
+                    Log($"Atomic DPI acquisition failed: Display index {screenIndex} out of range");
                     return (96, 96, false);
                 }
 
                 var targetScreen = allScreens[screenIndex];
                 string deviceName = targetScreen.DeviceName;
                 
-                Log($"原子化DPI获取：尝试获取显示器 [{screenIndex}] '{deviceName}' 的DPI");
+                Log($"Atomic DPI acquisition: Attempting to get DPI for display [{screenIndex}] '{deviceName}'");
 
-                // 方法1：使用GetDpiForMonitor（Windows 8.1+推荐方法）
+                // Method 1: Use GetDpiForMonitor (recommended for Windows 8.1+)
                 try
                 {
                     var centerPoint = new Point(
@@ -702,17 +702,17 @@ namespace TbEinkSuperFlushTurbo
                         int result = GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, out dpiX, out dpiY);
                         if (result == 0) // S_OK
                         {
-                            Log($"原子化DPI获取成功：使用GetDpiForMonitor，DPI = {dpiX}x{dpiY}");
+                            Log($"Atomic DPI acquisition successful: Using GetDpiForMonitor, DPI = {dpiX}x{dpiY}");
                             return ((int)dpiX, (int)dpiY, true);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log($"GetDpiForMonitor失败：{ex.Message}，回退到CreateDC方法");
+                    Log($"GetDpiForMonitor failed: {ex.Message}, falling back to CreateDC method");
                 }
 
-                // 方法2：使用CreateDC获取显示器特定HDC
+                // Method 2: Use CreateDC to get display-specific HDC
                 try
                 {
                     IntPtr hdc = CreateDC(null, deviceName, null, IntPtr.Zero);
@@ -722,7 +722,7 @@ namespace TbEinkSuperFlushTurbo
                         {
                             int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
                             int dpiY = GetDeviceCaps(hdc, LOGPIXELSY);
-                            Log($"原子化DPI获取成功：使用CreateDC，DPI = {dpiX}x{dpiY}");
+                            Log($"Atomic DPI acquisition successful: Using CreateDC, DPI = {dpiX}x{dpiY}");
                             return (dpiX, dpiY, true);
                         }
                         finally
@@ -733,20 +733,20 @@ namespace TbEinkSuperFlushTurbo
                 }
                 catch (Exception ex)
                 {
-                    Log($"CreateDC方法失败：{ex.Message}，回退到Graphics方法");
+                    Log($"CreateDC method failed: {ex.Message}, falling back to Graphics method");
                 }
 
-                // 方法3：回退到Graphics方法（当前使用的方法）
+                // Method 3: Fall back to Graphics method (currently used method)
                 return GetDisplayDpiByGraphics(screenIndex);
             }
             catch (Exception ex)
             {
-                Log($"原子化DPI获取失败：{ex.Message}，使用默认值96x96");
+                Log($"Atomic DPI acquisition failed: {ex.Message}, using default value 96x96");
                 return (96, 96, false);
             }
         }
 
-        // 使用Graphics对象获取DPI（当前方法的改进版）
+        // Use Graphics object to get DPI (improved version of current method)
         private (int dpiX, int dpiY, bool success) GetDisplayDpiByGraphics(int screenIndex)
         {
             try
@@ -758,7 +758,7 @@ namespace TbEinkSuperFlushTurbo
                 var targetScreen = allScreens[screenIndex];
                 var bounds = targetScreen.Bounds;
 
-                // 创建临时窗口句柄来获取该显示器的DPI
+                // Create temporary window handle to get DPI for this display
                 var tempHwnd = NativeMethods.CreateWindowEx(
                     0, "STATIC", "", 0,
                     bounds.Left, bounds.Top, 1, 1,
@@ -772,7 +772,7 @@ namespace TbEinkSuperFlushTurbo
                         {
                             float dpiX = graphics.DpiX;
                             float dpiY = graphics.DpiY;
-                            Log($"Graphics方法DPI获取：{dpiX}x{dpiY}");
+                            Log($"Graphics method DPI acquisition: {dpiX}x{dpiY}");
                             return ((int)dpiX, (int)dpiY, true);
                         }
                     }
@@ -786,37 +786,37 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                Log($"Graphics方法DPI获取失败：{ex.Message}");
+                Log($"Graphics method DPI acquisition failed: {ex.Message}");
                 return (96, 96, false);
             }
         }
 
-        // 获取指定显示器的物理和逻辑分辨率
+        // Get physical and logical resolutions of the specified display
         private (int physicalWidth, int physicalHeight, int logicalWidth, int logicalHeight) GetScreenResolutions(int screenIndex)
         {
             try
             {
-                // 获取目标显示器
+                // Get target display
                 var allScreens = Screen.AllScreens;
                 if (screenIndex < 0 || screenIndex >= allScreens.Length)
                 {
-                    screenIndex = 0; // 默认使用主显示器
+                    screenIndex = 0; // Use primary display by default
                 }
 
                 var targetScreen = allScreens[screenIndex];
 
-                // 逻辑分辨率：Screen.Bounds 返回的就是逻辑分辨率（如 2560x1440）
+                // Logical resolution: Screen.Bounds returns logical resolution (e.g. 2560x1440)
                 int logicalWidth = targetScreen.Bounds.Width;
                 int logicalHeight = targetScreen.Bounds.Height;
 
-                // 物理分辨率：使用 EnumDisplaySettings 获取真实的硬件分辨率
+                // Physical resolution: Use EnumDisplaySettings to get real hardware resolution
                 int physicalWidth = logicalWidth;
                 int physicalHeight = logicalHeight;
 
-                // 获取设备名称
+                // Get device name
                 string deviceName = targetScreen.DeviceName;
 
-                // 尝试使用EnumDisplaySettings获取真实的物理分辨率
+                // Try to get real physical resolution using EnumDisplaySettings
                 NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
                 devMode.dmSize = (short)Marshal.SizeOf(typeof(NativeMethods.DEVMODE));
 
@@ -824,33 +824,33 @@ namespace TbEinkSuperFlushTurbo
                 {
                     physicalWidth = devMode.dmPelsWidth;
                     physicalHeight = devMode.dmPelsHeight;
-                    // 简化日志，只在有差异时才打印详细信息
+                    // Simplify logging: only print detailed info if there's a difference
                     if (physicalWidth != logicalWidth || physicalHeight != logicalHeight)
                     {
-                        Log($"DEVMODE获取物理分辨率: {physicalWidth}x{physicalHeight} (与逻辑分辨率不同)");
+                        Log($"DEVMODE obtained physical resolution: {physicalWidth}x{physicalHeight} (different from logical resolution)");
                     }
                 }
                 else
                 {
-                    Log($"DEVMODE获取失败，使用逻辑分辨率作为物理分辨率: {physicalWidth}x{physicalHeight}");
+                    Log($"DEVMODE failed, using logical resolution as physical resolution: {physicalWidth}x{physicalHeight}");
                 }
 
-                // 计算DPI缩放比例
+                // Calculate DPI scaling ratio
                 double scaleX = (double)physicalWidth / logicalWidth;
                 double scaleY = (double)physicalHeight / logicalHeight;
 
-                // 只在有缩放差异时打印详细信息
+                // Only print detailed info if there's scaling difference
                 if (Math.Abs(scaleX - 1.0) > 0.01 || Math.Abs(scaleY - 1.0) > 0.01)
                 {
-                    Log($"显示器 [{screenIndex}] DPI缩放: {scaleX:F2}x{scaleY:F2}");
+                    Log($"Display [{screenIndex}] DPI scaling: {scaleX:F2}x{scaleY:F2}");
                 }
 
                 return (physicalWidth, physicalHeight, logicalWidth, logicalHeight);
             }
             catch (Exception ex)
             {
-                Log($"获取分辨率时发生异常: {ex.Message}");
-                // 回退到使用Screen.Bounds作为逻辑分辨率
+                Log($"Exception occurred while getting resolution: {ex.Message}");
+                // Fallback to using Screen.Bounds as logical resolution
                 Screen[] allScreens = Screen.AllScreens;
                 var screen = screenIndex >= 0 && screenIndex < allScreens.Length ?
                            allScreens[screenIndex] : Screen.PrimaryScreen!;
@@ -858,7 +858,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 获取显示器的友好名称
+        // Get the friendly name of the display
         private string GetScreenFriendlyName(int screenIndex)
         {
             try
@@ -866,32 +866,32 @@ namespace TbEinkSuperFlushTurbo
                 var allScreens = Screen.AllScreens;
                 if (screenIndex < 0 || screenIndex >= allScreens.Length)
                 {
-                    screenIndex = 0; // 默认使用主显示器
+                    screenIndex = 0; // Use primary display by default
                 }
 
                 var targetScreen = allScreens[screenIndex];
-                string deviceName = targetScreen.DeviceName.Replace("\\\\.\\", ""); // 去掉前缀与下拉框格式一致
+                string deviceName = targetScreen.DeviceName.Replace("\\\\.\\", ""); // Remove prefix to match dropdown format
 
-                // 使用 EnumDisplayDevices 获取显示器的友好名称
+                // Use EnumDisplayDevices to get the display's friendly name
                 NativeMethods.DISPLAY_DEVICE displayDevice = new NativeMethods.DISPLAY_DEVICE();
                 displayDevice.cb = Marshal.SizeOf(displayDevice);
 
                 if (NativeMethods.EnumDisplayDevices(targetScreen.DeviceName, 0, ref displayDevice, 0))
                 {
-                    // 如果获取到了友好名称，则返回它
+                    // If friendly name is obtained, return it
                     if (!string.IsNullOrEmpty(displayDevice.DeviceString))
                     {
                         return displayDevice.DeviceString;
                     }
                 }
 
-                // 如果无法获取友好名称，则返回设备名称（与下拉框格式一致）
+                // If unable to get friendly name, return device name (matching dropdown format)
                 string primaryMark = targetScreen.Primary ? $" [{Localization.GetText("Primary")}]" : "";
                 return $"{deviceName}{primaryMark}";
             }
             catch (Exception ex)
             {
-                Log($"获取显示器友好名称时发生异常: {ex.Message}");
+                Log($"Exception occurred while getting display friendly name: {ex.Message}");
                 var targetScreen = Screen.AllScreens[screenIndex >= 0 && screenIndex < Screen.AllScreens.Length ? screenIndex : 0];
                 string deviceName = targetScreen.DeviceName.Replace("\\\\.\\", "");
                 string primaryMark = targetScreen.Primary ? $" [{Localization.GetText("Primary")}]" : "";
@@ -899,7 +899,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 使用Windows API获取显示器刷新率
+        // Get display refresh rate using Windows API
         private double GetRefreshRateFromApi(int screenIndex)
         {
             try
@@ -913,59 +913,59 @@ namespace TbEinkSuperFlushTurbo
                 var targetScreen = allScreens[screenIndex];
                 string deviceName = targetScreen.DeviceName;
 
-                // 使用EnumDisplaySettings获取当前显示模式
+                // Use EnumDisplaySettings to get current display mode
                 NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
                 devMode.dmSize = (short)Marshal.SizeOf(devMode);
 
-                // ENUM_CURRENT_SETTINGS = -1, 获取当前设置
+                // ENUM_CURRENT_SETTINGS = -1, get current settings
                 if (NativeMethods.EnumDisplaySettings(deviceName, -1, ref devMode))
                 {
-                    // dmDisplayFrequency 包含刷新率（Hz）
+                    // dmDisplayFrequency contains refresh rate (Hz)
                     if (devMode.dmDisplayFrequency > 0)
                     {
-                        Log($"使用Windows API成功获取显示器 {screenIndex} 刷新率: {devMode.dmDisplayFrequency}Hz");
+                        Log($"Successfully got display {screenIndex} refresh rate using Windows API: {devMode.dmDisplayFrequency}Hz");
                         return devMode.dmDisplayFrequency;
                     }
                 }
 
-                Log($"使用Windows API无法获取显示器 {screenIndex} 刷新率");
+                Log($"Unable to get display {screenIndex} refresh rate using Windows API");
                 return 0.0;
             }
             catch (Exception ex)
             {
-                Log($"使用Windows API获取显示器 {screenIndex} 刷新率失败: {ex.Message}");
+                Log($"Failed to get display {screenIndex} refresh rate using Windows API: {ex.Message}");
                 return 0.0;
             }
         }
 
-        // 获取显示器的简化唯一标识符（设备名称优先）
+        // Get simplified unique identifier for display (device name preferred)
         private string GetDisplayUniqueId(int screenIndex, Screen screen)
         {
             try
             {
-                // 仅使用设备名称作为唯一标识
+                // Use device name as unique identifier only
                 string deviceName = screen.DeviceName;
-                Log($"显示器 [{screenIndex}] 使用设备名称作为标识: {deviceName}");
+                Log($"Display [{screenIndex}] using device name as identifier: {deviceName}");
                 return deviceName;
             }
             catch (Exception ex)
             {
-                Log($"获取显示器 [{screenIndex}] 唯一标识失败: {ex.Message}，回退到设备名称");
+                Log($"Failed to get display [{screenIndex}] unique identifier: {ex.Message}, falling back to device name");
                 return $"{screen.DeviceName}_fallback";
             }
         }
 
 
 
-        // 生成显示器签名（包含索引、名称、分辨率、DPI、刷新率等）
+        // Generate display signature (includes index, name, resolution, DPI, refresh rate, etc.)
         private string GetDisplaySignature(int index, Screen screen)
         {
             try
             {
-                // 获取显示器的唯一硬件标识符
+                // Get the unique hardware identifier of the display
                 string uniqueId = GetDisplayUniqueId(index, screen);
 
-                // 获取DPI信息（使用与下拉框相同的方法）
+                // Get DPI information (using the same method as the dropdown)
                 uint dpiX = 96, dpiY = 96;
                 try
                 {
@@ -980,23 +980,23 @@ namespace TbEinkSuperFlushTurbo
                 }
                 catch { }
 
-                // 获取刷新率
+                // Get refresh rate
                 double refreshRate = GetRefreshRateFromApi(index);
 
-                // 计算DPI百分比
+                // Calculate DPI percentage
                 int dpiScalePercent = (int)(dpiX * 100 / 96);
 
-                // 构建签名：索引:唯一ID:设备名称:分辨率:DPI:刷新率:主显示器标志
+                // Build signature: index:uniqueID:deviceName:resolution:DPI:refreshRate:primaryDisplayFlag
                 return $"{index}:{uniqueId}:{screen.DeviceName}:{screen.Bounds.Width}x{screen.Bounds.Height}:{dpiScalePercent}:{refreshRate:F0}:{screen.Primary}";
             }
             catch (Exception ex)
             {
-                Log($"生成显示器 {index} 签名失败: {ex.Message}");
+                Log($"Failed to generate display {index} signature: {ex.Message}");
                 return $"{index}:error:{screen.DeviceName}:error:error:error:{screen.Primary}";
             }
         }
 
-        // 记录初始显示器状态
+        // Record initial display state
         private void RecordInitialDisplayState()
         {
             try
@@ -1004,21 +1004,21 @@ namespace TbEinkSuperFlushTurbo
                 var screens = Screen.AllScreens;
                 _lastDisplaySignatures = new string[screens.Length];
 
-                Log($"记录初始显示器状态，发现 {screens.Length} 个显示器:");
+                Log($"Record initial display state, found {screens.Length} displays:");
                 for (int i = 0; i < screens.Length; i++)
                 {
                     _lastDisplaySignatures[i] = GetDisplaySignature(i, screens[i]);
-                    Log($"  显示器 [{i}] 签名: {_lastDisplaySignatures[i]}");
+                    Log($"  Display [{i}] signature: {_lastDisplaySignatures[i]}");
                 }
             }
             catch (Exception ex)
             {
-                Log($"记录初始显示器状态失败: {ex.Message}");
+                Log($"Failed to record initial display state: {ex.Message}");
                 _lastDisplaySignatures = null;
             }
         }
 
-        // 检查显示器变化
+        // Check for display changes
         private void CheckDisplayChanges()
         {
             if (!_isDisplayMonitoringEnabled || _lastDisplaySignatures == null)
@@ -1028,25 +1028,25 @@ namespace TbEinkSuperFlushTurbo
             {
                 var currentScreens = Screen.AllScreens;
 
-                // 检查数量变化
+                // Check count changes
                 if (currentScreens.Length != _lastDisplaySignatures.Length)
                 {
-                    Log($"检测到显示器数量变化：{_lastDisplaySignatures.Length} -> {currentScreens.Length}");
-                    AutoStopDueToDisplayChange("显示器数量变化");
+                    Log($"Detected display count change: {_lastDisplaySignatures.Length} -> {currentScreens.Length}");
+                    AutoStopDueToDisplayChange("Display count change");
                     return;
                 }
 
-                // 检查每个显示器的状态
+                // Check status of each display
                 for (int i = 0; i < currentScreens.Length; i++)
                 {
                     string currentSignature = GetDisplaySignature(i, currentScreens[i]);
                     if (currentSignature != _lastDisplaySignatures[i])
                     {
-                        Log($"检测到显示器 {i} 配置变化：");
-                        Log($"  原签名: {_lastDisplaySignatures[i]}");
-                        Log($"  新签名: {currentSignature}");
+                        Log($"Detected display {i} configuration change:");
+                        Log($"  Original signature: {_lastDisplaySignatures[i]}");
+                        Log($"  New signature: {currentSignature}");
 
-                        // 解析签名变化，特别关注设备名称变化和主显示器切换
+                        // Parse signature changes, especially focus on device name changes and primary display switching
                         var oldParts = _lastDisplaySignatures[i].Split(':');
                         var newParts = currentSignature.Split(':');
 
@@ -1057,19 +1057,19 @@ namespace TbEinkSuperFlushTurbo
 
                             if (oldDeviceName != newDeviceName)
                             {
-                                Log($"  设备名称变化: {oldDeviceName} -> {newDeviceName}");
+                                Log($"  Device name change: {oldDeviceName} -> {newDeviceName}");
                             }
 
-                            // 检查是否为主显示器切换
+                            // Check if primary display switching
                             bool oldIsPrimary = oldParts.Length > 4 && oldParts[4] == "Primary";
                             bool newIsPrimary = newParts.Length > 4 && newParts[4] == "Primary";
                             if (oldIsPrimary != newIsPrimary)
                             {
-                                Log($"  主显示器状态变化: {oldIsPrimary} -> {newIsPrimary}");
+                                Log($"  Primary display status change: {oldIsPrimary} -> {newIsPrimary}");
                             }
                         }
 
-                        // 使用新的处理方法
+                        // Use new handling method
                         HandleDisplayConfigurationChange();
                         return;
                     }
@@ -1077,11 +1077,11 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                Log($"检查显示器变化时出错：{ex.Message}");
+                Log($"Error checking display changes: {ex.Message}");
             }
         }
 
-        // 更新状态栏显示当前选中显示器信息
+        // Update status bar to display current selected display information
         private void UpdateStatusBarDisplayInfo()
         {
             try
@@ -1092,83 +1092,83 @@ namespace TbEinkSuperFlushTurbo
                     string deviceName = screen.DeviceName.Replace("\\\\.\\", "");
                     string primaryMark = screen.Primary ? $" [{Localization.GetText("Primary")}]" : "";
 
-                    // 获取刷新率
+                    // Get refresh rate
                     double refreshRate = GetRefreshRateFromApi(_targetScreenIndex);
                     string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
 
-                    // 获取分辨率
+                    // Get resolution
                     var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
                     string resolutionInfo = $"{physicalWidth}x{physicalHeight}";
 
-                    // 获取显示器友好名称
+                    // Get display friendly name
                     string friendlyName = GetScreenFriendlyName(_targetScreenIndex);
                     if (!string.IsNullOrEmpty(friendlyName))
                     {
                         deviceName = friendlyName;
                     }
 
-                    // 更新状态栏文本 - 根据程序运行状态和语言显示不同的格式
+                    // Update status bar text - display different formats based on program running status and language
                     string statusText;
                     if (_pollTimer?.Enabled == true)
                     {
-                        // 运行中状态
+                        // Running status
                         statusText = string.Format(Localization.GetText("StatusRunning"), deviceName, primaryMark, resolutionInfo, refreshInfo);
                     }
                     else
                     {
-                        // 停止状态 - 只显示"状态：已停止"
+                        // Stopped status - only display "Status: Stopped"
                         statusText = Localization.GetText("StatusStopped");
                     }
                     lblInfo.Text = statusText;
 
-                    Log($"状态栏已更新：{statusText}");
+                    Log($"Status bar updated: {statusText}");
                 }
                 else
                 {
                     SafeUpdateStatusText(Localization.GetText("StatusStopped"));
-                    Log($"状态栏重置为默认状态");
+                    Log($"Status bar reset to default state");
                 }
             }
             catch (Exception ex)
             {
-                Log($"更新状态栏显示器信息失败: {ex.Message}");
+                Log($"Failed to update status bar display info: {ex.Message}");
                 lblInfo.Text = Localization.GetText("StatusStopped");
             }
         }
 
-        // 由于显示器变化自动停止
+        // Auto-stop due to display changes
         private void AutoStopDueToDisplayChange(string reason)
         {
-            // 去重检查：如果在去重间隔内已经处理过显示器变化，则忽略本次检测
+            // Deduplication check: if display changes have been processed within the deduplication interval, ignore this detection
             var now = DateTime.Now;
             var timeSinceLastDetection = now - _lastDisplayChangeDetectionTime;
             if (timeSinceLastDetection.TotalMilliseconds < DISPLAY_CHANGE_DEDUPLICATION_INTERVAL)
             {
-                Log($"忽略重复的显示器变化检测（{reason}），距离上次检测仅{timeSinceLastDetection.TotalMilliseconds:F0}ms");
+                Log($"Ignore duplicate display change detection ({reason}), only {timeSinceLastDetection.TotalMilliseconds:F0}ms since last detection");
                 return;
             }
 
-            // 检查是否已有显示器变化弹窗正在显示
+            // Check if display change popup is already being displayed
             if (_displayChangeMessageShown)
             {
-                Log($"忽略重复的显示器变化弹窗（{reason}），已有弹窗未关闭");
+                Log($"Ignore duplicate display change popup ({reason}), popup already displayed");
                 return;
             }
 
             _lastDisplayChangeDetectionTime = now;
-            _displayChangeMessageShown = true; // 标记弹窗已显示
-            Log($"由于{reason}，自动停止刷新");
+            _displayChangeMessageShown = true; // Mark popup as displayed
+            Log($"Auto-stop refresh due to {reason}");
 
             try
             {
-                // 确保在UI线程上安全地停止刷新
+                // Ensure safe stop of refresh on UI thread
                 if (this.InvokeRequired)
                 {
                     this.Invoke(new Action(() => AutoStopDueToDisplayChange(reason)));
                     return;
                 }
 
-                // 安全地停止刷新
+                // Safely stop refresh
                 if (_pollTimer?.Enabled == true)
                 {
                     if (btnStop.Enabled)
@@ -1177,38 +1177,38 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                // 安全地更新状态为已停止
+                // Safely update status to stopped
                 SafeUpdateStatusText($"{Localization.GetText("StatusStopped")} - {reason}");
 
-                // 显示提示信息（根据当前语言选择中文或英文）
+                // Display prompt message (select Chinese or English based on current language)
                 this.BeginInvoke(new Action(() =>
                 {
-                    string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                    string title = Localization.GetText("WindowTitle"); // Use program name as title
                     string message = string.Format(Localization.GetText("DisplayChangeAutoStop"), reason);
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    // 弹窗关闭后立即重置标志
+                    // Reset flag immediately after popup closes
                     _displayChangeMessageShown = false;
-                    Log("显示器变化弹窗已关闭，快捷键功能已恢复");
+                    Log("Display change popup closed, shortcut key functionality restored");
                 }));
 
-                // 完全重新初始化显示器相关状态
+                // Completely reinitialize display related status
                 this.Invoke(new Action(() =>
                 {
-                    Log("开始重新初始化显示器配置...");
+                    Log("Starting to reinitialize display configuration...");
 
                     try
                     {
-                        // 保存当前选中显示器的设备名称，用于重新匹配
+                        // Save device name of currently selected display for rematching
                         string previousDeviceName = _targetDisplayDeviceName ?? string.Empty;
                         int previousIndex = _targetScreenIndex;
 
-                        Log($"重新初始化前 - 设备名称: '{previousDeviceName}', 索引: {previousIndex}");
+                        Log($"Before reinitialization - Device name: '{previousDeviceName}', Index: {previousIndex}");
 
-                        // 1. 重新填充显示器列表（包含智能匹配逻辑）
+                        // 1. Repopulate display list (including intelligent matching logic)
                         PopulateDisplayList();
 
-                        // 2. 如果有之前的设备名称，尝试重新匹配
+                        // 2. If there's a previous device name, try to rematch
                         if (!string.IsNullOrEmpty(previousDeviceName))
                         {
                             var screens = Screen.AllScreens;
@@ -1218,7 +1218,7 @@ namespace TbEinkSuperFlushTurbo
                             {
                                 if (screens[i].DeviceName == previousDeviceName)
                                 {
-                                    Log($"重新匹配成功：找到之前的设备 '{previousDeviceName}'，新索引 {i}");
+                                    Log($"Rematch successful: Found previous device '{previousDeviceName}', new index {i}");
                                     _targetScreenIndex = i;
                                     _targetDisplayDeviceName = previousDeviceName;
                                     comboDisplay.SelectedIndex = i;
@@ -1229,23 +1229,23 @@ namespace TbEinkSuperFlushTurbo
 
                             if (!foundMatch)
                             {
-                                Log($"重新匹配失败：未找到之前的设备 '{previousDeviceName}'");
+                                Log($"Rematch failed: previous device '{previousDeviceName}' not found");
                             }
                         }
 
-                        // 3. 重新记录显示器签名
+                        // 3. Record display signature again
                         RecordInitialDisplayState();
 
-                        // 4. 更新状态栏显示当前选中显示器信息
+                        // 4. Update status bar to show current selected display info
                         UpdateStatusBarDisplayInfo();
 
-                        // 5. 强制重新检测当前显示器的刷新率
+                        // 5. Force re-detect refresh rate of current display
                         if (_targetScreenIndex >= 0)
                         {
                             double currentRefreshRate = GetRefreshRateFromApi(_targetScreenIndex);
-                            Log($"重新检测后，当前选中显示器 [{_targetScreenIndex}] 刷新率: {currentRefreshRate}Hz");
+                            Log($"After re-detection, current selected display [{_targetScreenIndex}] refresh rate: {currentRefreshRate}Hz");
 
-                            // 6. 如果刷新率超过限制，显示警告
+                            // 6. If refresh rate exceeds limit, show warning
                             if (_stopOver59hz == 1 && currentRefreshRate > 59)
                             {
                                 string warningMessage = Localization.CurrentLanguage == Localization.Language.ChineseSimplified ||
@@ -1258,18 +1258,18 @@ namespace TbEinkSuperFlushTurbo
                             }
                         }
 
-                        Log($"显示器配置重新初始化完成 - 最终选择: 索引 {_targetScreenIndex}, 设备 '{_targetDisplayDeviceName}'");
+                        Log($"Display configuration reinitialized - Final selection: Index {_targetScreenIndex}, Device '{_targetDisplayDeviceName}'");
                     }
                     catch (Exception ex)
                     {
-                        Log($"重新初始化显示器配置失败: {ex.Message}");
-                        SafeUpdateStatusText($"{Localization.GetText("StatusStopped")} - 显示器配置错误");
+                        Log($"Failed to reinitialize display configuration: {ex.Message}");
+                        SafeUpdateStatusText($"{Localization.GetText("StatusStopped")} - Display configuration error");
                     }
                 }));
             }
             catch (Exception ex)
             {
-                Log($"自动停止刷新时出错：{ex.Message}");
+                Log($"Error when auto-stopping refresh: {ex.Message}");
             }
         }
 
@@ -1292,11 +1292,11 @@ namespace TbEinkSuperFlushTurbo
         {
             if (_cts?.IsCancellationRequested == true || _d3d == null || tiles == null || tiles.Count == 0) return;
 
-            // 检查是否需要重新创建OverlayForm（tileSize变化时）
+            // Check if need to recreate OverlayForm (when tileSize changes)
             bool needRecreateOverlay = _overlayForm != null && _d3d != null && _overlayForm.TileSize != _d3d!.TileSize;
             if (needRecreateOverlay)
             {
-                Log($"检测到OverlayForm tileSize变化，正在重新创建...");
+                Log($"Detected OverlayForm tileSize change, recreating...");
                 _overlayForm!.Close();
                 _overlayForm.Dispose();
                 _overlayForm = null;
@@ -1306,16 +1306,16 @@ namespace TbEinkSuperFlushTurbo
             {
                 Color overlayBaseColor = Color.FromName(OVERLAY_BASE_COLOR);
 
-                // 获取物理和逻辑分辨率
+                // Get physical and logical resolutions
                 var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
 
-                // 计算物理分辨率到逻辑分辨率的缩放比例
+                // Calculate scaling ratio from physical resolution to logical resolution
                 double scaleX = (double)physicalWidth / logicalWidth;
                 double scaleY = (double)physicalHeight / logicalHeight;
 
-                Log($"覆盖层创建: 物理分辨率={physicalWidth}x{physicalHeight}, 逻辑分辨率={logicalWidth}x{logicalHeight}, 缩放比例={scaleX:F2}x{scaleY:F2}");
+                Log($"Overlay creation: Physical resolution={physicalWidth}x{physicalHeight}, Logical resolution={logicalWidth}x{logicalHeight}, Scale ratio={scaleX:F2}x{scaleY:F2}");
 
-                // 获取目标显示器的位置信息
+                // Get target display position information
                 var allScreens = Screen.AllScreens;
                 var targetScreen = _targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length ?
                     allScreens[_targetScreenIndex] : Screen.PrimaryScreen!;
@@ -1327,12 +1327,12 @@ namespace TbEinkSuperFlushTurbo
                     FormBorderStyle = FormBorderStyle.None,
                     TopMost = true,
                     Size = new Size(logicalWidth, logicalHeight),
-                    Location = screenBounds.Location  // 确保覆盖层显示在正确的显示器上
+                    Location = screenBounds.Location  // Ensure overlay displays on the correct monitor
                 };
                 _overlayForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
 
                 _overlayForm.Show();
-                Log($"覆盖层显示在显示器 [{_targetScreenIndex}]: 位置=({screenBounds.Left}, {screenBounds.Top}), 大小={logicalWidth}x{logicalHeight}");
+                Log($"Overlay displayed on monitor [{_targetScreenIndex}]: Position=({screenBounds.Left}, {screenBounds.Top}), Size={logicalWidth}x{logicalHeight}");
             }
 
             _overlayForm?.UpdateContent(tiles, brightnessData);
@@ -1340,27 +1340,27 @@ namespace TbEinkSuperFlushTurbo
 
         private float GetDpiScale()
         {
-            // 尝试获取指定显示器的DPI设置
+            // Try to get DPI settings for the specified display
             try
             {
-                // 获取所有显示器信息
+                // Get information about all displays
                 var allScreens = Screen.AllScreens;
-                Log($"GetDpiScale: 总共检测到 {allScreens.Length} 个显示器");
+                Log($"GetDpiScale: Total detected displays: {allScreens.Length}");
 
-                // 检查目标显示器索引是否有效
+                // Check if target display index is valid
                 if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
                 {
                     var targetScreen = allScreens[_targetScreenIndex];
-                    Log($"GetDpiScale: 尝试获取显示器 [{_targetScreenIndex}] 的DPI设置");
+                    Log($"GetDpiScale: Attempting to get DPI settings for display [{_targetScreenIndex}]");
 
-                    // 尝试为特定显示器创建Graphics对象以获取其DPI
+                    // Try to create Graphics object for specific display to get its DPI
                     try
                     {
-                        // 获取显示器的边界矩形
+                        // Get the bounds rectangle of the display
                         var bounds = targetScreen.Bounds;
-                        Log($"GetDpiScale: 显示器 [{_targetScreenIndex}] 边界 = ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
+                        Log($"GetDpiScale: Display [{_targetScreenIndex}] bounds = ({bounds.Left}, {bounds.Top}, {bounds.Width}x{bounds.Height})");
 
-                        // 创建临时窗口句柄来获取该显示器的DPI
+                        // Create temporary window handle to get DPI for this display
                         var tempHwnd = NativeMethods.CreateWindowEx(
                             0, "STATIC", "", 0,
                             bounds.Left, bounds.Top, 1, 1,
@@ -1374,7 +1374,7 @@ namespace TbEinkSuperFlushTurbo
                                 {
                                     float dpiX = graphics.DpiX;
                                     float scale = dpiX / 96f;
-                                    Log($"GetDpiScale: 成功获取显示器 [{_targetScreenIndex}] DPI = {dpiX}, Scale = {scale:F2}");
+                                    Log($"GetDpiScale: Successfully got display [{_targetScreenIndex}] DPI = {dpiX}, Scale = {scale:F2}");
                                     return scale;
                                 }
                             }
@@ -1385,30 +1385,30 @@ namespace TbEinkSuperFlushTurbo
                         }
                         else
                         {
-                            Log($"GetDpiScale: 无法为显示器 [{_targetScreenIndex}] 创建临时窗口句柄");
+                            Log($"GetDpiScale: Unable to create temporary window handle for display [{_targetScreenIndex}]");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Log($"GetDpiScale: 获取显示器 [{_targetScreenIndex}] DPI时发生异常: {ex.Message}");
-                        // 如果无法获取特定DPI，继续使用窗口DPI
+                        Log($"GetDpiScale: Exception occurred while getting DPI for display [{_targetScreenIndex}]: {ex.Message}");
+                        // If unable to get specific DPI, continue using window DPI
                     }
                 }
                 else
                 {
-                    Log($"GetDpiScale: 目标显示器索引 {_targetScreenIndex} 超出范围 [0-{allScreens.Length - 1}]");
+                    Log($"GetDpiScale: Target display index {_targetScreenIndex} out of range [0-{allScreens.Length - 1}]");
                 }
             }
             catch (Exception ex)
             {
-                Log($"GetDpiScale: 枚举显示器信息时发生异常: {ex.Message}");
-                // 如果无法获取特定显示器的DPI，继续使用窗口DPI
+                Log($"GetDpiScale: Exception occurred while enumerating display information: {ex.Message}");
+                // If unable to get specific display's DPI, continue using window DPI
             }
 
-            // 回退到原来的实现
+            // Fallback to original implementation
             uint windowDpi = GetDpiForWindow(this.Handle);
             float fallbackScale = windowDpi / 96f;
-            Log($"GetDpiScale: 回退到窗口DPI = {windowDpi}, Scale = {fallbackScale:F2}");
+            Log($"GetDpiScale: Fallback to window DPI = {windowDpi}, Scale = {fallbackScale:F2}");
             return fallbackScale;
         }
 
@@ -1429,7 +1429,7 @@ namespace TbEinkSuperFlushTurbo
             return string.Join(" + ", parts);
         }
 
-        // 注册快捷键
+        // Register hotkey
         private void RegisterToggleHotkey()
         {
             if (_isHotkeyRegistered)
@@ -1439,7 +1439,7 @@ namespace TbEinkSuperFlushTurbo
 
             try
             {
-                // 提取虚拟键码和修饰键
+                // Extract virtual key code and modifiers
                 Keys keyCode = _toggleHotkey & Keys.KeyCode;
                 Keys modifiers = _toggleHotkey & Keys.Modifiers;
 
@@ -1451,7 +1451,7 @@ namespace TbEinkSuperFlushTurbo
                 if ((modifiers & Keys.Shift) == Keys.Shift)
                     modFlags |= 0x0004; // MOD_SHIFT
 
-                // 注册系统级快捷键
+                // Register system-level hotkey
                 bool result = RegisterHotKey(this.Handle, TOGGLE_HOTKEY_ID, modFlags, (int)keyCode);
                 _isHotkeyRegistered = result;
 
@@ -1471,7 +1471,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 取消注册快捷键
+        // Unregister hotkey
         private void UnregisterToggleHotkey()
         {
             if (_isHotkeyRegistered)
@@ -1502,16 +1502,16 @@ namespace TbEinkSuperFlushTurbo
 
         private void ToggleCaptureState()
         {
-            // 检查当前焦点窗口
+            // Check current focused window
             IntPtr foregroundWindow = GetForegroundWindow();
             bool isCurrentWindowFocused = (foregroundWindow == this.Handle);
 
-            // 只有当当前窗口没有焦点时才显示气泡提示
+            // Only show notification when current window is not focused
             bool shouldShowNotification = !isCurrentWindowFocused;
 
             if (_pollTimer?.Enabled != true)
             {
-                // 启动捕获
+                // Start capture
                 if (shouldShowNotification)
                 {
                     ShowNotification(Localization.GetText("CaptureStartedTitle"), Localization.GetText("CaptureStartedMessage"));
@@ -1520,7 +1520,7 @@ namespace TbEinkSuperFlushTurbo
             }
             else
             {
-                // 停止捕获
+                // Stop capture
                 if (shouldShowNotification)
                 {
                     ShowNotification(Localization.GetText("CaptureStoppedTitle"), Localization.GetText("CaptureStoppedMessage"));
@@ -1529,7 +1529,7 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 显示托盘通知
+        // Show tray notification
         private void ShowNotification(string title, string message)
         {
             _trayIcon.BalloonTipTitle = title;
@@ -1539,24 +1539,24 @@ namespace TbEinkSuperFlushTurbo
 
         private void UpdateAdaptiveLayout()
         {
-            // 完全移除自适应布局逻辑，因为它在高DPI环境下引起问题
-            // 依赖于WinForm内置的DPI处理机制
+            // Completely remove adaptive layout logic as it causes issues in high DPI environments
+            // Rely on WinForm's built-in DPI handling mechanism
         }
 
         // ==================== Designer Event Handlers ====================
 
         private void MainForm_Load(object? sender, EventArgs e)
         {
-            // 更新控件文本为本地化文本
+            // Update control texts to localized texts
             UpdateLocalizedTexts();
 
-            // 更新控件值
+            // Update control values
             trackPixelDelta.Value = _pixelDelta;
             lblPixelDeltaValue.Text = _pixelDelta.ToString();
             trackTileSize.Value = _tileSize;
             lblTileSizeValue.Text = _tileSize.ToString();
 
-            // 如果没有设置快捷键，显示提示文本
+            // If no hotkey is set, show prompt text
             if (_toggleHotkey == Keys.None)
             {
                 txtToggleHotkey.Text = Localization.GetText("ClickButtonToSet");
@@ -1566,13 +1566,13 @@ namespace TbEinkSuperFlushTurbo
                 txtToggleHotkey.Text = FormatShortcut(_toggleHotkey);
             }
 
-            // 设置初始按钮状态
+            // Set initial button states
             SafeUpdateStatusText(Localization.GetText("StatusStopped"));
 
-            // 填充显示器列表
+            // Populate display list
             PopulateDisplayList();
 
-            // 执行自适应布局
+            // Execute adaptive layout
             UpdateAdaptiveLayout();
         }
 
@@ -1581,11 +1581,11 @@ namespace TbEinkSuperFlushTurbo
             if (this.WindowState != FormWindowState.Minimized)
             {
                 UpdateAdaptiveLayout();
-                AdjustStatusLabelProperties(); // 窗口大小改变时重新调整状态标签
+                AdjustStatusLabelProperties(); // Readjust status label when window size changes
             }
         }
 
-        // 查找刷新率最小的显示器索引
+        // Find display index with lowest refresh rate
         private int FindLowestRefreshRateDisplay(Screen[] screens)
         {
             try
@@ -1603,13 +1603,13 @@ namespace TbEinkSuperFlushTurbo
                 {
                     double refreshRate = GetRefreshRateFromApi(i);
 
-                    // 如果获取刷新率失败（返回0），给一个默认值60Hz以便比较
+                    // If get refresh rate fails (returns 0), give a default value of 60Hz for comparison
                     if (refreshRate <= 0)
                         refreshRate = 60.0;
 
-                    Log($"检测显示器 {i} 刷新率: {refreshRate:F1}Hz");
+                    Log($"Detected display {i} refresh rate: {refreshRate:F1}Hz");
 
-                    // 选择刷新率最小的显示器
+                    // Select display with the lowest refresh rate
                     if (refreshRate < minRefreshRate)
                     {
                         minRefreshRate = refreshRate;
@@ -1617,12 +1617,12 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                Log($"选择刷新率最小的显示器: 索引 {minIndex}, 刷新率 {minRefreshRate:F1}Hz");
+                Log($"Selected display with lowest refresh rate: Index {minIndex}, Refresh rate {minRefreshRate:F1}Hz");
                 return minIndex;
             }
             catch (Exception ex)
             {
-                Log($"查找最小刷新率显示器失败: {ex.Message}, 默认使用索引0");
+                Log($"Failed to find display with lowest refresh rate: {ex.Message}, defaulting to index 0");
                 return 0;
             }
         }
@@ -1633,186 +1633,186 @@ namespace TbEinkSuperFlushTurbo
             {
                 comboDisplay.Items.Clear();
 
-                // 获取所有显示器，使用系统默认顺序（不特殊处理主显示器）
+                // Get all displays, using system default order (no special handling for primary display)
                 var screens = Screen.AllScreens;
 
-                // 添加详细的显示器调试信息
-                Log($"系统发现 {screens.Length} 个显示器:");
+                // Add detailed display debug information
+                Log($"System detected {screens.Length} displays:");
                 for (int debugIdx = 0; debugIdx < screens.Length; debugIdx++)
                 {
                     var debugScreen = screens[debugIdx];
-                    Log($"  显示器 [{debugIdx}]: {debugScreen.DeviceName}, 主显示器: {debugScreen.Primary}, 边界: {debugScreen.Bounds}");
+                    Log($"  Display [{debugIdx}]: {debugScreen.DeviceName}, Primary: {debugScreen.Primary}, Bounds: {debugScreen.Bounds}");
                 }
-                Log($"配置文件中的目标显示器索引: {_targetScreenIndex}");
+                Log($"Target display index from config file: {_targetScreenIndex}");
 
                 for (int i = 0; i < screens.Length; i++)
                 {
                     var screen = screens[i];
 
-                    // 获取显示器的DPI信息（使用GetDpiForMonitor方法）
+                    // Get display DPI information (using GetDpiForMonitor method)
                     uint dpiX = 96;
                     uint dpiY = 96;
                     try
                     {
-                        // 获取显示器中心点
+                        // Get display center point
                         var bounds = screen.Bounds;
                         var centerPoint = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
 
-                        // 获取显示器句柄
+                        // Get display handle
                         IntPtr hMonitor = NativeMethods.MonitorFromPoint(centerPoint, NativeMethods.MONITOR_DEFAULTTONEAREST);
 
                         if (hMonitor != IntPtr.Zero)
                         {
-                            // 使用GetDpiForMonitor获取DPI信息（不使用V2版本）
+                            // Use GetDpiForMonitor to get DPI information (not using V2 version)
                             int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out dpiX, out dpiY);
 
                             if (result == 0)
                             {
-                                Log($"成功获取显示器 {i} DPI: {dpiX}x{dpiY}");
+                                Log($"Successfully got display {i} DPI: {dpiX}x{dpiY}");
                             }
                             else
                             {
-                                Log($"获取显示器 {i} DPI失败，错误码: 0x{result:X8}，使用默认值96 DPI");
+                                Log($"Failed to get display {i} DPI, error code: 0x{result:X8}, using default 96 DPI");
                                 dpiX = 96;
                                 dpiY = 96;
                             }
                         }
                         else
                         {
-                            Log($"无法获取显示器 {i} 的监视器句柄，使用默认值96 DPI");
+                            Log($"Unable to get monitor handle for display {i}, using default 96 DPI");
                             dpiX = 96;
                             dpiY = 96;
                         }
                     }
                     catch (Exception dpiEx)
                     {
-                        Log($"获取显示器 {i} DPI失败: {dpiEx.Message}，使用默认值96 DPI");
+                        Log($"Failed to get display {i} DPI: {dpiEx.Message}, using default 96 DPI");
                         dpiX = 96;
                         dpiY = 96;
                     }
 
-                    // 计算DPI百分比（相对于标准96 DPI）
+                    // Calculate DPI percentage (relative to standard 96 DPI)
                     int dpiScalePercent = (int)(dpiX * 100 / 96);
 
-                    // 获取刷新率（使用Windows API）
+                    // Get refresh rate (using Windows API)
                     double refreshRate = GetRefreshRateFromApi(i);
 
-                    // 获取物理分辨率（避免发布包与调试模式的差异）
+                    // Get physical resolution (to avoid differences between release package and debug mode)
                     int physicalWidth = screen.Bounds.Width;
                     int physicalHeight = screen.Bounds.Height;
 
-                    // 如果DPI缩放不为100%，尝试获取真实的物理分辨率
+                    // If DPI scaling is not 100%, try to get real physical resolution
                     if (dpiScalePercent != 100)
                     {
                         try
                         {
-                            // 使用现有的GetScreenResolutions方法获取物理分辨率
+                            // Use existing GetScreenResolutions method to get physical resolution
                             var (physicalResWidth, physicalResHeight, logicalResWidth, logicalResHeight) = GetScreenResolutions(i);
                             if (physicalResWidth > 0 && physicalResHeight > 0)
                             {
                                 physicalWidth = physicalResWidth;
                                 physicalHeight = physicalResHeight;
-                                Log($"显示器 {i} DPI缩放 {dpiScalePercent}%，使用物理分辨率: {physicalWidth}×{physicalHeight} (逻辑分辨率 {screen.Bounds.Width}×{screen.Bounds.Height})");
+                                Log($"Display {i} DPI scaling {dpiScalePercent}%, using physical resolution: {physicalWidth}×{physicalHeight} (logical resolution {screen.Bounds.Width}×{screen.Bounds.Height})");
                             }
                         }
                         catch (Exception resEx)
                         {
-                            Log($"获取显示器 {i} 物理分辨率失败: {resEx.Message}，使用逻辑分辨率");
+                            Log($"Failed to get physical resolution for display {i}: {resEx.Message}, using logical resolution");
                         }
                     }
                     else
                     {
-                        Log($"显示器 {i} DPI缩放 100%，物理分辨率与逻辑分辨率相同: {physicalWidth}×{physicalHeight}");
+                        Log($"Display {i} DPI scaling 100%, physical resolution same as logical resolution: {physicalWidth}×{physicalHeight}");
                     }
 
-                    // 构建显示名称，包含DPI和刷新率信息
+                    // Build display name, including DPI and refresh rate information
                     string dpiInfo = $"{dpiScalePercent}%";
                     string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
                     string primaryMark = screen.Primary ? $" [{Localization.GetText("Primary")}]" : "";
-                    // 使用设备名称确保正确匹配，但保持格式简洁
-                    string deviceName = screen.DeviceName.Replace("\\\\.\\", ""); // 去掉前缀使显示更简洁
+                    // Use device name to ensure correct matching, but keep format concise
+                    string deviceName = screen.DeviceName.Replace("\\\\.\\", ""); // Remove prefix to make display more concise
                     string displayName = $"{deviceName}{primaryMark}: {physicalWidth}×{physicalHeight} @ {dpiInfo}{refreshInfo}";
                     comboDisplay.Items.Add(displayName);
                 }
 
-                // 根据配置文件选择显示器（使用智能匹配逻辑）
+                // Select display based on config file (using intelligent matching logic)
                 if (comboDisplay.Items.Count > 0)
                 {
                     int targetIndex = -1;
 
-                    // 智能匹配策略：多层次匹配显示器
-                    // 1. 首先尝试按设备名称匹配（最可靠的标识）
+                    // Intelligent matching strategy: multi-level display matching
+                    // 1. First try matching by device name (most reliable identifier)
                     if (!string.IsNullOrEmpty(_targetDisplayDeviceName))
                     {
-                        Log($"尝试按设备名称 '{_targetDisplayDeviceName}' 匹配显示器");
+                        Log($"Attempting to match display by device name '{_targetDisplayDeviceName}'");
 
                         for (int i = 0; i < screens.Length; i++)
                         {
                             if (screens[i].DeviceName == _targetDisplayDeviceName)
                             {
                                 targetIndex = i;
-                                Log($"设备名称匹配成功：找到设备 '{_targetDisplayDeviceName}' 的显示器，索引 {targetIndex}");
+                                Log($"Device name match successful: found display with device '{_targetDisplayDeviceName}', index {targetIndex}");
                                 break;
                             }
                         }
 
                         if (targetIndex == -1)
                         {
-                            Log($"设备名称匹配失败：未找到设备 '{_targetDisplayDeviceName}' 的显示器");
+                            Log($"Device name match failed: display with device '{_targetDisplayDeviceName}' not found");
                         }
                     }
 
-                    // 2. 如果设备名称匹配失败，尝试按刷新率和分辨率匹配
+                    // 2. If device name matching fails, try matching by refresh rate and resolution
                     if (targetIndex == -1 && _targetScreenIndex >= 0 && _targetScreenIndex < screens.Length)
                     {
                         var (prevWidth, prevHeight, prevLogicalWidth, prevLogicalHeight) = GetScreenResolutions(_targetScreenIndex);
                         double prevRefreshRate = GetRefreshRateFromApi(_targetScreenIndex);
 
-                        Log($"尝试按刷新率 {prevRefreshRate}Hz 和分辨率 {prevWidth}x{prevHeight} 匹配显示器");
+                        Log($"Attempting to match display by refresh rate {prevRefreshRate}Hz and resolution {prevWidth}x{prevHeight}");
 
                         for (int i = 0; i < screens.Length; i++)
                         {
                             var (currWidth, currHeight, currLogicalWidth, currLogicalHeight) = GetScreenResolutions(i);
                             double currRefreshRate = GetRefreshRateFromApi(i);
 
-                            // 匹配刷新率和分辨率
+                            // Match refresh rate and resolution
                             if (currRefreshRate == prevRefreshRate && currWidth == prevWidth && currHeight == prevHeight)
                             {
                                 targetIndex = i;
-                                Log($"刷新率分辨率匹配成功：找到刷新率 {currRefreshRate}Hz 分辨率 {currWidth}x{currHeight} 的显示器，索引 {targetIndex}");
+                                Log($"Refresh rate and resolution match successful: found display with refresh rate {currRefreshRate}Hz resolution {currWidth}x{currHeight}, index {targetIndex}");
                                 break;
                             }
                         }
 
                         if (targetIndex == -1)
                         {
-                            Log($"刷新率分辨率匹配失败：未找到刷新率 {prevRefreshRate}Hz 分辨率 {prevWidth}x{prevHeight} 的显示器");
+                            Log($"Refresh rate and resolution match failed: display with refresh rate {prevRefreshRate}Hz resolution {prevWidth}x{prevHeight} not found");
                         }
                     }
 
-                    // 3. 如果都失败，按索引匹配（如果索引有效）
+                    // 3. If all else fails, match by index (if index is valid)
                     if (targetIndex == -1 && _targetScreenIndex >= 0 && _targetScreenIndex < comboDisplay.Items.Count)
                     {
                         targetIndex = _targetScreenIndex;
-                        Log($"使用索引匹配：{_targetScreenIndex}");
+                        Log($"Using index matching: {_targetScreenIndex}");
                     }
 
-                    // 4. 最后失败，选择刷新率最小的显示器
+                    // 4. Last resort, select display with lowest refresh rate
                     if (targetIndex == -1)
                     {
                         targetIndex = FindLowestRefreshRateDisplay(screens);
-                        Log($"使用默认匹配：选择刷新率最小的显示器索引 {targetIndex}");
+                        Log($"Using default matching: selected lowest refresh rate display index {targetIndex}");
                     }
 
-                    // 应用最终选择
+                    // Apply final selection
                     comboDisplay.SelectedIndex = targetIndex;
                     _targetScreenIndex = targetIndex;
 
-                    // 更新设备名称记录（仅运行时使用）
+                    // Update device name record (used only at runtime)
                     if (targetIndex >= 0 && targetIndex < screens.Length)
                     {
                         _targetDisplayDeviceName = screens[targetIndex].DeviceName;
-                        Log($"最终选择：索引 {targetIndex}, 设备 {_targetDisplayDeviceName}");
+                        Log($"Final selection: index {targetIndex}, device {_targetDisplayDeviceName}");
                     }
                 }
             }
@@ -1829,43 +1829,43 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                // 只在选择真正改变时处理
+                // Process only when selection actually changes
                 if (comboDisplay.SelectedIndex != _targetScreenIndex)
                 {
-                    // 检查是否正在截屏
+                    // Check if screen capture is running
                     if (_pollTimer != null && _pollTimer.Enabled)
                     {
                         string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                             "截屏运行中，停止截屏后才能切换显示器。" :
                             "Screen capture is running. Please stop capture first before switching display.";
-                        string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                        string title = Localization.GetText("WindowTitle"); // Use program name as title
                         MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                        // 恢复原来的选择，但不阻止用户操作
+                        // Restore original selection but don't block user operation
                         comboDisplay.SelectedIndex = _targetScreenIndex;
                         return;
                     }
 
-                    // 只有在截屏停止时才允许切换
+                    // Only allow switching when screen capture is stopped
                     if (comboDisplay.SelectedIndex >= 0)
                     {
                         _targetScreenIndex = comboDisplay.SelectedIndex;
-                        // 保存当前选中显示器的设备名称，用于智能匹配
+                        // Save device name of currently selected display for intelligent matching
                         var screens = Screen.AllScreens;
                         if (_targetScreenIndex < screens.Length)
                         {
                             _targetDisplayDeviceName = screens[_targetScreenIndex].DeviceName;
                             Log($"Display changed to index: {_targetScreenIndex}, device: {_targetDisplayDeviceName}");
                         }
-                        SaveConfig(); // 保存配置到文件
+                        SaveConfig(); // Save configuration to file
 
-                        // 销毁现有的覆盖层，确保下次会在新显示器上重新创建
+                        // Destroy existing overlay to ensure it's recreated on new monitor next time
                         if (_overlayForm != null)
                         {
                             _overlayForm.Close();
                             _overlayForm.Dispose();
                             _overlayForm = null;
-                            Log($"覆盖层已销毁，将在新显示器 [{_targetScreenIndex}] 上重新创建");
+                            Log($"Overlay destroyed, will be recreated on new monitor [{_targetScreenIndex}]");
                         }
                     }
                 }
@@ -1880,27 +1880,27 @@ namespace TbEinkSuperFlushTurbo
         {
             if (_isRecordingHotkey)
             {
-                // 录制模式：捕获按键
+                // Recording mode: capture key presses
                 e.Handled = true;
                 e.SuppressKeyPress = true;
 
                 if (e.KeyCode == Keys.Escape)
                 {
-                    // ESC键取消录制
+                    // ESC key cancels recording
                     CancelHotkeyRecording();
                     return;
                 }
 
                 if (e.KeyCode == Keys.ControlKey || e.KeyCode == Keys.ShiftKey || e.KeyCode == Keys.Menu)
                 {
-                    // 忽略单独的修饰键
+                    // Ignore standalone modifier keys
                     return;
                 }
 
-                // 获取按键组合
+                // Get key combination
                 Keys keyCombo = e.KeyData;
 
-                // 更新内部变量和显示
+                // Update internal variables and display
                 _toggleHotkey = keyCombo;
                 string formattedShortcut = FormatShortcut(keyCombo);
                 txtToggleHotkey.Text = formattedShortcut;
@@ -1909,7 +1909,7 @@ namespace TbEinkSuperFlushTurbo
             }
             else if (e.KeyData == _toggleHotkey && _isHotkeyRegistered && !_isRecordingHotkey)
             {
-                // 切换运行状态（仅在非录制状态下响应）
+                // Toggle running state (only respond when not in recording mode)
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 ToggleCaptureState();
@@ -1918,23 +1918,23 @@ namespace TbEinkSuperFlushTurbo
 
         private void btnStart_Click(object? sender, EventArgs e)
         {
-            // 检查是否正在录制快捷键
+            // Check if recording hotkey
             if (_isRecordingHotkey)
             {
                 string message = Localization.GetText("CannotStartWhileRecordingHotkey");
-                string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                string title = Localization.GetText("WindowTitle"); // Use program name as title
                 MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.None);
                 return;
             }
 
-            // 检查显示器刷新率（超过59Hz自动停止功能）
+            // Check display refresh rate (auto-stop function for over 59Hz)
             if (_stopOver59hz == 1)
             {
                 double refreshRate = GetRefreshRateFromApi(_targetScreenIndex);
                 if (refreshRate >= 59.0)
                 {
                     string message = string.Format(Localization.GetText("HighRefreshRateWarning"), refreshRate);
-                    string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                    string title = Localization.GetText("WindowTitle"); // Use program name as title
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     Log($"Blocked start due to high refresh rate: {refreshRate:F1}Hz (stopOver59hz={_stopOver59hz})");
                     return;
@@ -1945,33 +1945,33 @@ namespace TbEinkSuperFlushTurbo
             _cts = new CancellationTokenSource();
             _frameCounter = 0; // Reset frame counter on start
 
-            // 禁用设置项修改
+            // Disable settings modification
             trackPixelDelta.Enabled = false;
             trackTileSize.Enabled = false;
-            // 注意：齿轮按钮保持启用状态，通过点击事件拦截来处理禁用逻辑
+            // Note: gear button remains enabled, handle disable logic through click event interception
 
             SafeUpdateStatusText("Status: Initializing GPU capture...");
             Log("Initializing GPU capture...");
 
-            // 记录初始显示器状态（用于变化检测）
+            // Record initial display state (for change detection)
             RecordInitialDisplayState();
 
             try
             {
-                // 检查是否需要重新创建D3D对象（tileSize变化时）
+                // Check if need to recreate D3D object (when tileSize changes)
                 bool needRecreateD3D = _lastUsedTileSize != _tileSize;
                 if (needRecreateD3D && _lastUsedTileSize > 0)
                 {
-                    Log($"检测到tileSize变化: 从 {_lastUsedTileSize} 到 {_tileSize}，正在重新初始化D3D对象...");
+                    Log($"Detected tileSize change: from {_lastUsedTileSize} to {_tileSize}, reinitializing D3D objects...");
                 }
                 
-                // 如果D3D对象存在且tileSize变化，或者需要重新创建
+                // If D3D object exists and tileSize changed, or needs to be recreated
                 if (_d3d != null && needRecreateD3D)
                 {
                     _d3d?.Dispose();
                     _d3d = null;
                     
-                    // 关闭现有的overlayForm（如果存在）
+                    // Close existing overlayForm (if exists)
                     if (_overlayForm != null)
                     {
                         _overlayForm.Close();
@@ -1988,7 +1988,7 @@ namespace TbEinkSuperFlushTurbo
                         BOUNDING_AREA_CHANGE_THRESHOLD,
                         BOUNDING_AREA_REFRESH_BLOCK_THRESHOLD), _forceDirectXCapture, ProtectionFrames, _targetScreenIndex);
 
-                // 更新上次使用的tileSize
+                // Update last used tileSize
                 _lastUsedTileSize = _tileSize;
 
                 _pollTimer = new System.Windows.Forms.Timer
@@ -1999,7 +1999,7 @@ namespace TbEinkSuperFlushTurbo
                 {
                     try
                     {
-                        // 每3秒检查一次显示器变化（计数器达到DISPLAY_CHECK_INTERVAL时检测）
+                        // Check for display changes every 3 seconds (when counter reaches DISPLAY_CHECK_INTERVAL)
                         _displayCheckCounter++;
                         if (_displayCheckCounter >= DISPLAY_CHECK_INTERVAL)
                         {
@@ -2011,7 +2011,7 @@ namespace TbEinkSuperFlushTurbo
 
                         _frameCounter++; // Increment frame counter
 
-                        // 定期释放内存压力（每100帧约50秒）
+                        // Periodically release memory pressure (every 100 frames, about 50 seconds)
                         if (_frameCounter % 100 == 0)
                         {
                             GC.Collect();
@@ -2048,7 +2048,7 @@ namespace TbEinkSuperFlushTurbo
                         Log($"Error in poll timer: {ex.Message}");
                         Log($"Stack trace: {ex.StackTrace}");
 
-                        // 如果发生严重错误，自动停止捕获
+                        // If critical error occurs, automatically stop capture
                         if (ex is ArgumentException || ex is OutOfMemoryException)
                         {
                             Log($"Critical error detected, stopping capture automatically");
@@ -2064,14 +2064,14 @@ namespace TbEinkSuperFlushTurbo
                 };
                 _pollTimer.Start();
 
-                // 获取物理和逻辑分辨率
+                // Get physical and logical resolutions
                 var (physicalWidth, physicalHeight, logicalWidth, logicalHeight) = GetScreenResolutions(_targetScreenIndex);
 
-                // 获取显示器友好名称
+                // Get display friendly name
                 string screenFriendlyName = GetScreenFriendlyName(_targetScreenIndex);
 
-                // 使用统一的DPI获取逻辑，确保与下拉框显示一致
-                // 获取当前显示器的DPI（使用与下拉框相同的方法）
+                // Use unified DPI acquisition logic to ensure consistency with dropdown display
+                // Get DPI for current display (using same method as dropdown)
                 uint dpiX = 96, dpiY = 96;
                 try
                 {
@@ -2085,45 +2085,45 @@ namespace TbEinkSuperFlushTurbo
                         int result = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MONITOR_DPI_TYPE.MDT_Effective_DPI, out dpiX, out dpiY);
                         if (result == 0)
                         {
-                            Log($"状态栏使用显示器 {_targetScreenIndex} DPI: {dpiX}x{dpiY} (与下拉框一致)");
+                            Log($"Status bar using display {_targetScreenIndex} DPI: {dpiX}x{dpiY} (consistent with dropdown)");
                         }
                         else
                         {
-                            Log($"状态栏获取DPI失败，错误码: 0x{result:X8}，使用默认值96 DPI");
+                            Log($"Status bar DPI acquisition failed, error code: 0x{result:X8}, using default 96 DPI");
                             dpiX = 96;
                             dpiY = 96;
                         }
                     }
                     else
                     {
-                        Log($"状态栏无法获取显示器 {_targetScreenIndex} 句柄，使用默认值96 DPI");
+                        Log($"Status bar unable to get display {_targetScreenIndex} handle, using default 96 DPI");
                         dpiX = 96;
                         dpiY = 96;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log($"状态栏获取DPI失败: {ex.Message}，使用默认值96 DPI");
+                    Log($"Status bar DPI acquisition failed: {ex.Message}, using default 96 DPI");
                     dpiX = 96;
                     dpiY = 96;
                 }
 
-                // 使用统一的DPI重新计算逻辑分辨率
+                // Recalculate logical resolution using unified DPI
                 double scaleX = (double)dpiX / 96.0;
                 double scaleY = (double)dpiY / 96.0;
                 logicalWidth = (int)(physicalWidth / scaleX);
                 logicalHeight = (int)(physicalHeight / scaleY);
 
-                // 计算DPI缩放比例：物理分辨率 ÷ 逻辑分辨率
+                // Calculate DPI scaling ratio: physical resolution ÷ logical resolution
                 double dpiScaleX = (double)physicalWidth / logicalWidth;
                 double dpiScaleY = (double)physicalHeight / logicalHeight;
-                double dpiScale = Math.Max(dpiScaleX, dpiScaleY); // 使用较大的缩放比例
+                double dpiScale = Math.Max(dpiScaleX, dpiScaleY); // Use larger scaling ratio
                 int scalePercent = (int)(dpiScale * 100);
-                // 自定义状态文本格式，避免重复的分辨率文字
+                // Customize status text format to avoid duplicate resolution text
                 string statusRunning = Localization.GetText("StatusRunning");
                 string statusPrefix = statusRunning;
                 
-                // 根据当前语言移除对应的分辨率部分
+                // Remove corresponding resolution part based on current language
                 if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified)
                 {
                     statusPrefix = statusRunning.Split("分辨率:")[0];
@@ -2140,7 +2140,7 @@ namespace TbEinkSuperFlushTurbo
                 string refreshInfo = refreshRate > 0 ? $" {refreshRate:F0}Hz" : "";
                 string statusText = string.Format(statusPrefix, screenFriendlyName, "", "", "");
                 
-                // 使用本地化字符串替换物理、逻辑、缩放、区块尺寸等文本
+                // Use localized strings to replace physical, logical, scale, tile size and other text
                 string physical = Localization.GetText("Physical");
                 string logical = Localization.GetText("Logical");
                 string scale = Localization.GetText("Scale");
@@ -2152,7 +2152,7 @@ namespace TbEinkSuperFlushTurbo
                 btnStop.Enabled = true;
                 Log($"GPU capture initialized successfully. Physical: {physicalWidth}x{physicalHeight}, Logical: {logicalWidth}x{logicalHeight} (DXGI), Scale: {scalePercent}%, DPI: {dpiScaleX:F2}x{dpiScaleY:F2}, Tile Size: {_tileSize}x{_tileSize} pixels");
 
-                // D3D初始化完成后，重新填充显示器列表以获取刷新率信息
+                // After D3D initialization completes, repopulate display list to get refresh rate information
                 this.Invoke(new Action(() =>
                 {
                     PopulateDisplayList();
@@ -2162,9 +2162,9 @@ namespace TbEinkSuperFlushTurbo
             {
                 string errorMessage = $"Initialization failed: {ex.Message}";
                 Log(errorMessage + "\n" + ex.StackTrace);
-                MessageBox.Show(errorMessage, Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None); // 使用程序名称作为标题
+                MessageBox.Show(errorMessage, Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None); // Use program name as title
                 btnStart.Enabled = true;
-                // 齿轮按钮保持启用状态，无需特别处理
+                // Gear button remains enabled, no special handling needed
                 SafeUpdateStatusText("Status: Failed");
                 _cts?.Cancel();
                 _cts?.Dispose();
@@ -2186,19 +2186,19 @@ namespace TbEinkSuperFlushTurbo
             btnStart.Enabled = true;
             btnStop.Enabled = false;
 
-            // 重新启用设置项修改
+            // Re-enable settings modification
             trackPixelDelta.Enabled = true;
             trackTileSize.Enabled = true;
-            // 齿轮按钮保持启用状态，无需特别处理
+            // Gear button remains enabled, no special handling needed
         }
 
         private void btnSettings_Click(object? sender, EventArgs e)
         {
-            // 检查是否正在截屏
+            // Check if screen capture is running
             if (_pollTimer != null && _pollTimer.Enabled)
             {
                 string message = Localization.GetText("CannotModifySettingsWhileRunning");
-                string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                string title = Localization.GetText("WindowTitle"); // Use program name as title
                 MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -2209,7 +2209,7 @@ namespace TbEinkSuperFlushTurbo
                 {
                     _stopOver59hz = settingsForm.StopOver59Hz ? 1 : 0;
                     SaveConfig();
-                    Log($"设置已更新：停止超过59Hz显示器 = {(settingsForm.StopOver59Hz ? "开启" : "关闭")}");
+                    Log($"Settings updated: Stop over 59Hz displays = {(settingsForm.StopOver59Hz ? "enabled" : "disabled")}");
                 }
             }
         }
@@ -2232,7 +2232,7 @@ namespace TbEinkSuperFlushTurbo
         {
             string helpText;
 
-            // 根据当前语言显示相应语言的帮助内容
+            // Display help content in appropriate language based on current language
             if (Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional)
             {
                 helpText = "像素颜色差异阈值说明:\n\n" +
@@ -2252,7 +2252,7 @@ namespace TbEinkSuperFlushTurbo
                     "Recommended: Start with 10 and adjust based on your theme.";
             }
 
-            MessageBox.Show(helpText, Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None); // 使用程序名称作为标题
+            MessageBox.Show(helpText, Localization.GetText("WindowTitle"), MessageBoxButtons.OK, MessageBoxIcon.None); // Use program name as title
         }
 
         private void btnHelpPixelDelta_Paint(object? sender, PaintEventArgs e)
@@ -2260,14 +2260,14 @@ namespace TbEinkSuperFlushTurbo
             var btn = sender as Button;
             if (btn == null) return;
 
-            // 创建圆形区域
+            // Create circular region
             using (var path = new System.Drawing.Drawing2D.GraphicsPath())
             {
                 path.AddEllipse(0, 0, btn.Width - 1, btn.Height - 1);
                 btn.Region = new Region(path);
             }
 
-            // 绘制圆形背景
+            // Draw circular background
             using (var backgroundBrush = new SolidBrush(btn.BackColor))
             {
                 e.Graphics.FillEllipse(backgroundBrush, 0, 0, btn.Width - 1, btn.Height - 1);
@@ -2276,9 +2276,9 @@ namespace TbEinkSuperFlushTurbo
             using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
             using (var brush = new SolidBrush(btn.BackColor == Color.FromArgb(135, 206, 235) ? Color.White : btn.ForeColor))
             {
-                // 精确测量文本尺寸
+                // Precisely measure text size
                 var textSize = e.Graphics.MeasureString("?", font);
-                // 计算精确位置实现完美居中，并在圆圈内右移2个像素
+                // Calculate precise position for perfect centering, shift 2 pixels right within circle
                 var x = (btn.Width - textSize.Width) / 2 + 2;
                 var y = (btn.Height - textSize.Height) / 2;
                 e.Graphics.DrawString("?", font, brush, x, y);
@@ -2289,7 +2289,7 @@ namespace TbEinkSuperFlushTurbo
         {
             if (sender is Button btn)
             {
-                btn.BackColor = Color.FromArgb(135, 206, 235); // 稍微暗一点的淡蓝色
+                btn.BackColor = Color.FromArgb(135, 206, 235); // Slightly darker light blue
                 btn.Cursor = Cursors.Hand;
             }
         }
@@ -2307,52 +2307,52 @@ namespace TbEinkSuperFlushTurbo
         {
             if (_isRecordingHotkey)
             {
-                // 如果正在录制，优先处理录制逻辑
-                // 停止录制，如果没有输入任何按键则清空快捷键
+                // If recording, prioritize recording logic
+                // Stop recording, clear hotkey if no keys were input
                 _isRecordingHotkey = false;
                 btnToggleRecord.Text = "●";
                 btnToggleRecord.ForeColor = Color.Red;
                 btnToggleRecord.BackColor = Color.White;
 
-                // 如果文本框显示的是提示文字，说明用户没有输入任何按键
+                // If textbox shows hint text, user didn't input any keys
                 if (txtToggleHotkey.Text == Localization.GetText("PressHotkeyCombination"))
                 {
-                    // 用户没有输入任何按键，清空快捷键
+                    // User didn't input any keys, clear the hotkey
                     CancelHotkeyRecording();
                 }
                 else
                 {
-                    // 用户输入了按键，保存快捷键
+                    // User input keys, save the hotkey
                     SaveToggleHotkey();
                 }
             }
             else
             {
-                // 如果不在录制状态，检查是否正在运行
+                // If not recording, check if running
                 if (_pollTimer != null && _pollTimer.Enabled)
                 {
                     string message = Localization.CurrentLanguage == Localization.Language.ChineseSimplified || Localization.CurrentLanguage == Localization.Language.ChineseTraditional ?
                         "运行时无法修改热键，请先停止截屏。" :
                         "Cannot modify hotkey while screen capture is running, Please stop screen capture first.";
-                    string title = Localization.GetText("WindowTitle"); // 使用程序名称作为标题
+                    string title = Localization.GetText("WindowTitle");
                     MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.None);
                     return;
                 }
 
-                // 开始录制
+                // Start recording
                 _isRecordingHotkey = true;
-                btnToggleRecord.Text = "✓"; // 改为对勾符号
+                btnToggleRecord.Text = "✓"; // Changed to checkmark symbol
                 btnToggleRecord.BackColor = Color.White;
                 txtToggleHotkey.Text = Localization.GetText("PressHotkeyCombination");
 
-                // 开始录制时临时注销当前快捷键，避免冲突
+                // Temporarily unregister current hotkey to avoid conflicts
                 if (_isHotkeyRegistered)
                 {
                     NativeMethods.UnregisterHotKey(this.Handle, TOGGLE_HOTKEY_ID);
                     _isHotkeyRegistered = false;
                 }
 
-                // 开始录制时清空临时变量，确保每次录制都是全新的开始
+                // Clear temp variables when starting recording to ensure fresh start each time
                 _toggleHotkey = Keys.None;
             }
         }
@@ -2363,15 +2363,15 @@ namespace TbEinkSuperFlushTurbo
             if (btn == null) return;
             var text = btn.Text;
 
-            // 绘制背景
+            // Draw background
             e.Graphics.Clear(btn.BackColor);
 
-            // 根据文本内容选择不同的绘制方式，确保都基于中心对齐
+            // Choose drawing method based on text content, ensure center alignment
             using (var font = new Font(btn.Font.FontFamily, btn.Font.Size, btn.Font.Style))
             {
-                if (text == "●") // 圆点 - 改为圆环+内部小圆点
+                if (text == "●") // Circle dot - changed to ring + inner small dot
                 {
-                    // 检查是否是录制按钮，如果是则使用图片绘制
+                    // Check if it's the record button, use image if available
                     if (btn == btnToggleRecord)
                     {
                         DrawRecordButton(e.Graphics, btn.Width, btn.Height);
@@ -2380,39 +2380,39 @@ namespace TbEinkSuperFlushTurbo
                     {
                         using (var brush = new SolidBrush(btn.ForeColor))
                         {
-                            // 绘制圆环 - 参考方点尺寸，不要让圆环占满整个按钮
+                            // Draw ring - reference square dot size, don't let ring fill entire button
                             int baseSize = Math.Min(btn.Width, btn.Height);
-                            int outerDiameter = baseSize - 32; // 再放大圆环，从-36改为-32
-                            int ringThickness = 2; // 固定环厚度，不再DPI缩放
+                            int outerDiameter = baseSize - 32; // Enlarge ring further, changed from -36 to -32
+                            int ringThickness = 2; // Fixed ring thickness, no DPI scaling
                             int x = (btn.Width - outerDiameter) / 2;
                             int y = (btn.Height - outerDiameter) / 2;
 
-                            // 绘制外圆环（红色）
+                            // Draw outer ring (red)
                             using (var redBrush = new SolidBrush(Color.Red))
                             {
                                 e.Graphics.FillEllipse(redBrush, x, y, outerDiameter, outerDiameter);
                             }
 
-                            // 绘制内圆（白色背景，形成圆环效果）
+                            // Draw inner circle (white background, creating ring effect)
                             int innerDiameter = outerDiameter - (ringThickness * 2);
                             int innerX = x + ringThickness;
                             int innerY = y + ringThickness;
                             e.Graphics.FillEllipse(new SolidBrush(btn.BackColor), innerX, innerY, innerDiameter, innerDiameter);
 
-                            // 绘制中心小圆点 - 固定尺寸，不再DPI缩放
-                            int centerDiameter = innerDiameter - 12; // 减小中心圆点尺寸，保持比例协调
+                            // Draw center small dot - fixed size, no DPI scaling
+                            int centerDiameter = innerDiameter - 12; // Reduce center dot size, maintain proportional coordination
                             int centerX = (btn.Width - centerDiameter) / 2;
                             int centerY = (btn.Height - centerDiameter) / 2;
                             e.Graphics.FillEllipse(brush, centerX, centerY, centerDiameter, centerDiameter);
                         }
                     }
                 }
-                else if (text == "✓") // 对勾符号
+                else if (text == "✓") // Checkmark symbol
                 {
-                    // 绘制绿色对勾图像而不是文字
+                    // Draw green checkmark image instead of text
                     DrawGreenCheckmark(e.Graphics, btn.Width, btn.Height);
                 }
-                else // 其他字符，使用文本绘制
+                else // Other characters, use text drawing
                 {
                     using (var brush = new SolidBrush(btn.ForeColor))
                     {
@@ -2427,7 +2427,7 @@ namespace TbEinkSuperFlushTurbo
 
         private void DrawGreenCheckmark(Graphics g, int width, int height)
         {
-            // 首先尝试加载自定义图片
+            // Try to load custom image first
             try
             {
                 string imagePath = Path.Combine(Application.StartupPath, "Resources", "checkmark.png");
@@ -2435,18 +2435,18 @@ namespace TbEinkSuperFlushTurbo
                 {
                     using (var image = Image.FromFile(imagePath))
                     {
-                        // 计算居中位置
+                        // Calculate center position
                         int x = (width - image.Width) / 2;
                         int y = (height - image.Height) / 2;
 
-                        // 确保图片不会超出按钮边界
+                        // Ensure image doesn't exceed button boundaries
                         if (image.Width <= width && image.Height <= height)
                         {
                             g.DrawImage(image, x, y, image.Width, image.Height);
                         }
                         else
                         {
-                            // 如果图片太大，则按比例缩放
+                            // Scale down if image is too large
                             float scale = Math.Min((float)width / image.Width, (float)height / image.Height) * 0.8f;
                             int scaledWidth = (int)(image.Width * scale);
                             int scaledHeight = (int)(image.Height * scale);
@@ -2460,14 +2460,14 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                // 如果加载图片失败，继续使用绘制的绿色方块
+                // If image loading fails, continue with green block
                 System.Diagnostics.Debug.WriteLine($"Failed to load checkmark image: {ex.Message}");
             }
 
-            // 如果没有找到图片或加载失败，使用绿色方块作为备选
+            // If no image found or loading failed, use green block as fallback
             using (var brush = new SolidBrush(Color.Green))
             {
-                // 绘制一个居中的绿色方块
+                // Draw centered green block
                 int squareSize = Math.Min(width, height) / 2;
                 int x = (width - squareSize) / 2;
                 int y = (height - squareSize) / 2;
@@ -2477,7 +2477,7 @@ namespace TbEinkSuperFlushTurbo
 
         private void DrawRecordButton(Graphics g, int width, int height)
         {
-            // 首先尝试加载自定义图片
+            // Try to load custom image first
             try
             {
                 string imagePath = Path.Combine(Application.StartupPath, "Resources", "record_button.png");
@@ -2485,18 +2485,18 @@ namespace TbEinkSuperFlushTurbo
                 {
                     using (var image = Image.FromFile(imagePath))
                     {
-                        // 计算居中位置
+                        // Calculate center position
                         int x = (width - image.Width) / 2;
                         int y = (height - image.Height) / 2;
 
-                        // 确保图片不会超出按钮边界
+                        // Ensure image doesn't exceed button boundaries
                         if (image.Width <= width && image.Height <= height)
                         {
                             g.DrawImage(image, x, y, image.Width, image.Height);
                         }
                         else
                         {
-                            // 如果图片太大，则按比例缩放
+                            // Scale down if image is too large
                             float scale = Math.Min((float)width / image.Width, (float)height / image.Height) * 0.8f;
                             int scaledWidth = (int)(image.Width * scale);
                             int scaledHeight = (int)(image.Height * scale);
@@ -2510,14 +2510,14 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                // 如果加载图片失败，继续使用绘制的红色圆点
+                // If image loading fails, continue with red dot
                 System.Diagnostics.Debug.WriteLine($"Failed to load record button image: {ex.Message}");
             }
 
-            // 如果没有找到图片或加载失败，使用红色圆点作为备选
+            // If no image found or loading failed, use red dot as fallback
             using (var brush = new SolidBrush(Color.Red))
             {
-                // 绘制一个居中的红色圆点
+                // Draw centered red dot
                 int diameter = Math.Min(width, height) / 2;
                 int x = (width - diameter) / 2;
                 int y = (height - diameter) / 2;
@@ -2529,7 +2529,7 @@ namespace TbEinkSuperFlushTurbo
         {
             if (sender is Button btn)
             {
-                btn.BackColor = Color.LightGray; // 悬停时背景变灰
+                btn.BackColor = Color.LightGray; // Background turns gray on hover
             }
         }
 
@@ -2537,7 +2537,7 @@ namespace TbEinkSuperFlushTurbo
         {
             if (sender is Button btn)
             {
-                btn.BackColor = Color.White; // 离开时恢复白色
+                btn.BackColor = Color.White; // Restore white on leave
             }
         }
 
@@ -2545,8 +2545,8 @@ namespace TbEinkSuperFlushTurbo
         {
             if (sender is Button btn)
             {
-                btn.BackColor = Color.DarkBlue; // 悬停时背景变为深蓝色
-                btn.ForeColor = Color.White; // 悬停时齿轮文本变为白色
+                btn.BackColor = Color.DarkBlue; // Background becomes dark blue on hover
+                btn.ForeColor = Color.White; // Gear text becomes white on hover
             }
         }
 
@@ -2554,8 +2554,8 @@ namespace TbEinkSuperFlushTurbo
         {
             if (sender is Button btn)
             {
-                btn.BackColor = Color.White; // 离开时恢复白色背景
-                btn.ForeColor = SystemColors.ControlText; // 离开时恢复系统默认文本颜色
+                btn.BackColor = Color.White; // Restore white background on leave
+                btn.ForeColor = SystemColors.ControlText; // Restore system default text color on leave
             }
         }
 
@@ -2574,36 +2574,36 @@ namespace TbEinkSuperFlushTurbo
 
         private void InitializeTrayIcon()
         {
-            // 设置托盘图标
+            // Set tray icon
             _trayIcon.Icon = this.Icon ?? SystemIcons.Application;
             _trayIcon.Visible = true;
             _trayIcon.Text = Localization.GetText("TrayIconText");
 
-            // 创建托盘菜单
+            // Create tray menu
             ContextMenuStrip trayMenu = new ContextMenuStrip();
 
-            // 显示面板菜单项
+            // Show panel menu item
             ToolStripMenuItem showItem = new ToolStripMenuItem(Localization.GetText("ShowPanel"));
             showItem.Click += (sender, e) => ShowMainForm();
             trayMenu.Items.Add(showItem);
 
-            // 分隔符
+            // Separator
             trayMenu.Items.Add(new ToolStripSeparator());
 
-            // 退出菜单项
+            // Exit menu item
             ToolStripMenuItem exitItem = new ToolStripMenuItem(Localization.GetText("Exit"));
             exitItem.Click += (sender, e) => ExitApplication();
             trayMenu.Items.Add(exitItem);
 
-            // 设置托盘图标上下文菜单
+            // Set tray icon context menu
             _trayIcon.ContextMenuStrip = trayMenu;
 
-            // 设置托盘图标点击事件
+            // Set tray icon click events
             _trayIcon.MouseClick += TrayIcon_MouseClick;
             _trayIcon.MouseDoubleClick += TrayIcon_MouseDoubleClick;
         }
 
-        // 显示主窗体
+        // Show main form
         private void ShowMainForm()
         {
             _allowVisible = true;
@@ -2612,14 +2612,14 @@ namespace TbEinkSuperFlushTurbo
             this.Activate();
         }
 
-        // 退出应用程序
+        // Exit application
         private void ExitApplication()
         {
             _allowClose = true;
             this.Close();
         }
 
-        // 托盘图标单击事件
+        // Tray icon single click event
         private void TrayIcon_MouseClick(object? sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
@@ -2628,32 +2628,32 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 托盘图标双击事件
+        // Tray icon double click event
         private void TrayIcon_MouseDoubleClick(object? sender, MouseEventArgs e)
         {
             ShowMainForm();
         }
 
-        // 重写OnResize方法处理最小化到任务栏
+        // Override OnResize method to handle minimize to taskbar
         protected override void OnResize(EventArgs e)
         {
-            // 当窗口最小化时，正常最小化到任务栏
+            // When window is minimized, normally minimize to taskbar
             base.OnResize(e);
         }
 
-        // 重写OnFormClosing方法控制窗体关闭
+        // Override OnFormClosing method to control form closing
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            // 区分关闭原因：
-            // 如果是用户点击关闭按钮，则隐藏窗口但不退出程序
-            // 如果是其他原因（如系统关机），则正常退出
+            // Distinguish closing reasons:
+            // If user clicks close button, hide window but don't exit
+            // If other reasons (like system shutdown), exit normally
             if (!_allowClose && e.CloseReason == CloseReason.UserClosing)
             {
-                // 用户点击关闭按钮[X]，隐藏窗口但保持托盘图标
+                // User clicked close button [X], hide window but keep tray icon
                 e.Cancel = true;
-                this.Hide(); // 隐藏窗口而不是最小化
+                this.Hide(); // Hide window instead of minimize
 
-                // 显示托盘提示
+                // Show tray balloon tip
                 _trayIcon.BalloonTipTitle = Localization.GetText("MinimizedToTrayTitle");
                 _trayIcon.BalloonTipText = Localization.GetText("MinimizedToTrayMessage");
                 _trayIcon.ShowBalloonTip(2000);
@@ -2668,7 +2668,7 @@ namespace TbEinkSuperFlushTurbo
             base.OnFormClosing(e);
         }
 
-        // 退出菜单项点击事件
+        // Exit menu item click event
         private void exitToolStripMenuItem_Click(object? sender, EventArgs e)
         {
             ExitApplication();
@@ -2696,10 +2696,10 @@ namespace TbEinkSuperFlushTurbo
 
         private void lblInfo_TextChanged(object? sender, EventArgs e)
         {
-            AdjustStatusLabelProperties(); // 文本改变时重新调整标签大小
+            AdjustStatusLabelProperties(); // Re-adjust label size when text changes
         }
 
-        // 安全地更新状态标签文本，确保线程安全和空值处理
+        // Safely update status label text, ensuring thread safety and null handling
         private void SafeUpdateStatusText(string text)
         {
             if (this.InvokeRequired)
@@ -2716,23 +2716,23 @@ namespace TbEinkSuperFlushTurbo
                 }
 
                 lblInfo.Text = text;
-                Log($"状态更新: {text}");
+                Log($"Status updated: {text}");
             }
             catch (Exception ex)
             {
-                Log($"状态文本更新失败: {ex.Message}");
-                // 作为后备方案，设置为默认停止状态
+                Log($"Status text update failed: {ex.Message}");
+                // As fallback, set to default stopped state
                 lblInfo.Text = Localization.GetText("StatusStopped");
             }
         }
 
-        // 更新本地化文本
+        // Update localized texts
         private void UpdateLocalizedTexts()
         {
-            // 更新窗口标题
+            // Update window title
             this.Text = Localization.GetText("WindowTitle");
 
-            // 更新标签文本
+            // Update label texts
             lblPixelDelta.Text = Localization.GetText("PixelColorDiff");
             lblTileSize.Text = Localization.GetText("DetectInterval");
             lblToggleHotkey.Text = Localization.GetText("ToggleHotkey");
@@ -2740,34 +2740,34 @@ namespace TbEinkSuperFlushTurbo
             btnHelpPixelDelta.Text = Localization.GetText("QuestionMark");
             lblDisplay.Text = Localization.GetText("DisplaySelection");
 
-            // 更新按钮文本
+            // Update button texts
             btnStart.Text = Localization.GetText("Start");
             btnStop.Text = Localization.GetText("Stop");
 
-            // 安全地更新状态标签 - 处理空文本和意外值
+            // Safely update status label - handle empty text and unexpected values
             try
             {
                 string currentText = lblInfo.Text ?? "";
 
-                // 如果当前文本为空，设置为默认停止状态
+                // If current text is empty, set to default stopped state
                 if (string.IsNullOrEmpty(currentText))
                 {
                     lblInfo.Text = Localization.GetText("StatusStopped");
-                    Log("检测到空状态文本，已重置为停止状态");
+                    Log("Detected empty status text, reset to stopped state");
                 }
                 else
                 {
-                    // 更新状态标签 - 使用更安全的转换逻辑
+                    // Update status label - use safer conversion logic
                     string newText = currentText switch
                     {
                         "Status: Stopped" => Localization.GetText("StatusStopped"),
                         "Status: Running" => Localization.GetText("StatusRunning"),
                         "Status: Initializing GPU capture..." => Localization.GetText("StatusInitializing"),
                         "Status: Failed" => Localization.GetText("StatusFailed"),
-                        _ => currentText // 保持原有文本，避免数据丢失
+                        _ => currentText // Keep original text to avoid data loss
                     };
 
-                    // 只有在文本确实需要更新时才更新
+                    // Only update if text actually needs updating
                     if (newText != currentText && !string.IsNullOrEmpty(newText))
                     {
                         lblInfo.Text = newText;
@@ -2776,92 +2776,92 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                Log($"本地化状态文本更新失败: {ex.Message}");
-                // 作为后备方案，设置为默认停止状态
+                Log($"Localized status text update failed: {ex.Message}");
+                // As fallback, set to default stopped state
                 lblInfo.Text = Localization.GetText("StatusStopped");
             }
 
-            // 调整状态标签属性以支持换行
+            // Adjust status label properties to support word wrap
             AdjustStatusLabelProperties();
         }
 
-        // 确保状态标签能够正确换行显示
+        // Ensure status label can correctly display word wrap
         private void AdjustStatusLabelProperties()
         {
             try
             {
-               Log($"AdjustStatusLabelProperties: 开始调整 - panelBottom.Width={panelBottom.Width}, lblInfo.Text='{lblInfo.Text}'");
+               Log($"AdjustStatusLabelProperties: Starting adjustment - panelBottom.Width={panelBottom.Width}, lblInfo.Text='{lblInfo.Text}'");
 
-              // 确保标签可见且有宽度
+              // Ensure label is visible and has width
               lblInfo.Visible = true;
               lblInfo.AutoSize = true;
 
-              // 声明变量用于文本测量
+              // Declare variable for text measurement
               Size textSize;
 
-              // 确保宽度不为0
+              // Ensure width is not 0
               int labelWidth = panelBottom.Width - 10;
               Log($"AdjustStatusLabelProperties: panelBottom.Width={panelBottom.Width}, labelWidth={labelWidth}");
               if (labelWidth <= 0)
               {
-                  // 如果panelBottom宽度无效，尝试使用窗口宽度
+                  // If panelBottom width is invalid, try using window width
                   labelWidth = this.ClientSize.Width - 20;
                   Log($"AdjustStatusLabelProperties: this.ClientSize.Width={this.ClientSize.Width}, labelWidth={labelWidth}");
                   if (labelWidth <= 0)
                   {
-                      // 如果窗口宽度也无效，计算文本所需的最小宽度
+                      // If window width is also invalid, calculate minimum width required by text
                       textSize = TextRenderer.MeasureText(lblInfo.Text, lblInfo.Font);
-                      labelWidth = textSize.Width + 20; // 添加20像素的边距
-                      Log($"AdjustStatusLabelProperties: 窗口宽度也无效，使用文本最小宽度 {labelWidth}");
+                      labelWidth = textSize.Width + 20; // Add 20 pixels margin
+                      Log($"AdjustStatusLabelProperties: Window width also invalid, using text minimum width {labelWidth}");
                   }
-                  Log($"AdjustStatusLabelProperties: panelBottom.Width={panelBottom.Width} 无效，使用窗口宽度 {labelWidth}");
+                  Log($"AdjustStatusLabelProperties: panelBottom.Width={panelBottom.Width} invalid, using window width {labelWidth}");
               }
               
-              // 计算文本在指定宽度下的实际大小（包括换行和行间距）
+              // Calculate actual size of text at specified width (including line breaks and line spacing)
               textSize = TextRenderer.MeasureText(lblInfo.Text, lblInfo.Font, new Size(labelWidth, int.MaxValue), TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
               
-              // 根据字体大小计算额外的边距，确保第二行完全显示
-              int extraMargin = (int)(lblInfo.Font.Size * 1.5); // 边距为字体大小的1.5倍
+              // Calculate extra margin based on font size to ensure second line displays completely
+              int extraMargin = (int)(lblInfo.Font.Size * 1.5); // Margin is 1.5 times font size
               
-              // 设置标签的最大宽度和高度
-              lblInfo.MaximumSize = new Size(labelWidth, int.MaxValue); // 允许高度自动调整
-              lblInfo.Size = new Size(labelWidth, textSize.Height + extraMargin); // 添加动态计算的边距
+              // Set maximum width and height of the label
+              lblInfo.MaximumSize = new Size(labelWidth, int.MaxValue); // Allow height to auto-adjust
+              lblInfo.Size = new Size(labelWidth, textSize.Height + extraMargin); // Add dynamically calculated margin
               
-              // 确保面板底部有足够的空间显示整个标签
-              if (panelBottom.Height < lblInfo.Height + 10) // 面板底部需要额外10像素的边距
+              // Ensure panel bottom has enough space to display entire label
+              if (panelBottom.Height < lblInfo.Height + 10) // Panel bottom needs additional 10 pixels margin
               {
                   panelBottom.Height = lblInfo.Height + 10;
-                  Log($"AdjustStatusLabelProperties: 调整panelBottom.Height为 {panelBottom.Height}");
+                  Log($"AdjustStatusLabelProperties: Adjusted panelBottom.Height to {panelBottom.Height}");
               }
               
-              // 调整日志栏的位置，确保它不会被状态栏覆盖
-              listBox.Location = new Point(listBox.Location.X, lblInfo.Height + 5); // 日志栏位于状态栏下方5像素
-              listBox.Size = new Size(listBox.Size.Width, panelBottom.Height - lblInfo.Height - 10); // 调整日志栏高度，确保它不会超出面板底部
+              // Adjust log list position to ensure it's not covered by status label
+              listBox.Location = new Point(listBox.Location.X, lblInfo.Height + 5); // Log list is 5 pixels below status label
+              listBox.Size = new Size(listBox.Size.Width, panelBottom.Height - lblInfo.Height - 10); // Adjust log list height to ensure it doesn't exceed panel bottom
               
-              Log($"AdjustStatusLabelProperties: 最终labelWidth={labelWidth}, labelHeight={lblInfo.Height}");
+              Log($"AdjustStatusLabelProperties: Final labelWidth={labelWidth}, labelHeight={lblInfo.Height}");
 
-              // 添加日志信息，检查控件属性
+              // Add log information to check control properties
               Log($"AdjustStatusLabelProperties: lblInfo.ForeColor={lblInfo.ForeColor}, lblInfo.BackColor={lblInfo.BackColor}");
               Log($"AdjustStatusLabelProperties: lblInfo.TextAlign={lblInfo.TextAlign}, lblInfo.Font={lblInfo.Font}");
               Log($"AdjustStatusLabelProperties: lblInfo.Location={lblInfo.Location}, lblInfo.Size={lblInfo.Size}");
               Log($"AdjustStatusLabelProperties: lblInfo.Visible={lblInfo.Visible}, lblInfo.Enabled={lblInfo.Enabled}");
 
-                // 处理空文本情况
+                // Handle empty text case
                 if (string.IsNullOrEmpty(lblInfo.Text))
                 {
                     lblInfo.Text = Localization.GetText("StatusStopped");
-                    Log("AdjustStatusLabelProperties: 检测到空文本，已重置为停止状态");
+                    Log("AdjustStatusLabelProperties: Detected empty text, reset to stopped state");
                 }
 
-                // 强制面板重新布局
+                // Force panel to re-layout
                 panelBottom.PerformLayout();
             }
             catch (Exception ex)
             {
-                Log($"调整状态标签属性失败: {ex.Message}");
-                // 确保至少有一个合理的默认高度
+                Log($"Failed to adjust status label properties: {ex.Message}");
+                // Ensure at least a reasonable default height
                 lblInfo.Height = 25;
-                Log($"调整状态标签属性失败，设置默认高度25");
+                Log($"Failed to adjust status label properties, set default height 25");
             }
         }
     }

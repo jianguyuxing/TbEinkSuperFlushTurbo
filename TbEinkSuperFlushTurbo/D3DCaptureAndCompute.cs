@@ -15,7 +15,7 @@ using static Vortice.Direct3D11.D3D11;
 
 namespace TbEinkSuperFlushTurbo
 {
-    // D3D11_DRIVER_TYPE 对应的枚举（Win32 原生）
+    // D3D11_DRIVER_TYPE corresponding enum (Win32 native)
     enum DriverType : uint
     {
         Unknown = 0,
@@ -26,14 +26,14 @@ namespace TbEinkSuperFlushTurbo
         Warp = 5
     }
 
-    // 合围区域配置结构,多个相邻区块的合围区域用于抑制滚动刷新
+    // Bounding area configuration structure, multiple adjacent tile bounding areas for suppressing scrolling refresh
     public struct BoundingAreaConfig
     {
-        public int Width;       // 每个合围区域宽度（区块单位）
-        public int Height;      // 每个合围区域高度（区块单位）
-        public int HistoryFrames; // 历史帧数
-        public int ChangeThreshold; // 变化阈值
-        public int RefreshBlockThreshold; // 判定合围区域刷新所需的区块数阈值
+        public int Width;       // Width of each bounding area (in tiles)
+        public int Height;      // Height of each bounding area (in tiles)
+        public int HistoryFrames; // Number of history frames
+        public int ChangeThreshold; // Change threshold
+        public int RefreshBlockThreshold; // Tile count threshold required to determine bounding area refresh
 
         public BoundingAreaConfig(int width, int height, int historyFrames, int changeThreshold, int refreshBlockThreshold)
         {
@@ -47,18 +47,18 @@ namespace TbEinkSuperFlushTurbo
 
     public class D3DCaptureAndCompute : IDisposable
     {
-        public int TileSize { get; set; } //区块尺寸边长，单位是像素
+        public int TileSize { get; set; } // Tile side length, in pixels
         public int PixelDelta { get; set; } // Per-component threshold
-        public uint AverageWindowSize { get; set; } // 平均窗口大小（帧数）
-        public uint StableFramesRequired { get; set; } // 稳定帧数，平衡响应速度和稳定性
-        public uint AdditionalCooldownFrames { get; set; } // 额外冷却帧数，避免过度刷新
-        public uint FirstRefreshExtraDelay { get; set; } // 首次刷新额外延迟帧数，用于-1状态区块
-        public int CaretCheckInterval { get; set; } // 文本光标检查间隔（毫秒）
-        public int ImeCheckInterval { get; set; } // 输入法窗口检查间隔（毫秒）
-        public int MouseExclusionRadiusFactor { get; set; } // 鼠标排除区域半径因子
-        public uint ProtectionFrames { get; set; } // 从MainForm传入的保护期帧数
+        public uint AverageWindowSize { get; set; } // Average window size (in frames)
+        public uint StableFramesRequired { get; set; } // Number of stable frames, balancing response speed and stability
+        public uint AdditionalCooldownFrames { get; set; } // Additional cooldown frames to avoid excessive refresh
+        public uint FirstRefreshExtraDelay { get; set; } // Extra delay frames for first refresh, used for -1 state tiles
+        public int CaretCheckInterval { get; set; } // Text cursor check interval (ms)
+        public int ImeCheckInterval { get; set; } // IME window check interval (ms)
+        public int MouseExclusionRadiusFactor { get; set; } // Mouse exclusion area radius factor
+        public uint ProtectionFrames { get; set; } // Protection period frames passed from MainForm
 
-        // 合围区域配置
+        // Bounding area configuration
         public BoundingAreaConfig BoundingArea { get; set; }
 
         public int ScreenWidth => _screenW;
@@ -66,7 +66,7 @@ namespace TbEinkSuperFlushTurbo
         public int TilesX => _tilesX;
         public int TilesY => _tilesY;
 
-        // 添加逻辑分辨率属性
+        // Added logical resolution properties
         public int LogicalScreenWidth => (int)(_screenW / _dpiScaleX);
         public int LogicalScreenHeight => (int)(_screenH / _dpiScaleY);
         public float DpiScaleX => _dpiScaleX;
@@ -78,55 +78,55 @@ namespace TbEinkSuperFlushTurbo
         private IDXGIOutputDuplication? _deskDup;
         private int _screenW, _screenH;
         private int _tilesX, _tilesY;
-        private Format _screenFormat; // 存储屏幕的实际格式
+        private Format _screenFormat; // Stores the actual format of the screen
 
-        // DPI和缩放相关
+        // DPI and scaling related
         private float _dpiScaleX = 1.0f;
         private float _dpiScaleY = 1.0f;
         private float _dpiX = 96.0f;
         private float _dpiY = 96.0f;
 
-        // 选定显示器的索引
+        // Index of the selected display
         private int _targetScreenIndex = 0;
 
-        // 屏幕纹理
+        // Screen textures
         private ID3D11Texture2D? _gpuTexCurr;
         private ID3D11Texture2D? _gpuTexPrev;
 
-        // 格式检测
+        // Format detection
         private bool _formatDetected = false;
         private Format _actualDesktopFormat = Format.B8G8R8A8_UNorm;
 
-        // 状态缓冲区 (核心逻辑) - 现在每个图块存储4个uint的历史差异
-        private ID3D11Buffer? _tileStateIn;  // u0: 上一帧的状态 (输入)
+        // State buffer (core logic) - now each tile stores 4 uints of historical differences
+        private ID3D11Buffer? _tileStateIn;  // u0: Previous frame state (input)
         private ID3D11UnorderedAccessView? _tileStateInUAV;
-        private ID3D11Buffer? _tileStateOut; // u1: 当前帧的新状态 (输出)
+        private ID3D11Buffer? _tileStateOut; // u1: Current frame new state (output)
         private ID3D11UnorderedAccessView? _tileStateOutUAV;
 
-        // 刷新列表 (输出)
-        private ID3D11Buffer? _refreshList; // u2: 需要刷新的图块索引列表
+        // Refresh list (output)
+        private ID3D11Buffer? _refreshList; // u2: List of tile indices that need refresh
         private ID3D11UnorderedAccessView? _refreshListUAV;
-        private ID3D11Buffer? _refreshCounter; // u3: 刷新列表的原子计数器
+        private ID3D11Buffer? _refreshCounter; // u3: Atomic counter for refresh list
         private ID3D11UnorderedAccessView? _refreshCounterUAV;
-        private ID3D11Buffer? _refreshListReadback; // 用于从 GPU 读回刷新列表
-        private ID3D11Buffer? _refreshCounterReadback; // 用于从 GPU 读回计数器
-        private ID3D11Buffer? _tileStateInReadback; // 用于从 GPU 读回图块状态
+        private ID3D11Buffer? _refreshListReadback; // For reading refresh list from GPU
+        private ID3D11Buffer? _refreshCounterReadback; // For reading counter from GPU
+        private ID3D11Buffer? _tileStateInReadback; // For reading tile state from GPU
 
-        // 亮度数据缓冲区
-        private ID3D11Buffer? _tileBrightness; // u4: 瓦片亮度数据
+        // Brightness data buffer
+        private ID3D11Buffer? _tileBrightness; // u4: Tile brightness data
         private ID3D11UnorderedAccessView? _tileBrightnessUAV;
-        private ID3D11Buffer? _tileBrightnessReadback; // 用于从 GPU 读回亮度数据
+        private ID3D11Buffer? _tileBrightnessReadback; // For reading brightness data from GPU
 
-        // GPU端状态管理缓冲区
+        // GPU-side state management buffers
         private ID3D11Buffer? _tileStableCountersBuffer; // u5
         private ID3D11UnorderedAccessView? _tileStableCountersUAV;
         private ID3D11Buffer? _tileProtectionExpiryBuffer; // u6
         private ID3D11UnorderedAccessView? _tileProtectionExpiryUAV;
 
-        // 合围区域历史帧缓冲区
+        // Bounding area history frame buffer
         private ID3D11Buffer? _boundingAreaHistoryBuffer; // u7
 
-        // --- 滚动抑制相关资源 ---
+        // --- Scroll suppression related resources ---
         private ID3D11Buffer? _boundingAreaTileChangeCountBuffer; // u7 (GPU-side counter)
         private ID3D11UnorderedAccessView? _boundingAreaTileChangeCountUAV;
         private ID3D11Buffer? _boundingAreaTileChangeCountReadback; // Readback for the counter
@@ -137,42 +137,42 @@ namespace TbEinkSuperFlushTurbo
         private ID3D11Buffer? _paramBuffer;
 
         private Action<string>? _debugLogger; // Field to store the logger
-        private bool _enableDetailedDebugLogs = false; // 控制是否打印详细的DEBUG日志
+        private bool _enableDetailedDebugLogs = false; // Controls whether to print detailed DEBUG logs
 
-        // 异步操作同步控制
-        private readonly SemaphoreSlim _captureSemaphore = new SemaphoreSlim(1, 1); // 防止并发捕获
-        private int _isCapturing = 0; // 原子标志，防止重入
+        // Async operation synchronization control
+        private readonly SemaphoreSlim _captureSemaphore = new SemaphoreSlim(1, 1); // Prevent concurrent capture
+        private int _isCapturing = 0; // Atomic flag to prevent reentry
 
-        // DXGI捕获优化相关
-        private int _consecutiveTimeouts = 0; // 连续超时计数
-        private int _consecutiveFailures = 0; // 连续失败计数
-        private int _captureAttemptCount = 0; // 捕获尝试次数
-        private int _captureSuccessCount = 0; // 捕获成功次数
-        private DateTime _lastSuccessfulCapture = DateTime.MinValue; // 上次成功捕获时间
-        private int _baseTimeoutMs = 100; // 基础超时时间
-        private int _maxTimeoutMs = 500; // 最大超时时间
+        // DXGI capture optimization related
+        private int _consecutiveTimeouts = 0; // Consecutive timeout count
+        private int _consecutiveFailures = 0; // Consecutive failure count
+        private int _captureAttemptCount = 0; // Capture attempt count
+        private int _captureSuccessCount = 0; // Capture success count
+        private DateTime _lastSuccessfulCapture = DateTime.MinValue; // Last successful capture time
+        private int _baseTimeoutMs = 100; // Base timeout time
+        private int _maxTimeoutMs = 500; // Maximum timeout time
 
-        // Eink屏幕兼容性支持
-        private bool _useGdiCapture = false; // 是否使用GDI+捕获
-        private bool _isEinkScreen = false; // 是否为eink屏幕
-        private bool _forceDirectXCapture; // 是否强制使用DirectX捕获（从MainForm传入）
-        private double _detectedRefreshRate = 60.0; // 检测到的刷新率
-        private Bitmap? _gdiBitmap; // GDI+位图用于屏幕捕获
-        private Graphics? _gdiGraphics; // GDI+图形对象
-        private Rectangle _screenBounds; // 屏幕边界
+        // Eink screen compatibility support
+        private bool _useGdiCapture = false; // Whether to use GDI+ capture
+        private bool _isEinkScreen = false; // Whether it is an eink screen
+        private bool _forceDirectXCapture; // Whether to force DirectX capture (passed from MainForm)
+        private double _detectedRefreshRate = 60.0; // Detected refresh rate
+        private Bitmap? _gdiBitmap; // GDI+ bitmap for screen capture
+        private Graphics? _gdiGraphics; // GDI+ graphics object
+        private Rectangle _screenBounds; // Screen bounds
 
         private bool _isFirstFrame = true; // Flag to handle the first frame capture
         private bool _needsTextureRecreate = false; // Flag to indicate texture recreation is needed
 
-        // 鼠标和输入法相关
+        // Mouse and IME related
         private Point _lastMousePosition = new Point(-1, -1);
         private Rectangle _lastImeRect = Rectangle.Empty;
         private DateTime _lastImeCheck = DateTime.MinValue;
-        // 添加文本光标相关字段
+        // Added text cursor related fields
         private Point _lastCaretPosition = new Point(-1, -1);
         private DateTime _lastCaretCheck = DateTime.MinValue;
         private IntPtr _lastFocusWindow = IntPtr.Zero;
-        // 添加GUI线程信息相关字段
+        // Added GUI thread information related fields
         private uint _lastGuiThread = 0;
         private Point _lastGuiCaretPosition = new Point(-1, -1);
         private DateTime _lastGuiCaretCheck = DateTime.MinValue;
@@ -181,7 +181,7 @@ namespace TbEinkSuperFlushTurbo
         {
             _debugLogger = debugLogger;
             _forceDirectXCapture = forceDirectXCapture;
-            BoundingArea = boundingArea; // 使用从MainForm传入的配置
+            BoundingArea = boundingArea; // Use configuration passed from MainForm
             Console.WriteLine("=== D3DCaptureAndCompute Constructor Started ===");
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
         }
@@ -199,24 +199,24 @@ namespace TbEinkSuperFlushTurbo
             ImeCheckInterval = imeCheckInterval;
             MouseExclusionRadiusFactor = mouseExclusionRadiusFactor;
             _forceDirectXCapture = forceDirectXCapture;
-            BoundingArea = boundingArea; // 使用从MainForm传入的配置
+            BoundingArea = boundingArea; // Use configuration passed from MainForm
             ProtectionFrames = protectionFrames;
             _targetScreenIndex = targetScreenIndex;
 
             Console.WriteLine("=== D3DCaptureAndCompute Constructor Started ===");
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Started ===");
 
-            // 检测系统DPI设置（根据选择的显示器）
+            // Detect system DPI settings (based on selected display)
             DetectSystemDpiSettings();
 
-            // 创建独立的日志文件用于调试
+            // Create independent log file for debugging
             try
             {
                 string logDir = Path.Combine(AppContext.BaseDirectory, "Logs");
                 if (!Directory.Exists(logDir))
                     Directory.CreateDirectory(logDir);
                 else
-                    // 删除除最新日志文件外的所有D3D日志文件
+                    // Delete all D3D log files except the latest one
                     CleanupOldD3DLogFiles(logDir);
             }
             catch (Exception logEx)
@@ -289,33 +289,33 @@ namespace TbEinkSuperFlushTurbo
                         var outputDesc = output.Description;
                         int width = outputDesc.DesktopCoordinates.Right - outputDesc.DesktopCoordinates.Left;
                         int height = outputDesc.DesktopCoordinates.Bottom - outputDesc.DesktopCoordinates.Top;
-                        // 仅在详细模式下打印详细的输出信息
+                        // Only print detailed output information in verbose mode
                         if (_enableDetailedDebugLogs)
                         {
                             _debugLogger?.Invoke($"DEBUG: Output {i}: Name='{outputDesc.DeviceName}', Physical Resolution: {width}x{height}");
                         }
 
-                        // 获取显示器友好名称
+                        // Get display friendly name
                         string friendlyName = GetFriendlyDisplayName(outputDesc.DeviceName);
                         if (!string.IsNullOrEmpty(friendlyName))
                         {
-                            // 仅在详细模式下打印友好名称
+                            // Only print friendly name in verbose mode
                             if (_enableDetailedDebugLogs)
                             {
                                 _debugLogger?.Invoke($"DEBUG: Output {i}: Friendly Name='{friendlyName}'");
                             }
                         }
 
-                        // 计算逻辑分辨率（如果适用）
+                        // Calculate logical resolution (if applicable)
                         float logicalWidth = width / _dpiScaleX;
                         float logicalHeight = height / _dpiScaleY;
-                        // 仅在详细模式下打印逻辑分辨率信息
+                        // Only print logical resolution information in verbose mode
                         if (_enableDetailedDebugLogs)
                         {
                             _debugLogger?.Invoke($"DEBUG: Output {i}: Logical Resolution (approx): {logicalWidth:F0}x{logicalHeight:F0} (based on DPI scale {_dpiScaleX:F2}x{_dpiScaleY:F2})");
                         }
 
-                        // 尝试获取显示模式列表，但要处理可能的失败
+                        // Try to get display mode list, but handle possible failures
                         try
                         {
                             _debugLogger?.Invoke($"Getting display mode list for output {i} with Format.B8G8R8A8_UNorm...");
@@ -325,12 +325,12 @@ namespace TbEinkSuperFlushTurbo
                             {
                                 modeCount++;
                             }
-                            _debugLogger?.Invoke($"成功获取输出 {i} 的显示模式列表，共 {modeCount} 个模式");
+                            _debugLogger?.Invoke($"Successfully obtained display mode list for output {i}, total {modeCount} modes");
 
-                            // 仅在启用详细日志时打印所有显示模式
+                            // Only print all display modes when detailed logs are enabled
                             if (_enableDetailedDebugLogs)
                             {
-                                _debugLogger?.Invoke("详细显示模式信息:");
+                                _debugLogger?.Invoke("Detailed display mode information:");
                                 foreach (var mode in displayModeList)
                                 {
                                     double refreshRate = (double)mode.RefreshRate.Numerator / mode.RefreshRate.Denominator;
@@ -353,12 +353,12 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                // 使用系统默认顺序（Screen.AllScreens顺序），不特殊处理主显示器
-                // 为了匹配Windows Forms的Screen.AllScreens顺序，我们按照Screen.AllScreens的设备顺序排序
+                // Use system default order (Screen.AllScreens order), do not specially handle primary display
+                // To match Windows Forms' Screen.AllScreens order, we sort according to Screen.AllScreens' device order
                 var systemScreens = System.Windows.Forms.Screen.AllScreens;
                 var sortedOutputs = new List<IDXGIOutput>();
 
-                // 按照Screen.AllScreens的顺序来排序DXGI输出
+                // Sort DXGI outputs according to Screen.AllScreens order
                 foreach (var screen in systemScreens)
                 {
                     var screenDeviceName = screen.DeviceName;
@@ -380,7 +380,7 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                // 添加任何未匹配的DXGI输出（以防万一）
+                // Add any unmatched DXGI outputs (just in case)
                 foreach (var output in allOutputs)
                 {
                     if (!sortedOutputs.Contains(output))
@@ -389,44 +389,44 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                // 添加调试信息以验证DXGI输出与Screen.AllScreens的顺序匹配
-                _debugLogger?.Invoke($"DEBUG: Windows Forms Screen.AllScreens 顺序:");
+                // Add debug information to verify that DXGI outputs match Screen.AllScreens order
+                _debugLogger?.Invoke($"DEBUG: Windows Forms Screen.AllScreens order:");
                 for (int i = 0; i < systemScreens.Length; i++)
                 {
-                    _debugLogger?.Invoke($"  Screen [{i}]: {systemScreens[i].DeviceName}, 主显示器: {systemScreens[i].Primary}, 边界: {systemScreens[i].Bounds}");
+                    _debugLogger?.Invoke($"  Screen [{i}]: {systemScreens[i].DeviceName}, Primary: {systemScreens[i].Primary}, Bounds: {systemScreens[i].Bounds}");
                 }
 
-                _debugLogger?.Invoke($"DEBUG: DXGI发现 {allOutputs.Count} 个输出:");
+                _debugLogger?.Invoke($"DEBUG: DXGI found {allOutputs.Count} outputs:");
                 for (int i = 0; i < allOutputs.Count; i++)
                 {
                     try
                     {
                         var desc = allOutputs[i].Description;
-                        _debugLogger?.Invoke($"  DXGI输出 [{i}]: {desc.DeviceName}, 坐标: {desc.DesktopCoordinates}");
+                        _debugLogger?.Invoke($"  DXGI output [{i}]: {desc.DeviceName}, Coordinates: {desc.DesktopCoordinates}");
                     }
                     catch (Exception ex)
                     {
-                        _debugLogger?.Invoke($"  DXGI输出 [{i}]: 无法获取详细信息: {ex.Message}");
+                        _debugLogger?.Invoke($"  DXGI output [{i}]: Failed to get detailed information: {ex.Message}");
                     }
                 }
 
-                _debugLogger?.Invoke($"DEBUG: 匹配后的DXGI输出顺序（按Screen.AllScreens顺序）:");
+                _debugLogger?.Invoke($"DEBUG: Matched DXGI output order (by Screen.AllScreens order):");
                 for (int i = 0; i < sortedOutputs.Count; i++)
                 {
                     try
                     {
                         var desc = sortedOutputs[i].Description;
-                        _debugLogger?.Invoke($"  匹配后 [{i}]: {desc.DeviceName}, 坐标: {desc.DesktopCoordinates}");
+                        _debugLogger?.Invoke($"  Matched [{i}]: {desc.DeviceName}, Coordinates: {desc.DesktopCoordinates}");
                     }
                     catch (Exception ex)
                     {
-                        _debugLogger?.Invoke($"  匹配后 [{i}]: 无法获取详细信息: {ex.Message}");
+                        _debugLogger?.Invoke($"  Matched [{i}]: Failed to get detailed information: {ex.Message}");
                     }
                 }
 
                 // Select output based on target screen index
                 int selectedScreenIndex = _targetScreenIndex;
-                _debugLogger?.Invoke($"DEBUG: 目标显示器索引参数: {selectedScreenIndex}, 可用输出数量: {sortedOutputs.Count}");
+                _debugLogger?.Invoke($"DEBUG: Target screen index parameter: {selectedScreenIndex}, Available outputs: {sortedOutputs.Count}");
 
                 if (selectedScreenIndex < 0 || selectedScreenIndex >= sortedOutputs.Count)
                 {
@@ -437,42 +437,42 @@ namespace TbEinkSuperFlushTurbo
                 var selectedOutput = sortedOutputs[selectedScreenIndex];
                 _debugLogger?.Invoke($"DEBUG: Selected output {selectedScreenIndex} for duplication.");
 
-                // 打印选中输出和对应的显示器信息
+                // Print selected output and corresponding display information
                 try
                 {
                     var desc = selectedOutput.Description;
-                    _debugLogger?.Invoke($"DEBUG: 选中输出详细信息 - 设备: {desc.DeviceName}, 坐标: {desc.DesktopCoordinates}");
+                    _debugLogger?.Invoke($"DEBUG: Selected output details - Device: {desc.DeviceName}, Coordinates: {desc.DesktopCoordinates}");
                 }
                 catch (Exception ex)
                 {
-                    _debugLogger?.Invoke($"DEBUG: 无法获取选中输出详细信息: {ex.Message}");
+                    _debugLogger?.Invoke($"DEBUG: Failed to get selected output details: {ex.Message}");
                 }
 
-                // 重新检测DPI设置，确保使用选中显示器的正确DPI
-                _debugLogger?.Invoke($"重新检测显示器 {selectedScreenIndex} 的DPI设置...");
+                // Re-detect DPI settings to ensure correct DPI for the selected display
+                _debugLogger?.Invoke($"Re-detecting DPI settings for display {selectedScreenIndex}...");
                 DetectSystemDpiSettings();
 
-                // 检测是否为eink屏幕
+                // Detect if it's an eink screen
                 _isEinkScreen = DetectEinkScreen(selectedOutput);
 
                 // If DirectX capture is not forced, prioritize GDI+ capture.
                 if (!_forceDirectXCapture)
                 {
-                    _debugLogger?.Invoke("非强制DirectX捕获模式，将优先尝试GDI+捕获");
+                    _debugLogger?.Invoke("Non-forced DirectX capture mode, will prioritize GDI+ capture");
 
                     // Directly use GDI+ capture, avoiding DuplicateOutput call
                     if (InitializeGdiCapture(selectedOutput))
                     {
                         _useGdiCapture = true;
-                        _debugLogger?.Invoke("已切换到GDI+捕获模式");
+                        _debugLogger?.Invoke("Switched to GDI+ capture mode");
                     }
                     else
                     {
-                        _debugLogger?.Invoke("GDI+捕获初始化失败，将尝试DirectX桌面复制");
+                        _debugLogger?.Invoke("GDI+ capture initialization failed, will try DirectX desktop duplication");
                     }
                 }
 
-                // 如果GDI+捕获失败，尝试DirectX桌面复制
+                // If GDI+ capture failed, try DirectX desktop duplication
                 if (!_useGdiCapture)
                 {
                     if (_forceDirectXCapture)
@@ -503,12 +503,12 @@ namespace TbEinkSuperFlushTurbo
 
                         var desc = selectedOutput.Description;
 
-                        // DXGI模式下直接使用DesktopCoordinates，确保与DXGI捕获的图像尺寸一致
+                        // In DXGI mode, directly use DesktopCoordinates to ensure consistent image size with DXGI capture
                         _screenW = desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left;
                         _screenH = desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top;
                         _debugLogger?.Invoke($"DEBUG: Using desktop coordinates for DXGI: {_screenW}x{_screenH}");
                         
-                        // 交叉验证：与System.Windows.Forms.Screen进行比对
+                        // Cross-validation: Compare with System.Windows.Forms.Screen
                         try
                         {
                             var systemScreens2 = System.Windows.Forms.Screen.AllScreens;
@@ -518,13 +518,13 @@ namespace TbEinkSuperFlushTurbo
                                 var screenBounds = matchingScreen.Bounds;
                                 _debugLogger?.Invoke($"DEBUG: System.Windows.Forms.Screen bounds: {screenBounds.Width}x{screenBounds.Height}");
                                 
-                                // 如果存在显著差异，使用Screen的bounds作为参考
+                                // If there is a significant difference, use Screen's bounds as reference
                                 if (Math.Abs(screenBounds.Width - _screenW) > 50 || Math.Abs(screenBounds.Height - _screenH) > 50)
                                 {
                                     _debugLogger?.Invoke($"DEBUG: Significant difference detected between DXGI and Screen bounds");
                                     _debugLogger?.Invoke($"DEBUG: DXGI: {_screenW}x{_screenH}, Screen: {screenBounds.Width}x{screenBounds.Height}");
                                     
-                                    // 记录但不立即修改，让后续的纹理检测来处理实际尺寸
+                                    // Record but don't modify immediately, let subsequent texture detection handle the actual size
                                 }
                             }
                             else
@@ -544,12 +544,12 @@ namespace TbEinkSuperFlushTurbo
                     }
                     catch (Exception ex)
                     {
-                        // 提供更详细的错误信息
+                        // Provide more detailed error information
                         _debugLogger?.Invoke($"DEBUG: DuplicateOutput failed: {ex.GetType().Name}: {ex.Message}");
                         _debugLogger?.Invoke($"DEBUG: HRESULT: 0x{ex.HResult:X8}");
                         _debugLogger?.Invoke($"DEBUG: StackTrace: {ex.StackTrace}");
 
-                        // 检查设备状态
+                        // Check device status
                         try
                         {
                             _debugLogger?.Invoke($"Device is valid: {_device.NativePointer != 0}");
@@ -560,46 +560,46 @@ namespace TbEinkSuperFlushTurbo
                             _debugLogger?.Invoke($"Failed to check device/output validity: {devEx.Message}");
                         }
 
-                        // 如果是eink屏幕或参数错误，尝试替代方法
+                        // If it's an eink screen or parameter error, try alternative methods
                         if (_isEinkScreen || ex.HResult == unchecked((int)0x80070057)) // E_INVALIDARG
                         {
-                            _debugLogger?.Invoke("检测到eink屏幕或参数错误，尝试替代捕获方法...");
+                            _debugLogger?.Invoke("Detected eink screen or parameter error, trying alternative capture methods...");
                             if (TryAlternativeCaptureMethods(selectedOutput))
                             {
-                                _debugLogger?.Invoke("替代捕获方法成功，继续初始化");
+                                _debugLogger?.Invoke("Alternative capture method successful, continuing initialization");
                             }
                             else
                             {
-                                throw new InvalidOperationException(@"桌面复制失败且无法使用替代方法。可能原因：
-1. eink屏幕的特殊显示模式不兼容
-2. 设备不支持桌面复制
-3. 请求的格式或分辨率不受支持
-4. 多显示器配置问题", ex);
+                                throw new InvalidOperationException(@"Desktop duplication failed and alternative methods cannot be used. Possible reasons:
+1. Incompatible with eink screen's special display mode
+2. Device does not support desktop duplication
+3. Requested format or resolution is not supported
+4. Multi-monitor configuration issues", ex);
                             }
                         }
                         else if (ex.HResult == unchecked((int)0x80070005)) // E_ACCESSDENIED
                         {
-                            throw new InvalidOperationException(@"桌面复制被拒绝。可能原因：
-1. 另一个应用程序正在使用桌面复制
-2. 程序没有足够的权限
-3. 需要以管理员权限运行", ex);
+                            throw new InvalidOperationException(@"Desktop duplication was denied. Possible reasons:
+1. Another application is using desktop duplication
+2. Program does not have sufficient permissions
+3. Need to run as administrator", ex);
                         }
                         else if (ex.HResult == unchecked((int)0x887A0001)) // DXGI_ERROR_UNSUPPORTED
                         {
-                            throw new InvalidOperationException("当前硬件或驱动程序不支持桌面复制功能", ex);
+                            throw new InvalidOperationException("The current hardware or driver does not support desktop duplication functionality", ex);
                         }
                         else
                         {
-                            throw new InvalidOperationException($"创建桌面复制失败: {ex.Message} (HRESULT: 0x{ex.HResult:X8})");
+                            throw new InvalidOperationException($"Failed to create desktop duplication: {ex.Message} (HRESULT: 0x{ex.HResult:X8})");
                         }
                     }
                 }
                 else
                 {
-                    // 使用GDI+捕获模式，设置屏幕尺寸
+                    // Using GDI+ capture mode, set screen size
                     var desc = selectedOutput.Description;
 
-                    // 尝试使用EnumDisplaySettings获取真实的物理分辨率
+                    // Try to get real physical resolution using EnumDisplaySettings
                     NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
                     devMode.dmSize = (short)Marshal.SizeOf(typeof(NativeMethods.DEVMODE));
 
@@ -617,12 +617,12 @@ namespace TbEinkSuperFlushTurbo
                         _debugLogger?.Invoke($"DEBUG (GDI): DEVMODE failed, using desktop coordinates: {_screenW}x{_screenH}");
                     }
 
-                    _debugLogger?.Invoke($"GDI+捕获模式，最终屏幕尺寸: {_screenW}x{_screenH}");
+                    _debugLogger?.Invoke($"GDI+ capture mode, final screen size: {_screenW}x{_screenH}");
                 }
 
-                // 获取桌面复制的实际格式
-                // 在第一个成功获取的帧中获取格式信息
-                _screenFormat = Format.B8G8R8A8_UNorm; // 先使用默认格式
+                // Get actual format of desktop duplication
+                // Get format information in the first successfully acquired frame
+                _screenFormat = Format.B8G8R8A8_UNorm; // Use default format first
                 _debugLogger?.Invoke($"DEBUG: Using default format: {_screenFormat}, will detect actual format on first frame");
             }
             catch (Exception ex)
@@ -638,21 +638,21 @@ namespace TbEinkSuperFlushTurbo
 
             _debugLogger?.Invoke($"Creating textures for screen {_screenW}x{_screenH}");
 
-            // 使用检测到的屏幕格式创建纹理
-            // 支持更多常见的桌面格式
+            // Create textures using detected screen format
+            // Support more common desktop formats
             var texFormat = _screenFormat;
             bool needConversion = false;
 
-            // 检查格式是否需要转换
+            // Check if format conversion is needed
             switch (texFormat)
             {
                 case Format.B8G8R8A8_UNorm:
                 case Format.R8G8B8A8_UNorm:
-                    // 直接支持
+                    // Directly supported
                     _debugLogger?.Invoke($"DEBUG: Format {texFormat} is directly supported");
                     break;
                 default:
-                    // 对于其他格式，我们需要转换
+                    // For other formats, we need conversion
                     _debugLogger?.Invoke($"DEBUG: Format {_screenFormat} requires conversion, using B8G8R8A8_UNorm");
                     texFormat = Format.B8G8R8A8_UNorm;
                     needConversion = true;
@@ -682,7 +682,7 @@ namespace TbEinkSuperFlushTurbo
 
             _debugLogger?.Invoke($"DEBUG: Created textures with format: {texFormat}, conversion needed: {needConversion}");
 
-            // --- 创建新的 GPU 缓冲区 ---
+            // --- Create new GPU buffers ---
             // The shader uses RWStructuredBuffer<uint> with values per tile for history
             // The actual number of history frames is determined by the AverageWindowSize parameter passed from MainForm
             // Note: Currently supports up to 2-frame average window size (AVERAGE_WINDOW_SIZE in MainForm)
@@ -719,7 +719,7 @@ namespace TbEinkSuperFlushTurbo
             };
             _refreshCounter = _device.CreateBuffer(counterDesc);
 
-            // --- 创建 UAVs ---
+            // --- Create UAVs ---
             var structuredUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)(tileCount * historyArraySize) } };
             _tileStateInUAV = _device.CreateUnorderedAccessView(_tileStateIn, structuredUavDesc);
             _tileStateOutUAV = _device.CreateUnorderedAccessView(_tileStateOut, structuredUavDesc);
@@ -730,13 +730,13 @@ namespace TbEinkSuperFlushTurbo
             var counterUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.R32_Typeless, Buffer = { FirstElement = 0, NumElements = 1, Flags = BufferUnorderedAccessViewFlags.Raw } };
             _refreshCounterUAV = _device.CreateUnorderedAccessView(_refreshCounter, counterUavDesc);
 
-            // --- 创建读回缓冲区 ---
+            // --- Create readback buffers ---
             var readbackDesc = new BufferDescription { Usage = ResourceUsage.Staging, CPUAccessFlags = CpuAccessFlags.Read, BindFlags = BindFlags.None };
             _refreshListReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(sizeof(uint) * tileCount) });
             _refreshCounterReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = sizeof(uint) });
             _tileStateInReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(historyElementSize * tileCount * historyArraySize) });
 
-            // --- 创建亮度数据缓冲区 ---
+            // --- Create brightness data buffers ---
             var brightnessBufferDesc = new BufferDescription
             {
                 ByteWidth = (uint)(sizeof(float) * tileCount),
@@ -757,7 +757,7 @@ namespace TbEinkSuperFlushTurbo
 
             _tileBrightnessReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(sizeof(float) * tileCount) });
 
-            // --- 创建并初始化GPU端状态管理缓冲区 ---
+            // --- Create and initialize GPU-side state management buffers ---
             var countersDesc = new BufferDescription
             {
                 ByteWidth = (uint)(sizeof(int) * tileCount),
@@ -779,7 +779,7 @@ namespace TbEinkSuperFlushTurbo
                 countersHandle.Free();
             }
 
-            // 使用 uint2 (8字节) 替代 long (8字节)
+            // Use uint2 (8 bytes) instead of long (8 bytes)
             var expiryDesc = new BufferDescription
             {
                 ByteWidth = (uint)(8 * tileCount), // sizeof(uint2) = 8
@@ -788,7 +788,7 @@ namespace TbEinkSuperFlushTurbo
                 MiscFlags = ResourceOptionFlags.BufferStructured,
                 StructureByteStride = 8 // sizeof(uint2)
             };
-            var initialExpiry = new uint[tileCount * 2]; // 每个图块需要2个uint值
+            var initialExpiry = new uint[tileCount * 2]; // Each tile needs 2 uint values
             Array.Fill(initialExpiry, 0U);
             var expiryHandle = GCHandle.Alloc(initialExpiry, GCHandleType.Pinned);
             try
@@ -807,8 +807,8 @@ namespace TbEinkSuperFlushTurbo
             var expiryUavDesc = new UnorderedAccessViewDescription { ViewDimension = UnorderedAccessViewDimension.Buffer, Format = Format.Unknown, Buffer = { FirstElement = 0, NumElements = (uint)tileCount } };
             _tileProtectionExpiryUAV = _device.CreateUnorderedAccessView(_tileProtectionExpiryBuffer, expiryUavDesc);
 
-            // --- 创建合围区域历史帧缓冲区 ---
-            // 计算合围区域的数量
+            // --- Create bounding area history frame buffers ---
+            // Calculate the number of bounding areas
             int boundingAreaCountX = (_tilesX + BoundingArea.Width - 1) / BoundingArea.Width;
             int boundingAreaCountY = (_tilesY + BoundingArea.Height - 1) / BoundingArea.Height;
             _boundingAreaCount = boundingAreaCountX * boundingAreaCountY;
@@ -824,15 +824,15 @@ namespace TbEinkSuperFlushTurbo
             _boundingAreaHistoryBuffer = _device.CreateBuffer(boundingAreaHistoryDesc);
             _boundingAreaHistory_cpu = new uint[_boundingAreaCount];
 
-            // 创建合围区域历史缓冲区的着色器资源视图 (SRV)
+            // Create shader resource view (SRV) for bounding area history buffer
             var boundingAreaHistorySrvDesc = new ShaderResourceViewDescription(
                 _boundingAreaHistoryBuffer,
                 Format.Unknown,
                 0,
                 (uint)_boundingAreaCount);
-            // 注意：我们暂时不在这创建SRV，因为它将在每次渲染时创建
+            // Note: We don't create SRV here temporarily because it will be created during each rendering
 
-            // --- 创建并初始化合围区域单帧变化计数缓冲区 ---
+            // --- Create and initialize bounding area single-frame change count buffer ---
             var boundingAreaCountDesc = new BufferDescription
             {
                 ByteWidth = (uint)(sizeof(uint) * _boundingAreaCount),
@@ -846,14 +846,14 @@ namespace TbEinkSuperFlushTurbo
             _boundingAreaTileChangeCountUAV = _device.CreateUnorderedAccessView(_boundingAreaTileChangeCountBuffer, boundingAreaCountUavDesc);
             _boundingAreaTileChangeCountReadback = _device.CreateBuffer(readbackDesc with { ByteWidth = (uint)(sizeof(uint) * _boundingAreaCount) });
 
-            // --- 初始化历史差异状态缓冲区 ---
+            // --- Initialize history difference state buffer ---
             _context!.ClearUnorderedAccessView(_tileStateInUAV!, new Vortice.Mathematics.Int4(0, 0, 0, 0));
 
             var shaderPath = Path.Combine(AppContext.BaseDirectory, "ComputeShader.hlsl");
             var csBlob = Compiler.CompileFromFile(shaderPath, "CSMain", "cs_5_0", ShaderFlags.None, EffectFlags.None);
             _debugLogger?.Invoke($"Shader compiled successfully, bytecode size: {csBlob.Span.Length} bytes");
 
-            // 检查编译后的字节码是否有效
+            // Check if compiled bytecode is valid
             if (csBlob.Span.Length == 0)
             {
                 throw new InvalidOperationException("Shader compilation resulted in empty bytecode");
@@ -861,11 +861,11 @@ namespace TbEinkSuperFlushTurbo
 
             _computeShader = _device.CreateComputeShader(csBlob.Span);
 
-            // --- 常量缓冲区大小必须是16的倍数 ---
-            // 17个uint = 68字节，需要向上取整到16的倍数 -> 80字节 (5个16字节块)。
+            // --- Constant buffer size must be a multiple of 16 ---
+            // 17 uints = 68 bytes, need to round up to multiple of 16 -> 80 bytes (5 x 16-byte blocks).
             _paramBuffer = _device.CreateBuffer(new BufferDescription(80, BindFlags.ConstantBuffer));
 
-            // 初始化 _gpuTexPrev 为零纹理，确保第一帧有有效的参考帧
+            // Initialize _gpuTexPrev as zero texture to ensure first frame has valid reference frame
             if (_device != null && _gpuTexPrev != null)
             {
                 using var clearView = _device.CreateRenderTargetView(_gpuTexPrev);
@@ -877,25 +877,25 @@ namespace TbEinkSuperFlushTurbo
             _debugLogger?.Invoke("=== D3DCaptureAndCompute Constructor Completed Successfully ===");
         }
 
-        // 公共方法：分析最近帧数据 (此方法现在仅用于输出配置信息，不再进行帧数据分析)
+        // Public method: Analyze recent frame data (this method now only outputs configuration info, no longer performs frame data analysis)
         public void AnalyzeRecentFrames()
         {
             try
             {
-                _debugLogger?.Invoke("=== 开始分析最近帧数据 ===");
+                _debugLogger?.Invoke("=== Starting analysis of recent frame data ===");
 
-                // 输出当前配置信息
+                // Output current configuration information
                 _debugLogger?.Invoke($"TileSize: {TileSize}, PixelDelta: {PixelDelta}");
-                _debugLogger?.Invoke($"屏幕尺寸: {_screenW}x{_screenH}");
-                _debugLogger?.Invoke($"图块数量: {_tilesX}x{_tilesY} = {_tilesX * _tilesY} 个图块");
-                _debugLogger?.Invoke($"像素差异阈值: {PixelDelta} (相对阈值: {(float)PixelDelta / 256f * 100f:F3}%)");
-                _debugLogger?.Invoke($"平均窗口大小 (AverageWindowSize): {AverageWindowSize} 帧");
+                _debugLogger?.Invoke($"Screen dimensions: {_screenW}x{_screenH}");
+                _debugLogger?.Invoke($"Tile count: {_tilesX}x{_tilesY} = {_tilesX * _tilesY} tiles");
+                _debugLogger?.Invoke($"Pixel difference threshold: {PixelDelta} (relative threshold: {(float)PixelDelta / 256f * 100f:F3}%)");
+                _debugLogger?.Invoke($"Average window size (AverageWindowSize): {AverageWindowSize} frames");
 
-                _debugLogger?.Invoke("=== 帧差异分析完成 ===");
+                _debugLogger?.Invoke("=== Frame difference analysis completed ===");
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"分析帧数据失败: {ex.Message}");
+                _debugLogger?.Invoke($"Failed to analyze frame data: {ex.Message}");
             }
         }
 
@@ -905,17 +905,17 @@ namespace TbEinkSuperFlushTurbo
 
             try
             {
-                // 防止并发捕获 - 使用原子操作快速检查
+                // Prevent concurrent capture - use atomic operation for quick check
                 if (Interlocked.CompareExchange(ref _isCapturing, 1, 0) != 0)
                 {
-                    _debugLogger?.Invoke("DEBUG: 捕获操作正在执行，跳过本次调用");
+                    _debugLogger?.Invoke("DEBUG: Capture operation is already in progress, skipping this call");
                     return (result, new float[_tilesX * _tilesY]);
                 }
                 {
-                    // 使用信号量确保线程安全
+                    // Use semaphore to ensure thread safety
                     if (!await _captureSemaphore.WaitAsync(0, token))
                     {
-                        _debugLogger?.Invoke("DEBUG: 无法获取捕获锁，跳过本次调用");
+                        _debugLogger?.Invoke("DEBUG: Failed to acquire capture lock, skipping this call");
                         return (result, new float[_tilesX * _tilesY]);
                     }
 
@@ -923,59 +923,59 @@ namespace TbEinkSuperFlushTurbo
 
                     if (_useGdiCapture)
                     {
-                        // 使用GDI+捕获模式
-                        _debugLogger?.Invoke("使用GDI+捕获模式...");
+                        // Using GDI+ capture mode
+                        _debugLogger?.Invoke("Using GDI+ capture mode...");
 
-                        // 使用Task.Run将GDI+操作移至后台线程
+                        // Use Task.Run to move GDI+ operations to background thread
                         bool captureSuccess = await CaptureScreenWithGdiAsync();
 
                         if (!captureSuccess)
                         {
-                            _debugLogger?.Invoke("GDI+捕获失败");
+                            _debugLogger?.Invoke("GDI+ capture failed");
                             return (result, new float[_tilesX * _tilesY]);
                         }
 
-                        _debugLogger?.Invoke("GDI+捕获成功");
+                        _debugLogger?.Invoke("GDI+ capture succeeded");
                     }
                     else
                     {
-                        // 使用DirectX桌面复制模式 - 添加参数验证和超时处理
+                        // Using DirectX desktop duplication mode - add parameter validation and timeout handling
                         if (_deskDup == null)
                         {
                             _debugLogger?.Invoke($"ERROR: _deskDup is null, cannot acquire frame");
                             return (result, new float[_tilesX * _tilesY]);
                         }
 
-                        // 验证设备状态 - 确保设备仍然有效
+                        // Validate device state - ensure device is still valid
                         if (_device == null || _context == null)
                         {
                             _debugLogger?.Invoke($"ERROR: D3D11 device or context is null");
                             return (result, new float[_tilesX * _tilesY]);
                         }
 
-                        // 动态超时处理 - 根据之前的捕获成功率调整超时时间
+                        // Dynamic timeout handling - adjust timeout based on previous capture success rate
                         uint timeoutMs = (uint)GetOptimizedTimeout();
                         var acquireResult = _deskDup.AcquireNextFrame(timeoutMs, out var frameInfo, out IDXGIResource desktopResource);
 
                         if (!acquireResult.Success)
                         {
-                            // 更详细的错误处理，并更新统计信息
+                            // More detailed error handling and update statistics
                             _consecutiveFailures++;
 
-                            // 根据错误码进行不同的处理
-                            if (acquireResult.Code < 0) // 一般错误情况
+                            // Handle differently based on error code
+                            if (acquireResult.Code < 0) // General error case
                             {
                                 if ((uint)acquireResult.Code == 0x887A0027) // DXGI_ERROR_WAIT_TIMEOUT
                                 {
                                     _consecutiveTimeouts++;
                                     _debugLogger?.Invoke($"WARNING: AcquireNextFrame timed out after {timeoutMs}ms (consecutive timeouts: {_consecutiveTimeouts})");
-                                    // 超时不是致命错误，可以继续尝试
+                                    // Timeout is not a fatal error, can continue trying
                                     return (result, new float[_tilesX * _tilesY]);
                                 }
                                 else if ((uint)acquireResult.Code == 0x887A0026) // DXGI_ERROR_ACCESS_LOST
                                 {
                                     _debugLogger?.Invoke($"ERROR: Desktop duplication access lost. Need to reinitialize. (consecutive failures: {_consecutiveFailures})");
-                                    // 访问丢失是严重错误，需要重新初始化
+                                    // Access lost is a serious error, need to reinitialize
                                     return (result, new float[_tilesX * _tilesY]);
                                 }
                                 else
@@ -991,7 +991,7 @@ namespace TbEinkSuperFlushTurbo
                             }
                         }
 
-                        // 验证获取的资源是否有效
+                        // Validate the acquired resources are valid
                         if (desktopResource == null)
                         {
                             _debugLogger?.Invoke($"ERROR: AcquireNextFrame returned null desktopResource");
@@ -1000,7 +1000,7 @@ namespace TbEinkSuperFlushTurbo
 
                         using var tex = desktopResource.QueryInterface<ID3D11Texture2D>();
 
-                        // 验证纹理对象是否有效
+                        // Validate texture object is valid
                         if (tex == null)
                         {
                             _debugLogger?.Invoke($"ERROR: Failed to query ID3D11Texture2D interface from desktopResource");
@@ -1011,63 +1011,63 @@ namespace TbEinkSuperFlushTurbo
                         var desktopTexDesc = tex.Description;
                         _debugLogger?.Invoke($"DEBUG: desktopResource acquired. W:{desktopTexDesc.Width}, H:{desktopTexDesc.Height}, Format:{desktopTexDesc.Format}");
 
-                        // 纹理尺寸验证 - 检查获取的桌面纹理尺寸是否有效
+                        // Texture size validation - check if acquired desktop texture size is valid
                         if (desktopTexDesc.Width <= 0 || desktopTexDesc.Height <= 0)
                         {
                             _debugLogger?.Invoke($"ERROR: Invalid desktop texture dimensions: {desktopTexDesc.Width}x{desktopTexDesc.Height}");
                             return (result, new float[_tilesX * _tilesY]);
                         }
 
-                        // 检查纹理尺寸是否与屏幕尺寸匹配（允许一定的容差）
-                        const int maxDimensionDifference = 10; // 允许的最大尺寸差异
+                        // Check if texture dimensions match screen dimensions (allowing some tolerance)
+                        const int maxDimensionDifference = 10; // Maximum allowed dimension difference
                         if (Math.Abs((int)desktopTexDesc.Width - _screenW) > maxDimensionDifference ||
                             Math.Abs((int)desktopTexDesc.Height - _screenH) > maxDimensionDifference)
                         {
                             _debugLogger?.Invoke($"WARNING: Desktop texture size mismatch. Expected: {_screenW}x{_screenH}, Got: {desktopTexDesc.Width}x{desktopTexDesc.Height}");
                             
-                            // 动态调整内部尺寸以匹配实际纹理尺寸
+                            // Dynamically adjust internal dimensions to match actual texture size
                             _debugLogger?.Invoke($"DEBUG: Adjusting internal dimensions to match actual desktop texture: {desktopTexDesc.Width}x{desktopTexDesc.Height}");
                             _screenW = (int)desktopTexDesc.Width;
                             _screenH = (int)desktopTexDesc.Height;
                             
-                            // 重新计算瓦片数量
+                            // Recalculate tile count
                             _tilesX = (_screenW + TileSize - 1) / TileSize;
                             _tilesY = (_screenH + TileSize - 1) / TileSize;
                             _debugLogger?.Invoke($"DEBUG: Recalculated tiles: {_tilesX}x{_tilesY} for new dimensions");
                             
-                            // 标记需要重新创建纹理
+                            // Mark texture needs to be recreated
                             _needsTextureRecreate = true;
                         }
 
-                        // 首次检测实际格式 - 添加格式验证
+                        // First time detecting actual format - add format validation
                         if (!_formatDetected)
                         {
                             _actualDesktopFormat = desktopTexDesc.Format;
                             _formatDetected = true;
                             _debugLogger?.Invoke($"DEBUG: Actual desktop format detected: {_actualDesktopFormat}");
 
-                            // 格式验证 - 确保桌面格式与预期格式兼容
+                            // Format validation - ensure desktop format is compatible with expected format
                             if (!IsValidDesktopFormat(_actualDesktopFormat))
                             {
                                 _debugLogger?.Invoke($"ERROR: Unsupported desktop format: {_actualDesktopFormat}. Falling back to B8G8R8A8_UNorm");
-                                _actualDesktopFormat = Format.B8G8R8A8_UNorm; // 回退到安全格式
+                                _actualDesktopFormat = Format.B8G8R8A8_UNorm; // Fallback to safe format
                             }
 
-                            // 如果实际格式与纹理格式不匹配，或者需要重新创建纹理（尺寸变化）
+                            // If actual format doesn't match texture format, or texture needs to be recreated (size changed)
                             if (_gpuTexCurr != null && (_actualDesktopFormat != _gpuTexCurr.Description.Format || _needsTextureRecreate))
                             {
                                 _debugLogger?.Invoke($"DEBUG: Recreating textures with actual format: {_actualDesktopFormat}");
 
-                                // 使用Task.Run将纹理重建操作移至后台线程
+                                // Use Task.Run to move texture recreation to background thread
                                 await Task.Run(() =>
                                 {
-                                    // 线程安全地释放旧纹理
+                                    // Release old texture in thread-safe manner
                                     var oldTexCurr = _gpuTexCurr;
                                     var oldTexPrev = _gpuTexPrev;
                                     _gpuTexCurr = null;
                                     _gpuTexPrev = null;
 
-                                    // 延迟释放以避免立即内存压力
+                                    // Delayed release to avoid immediate memory pressure
                                     if (oldTexCurr != null)
                                     {
                                         Task.Delay(100).ContinueWith(_ => oldTexCurr.Dispose());
@@ -1077,7 +1077,7 @@ namespace TbEinkSuperFlushTurbo
                                         Task.Delay(100).ContinueWith(_ => oldTexPrev.Dispose());
                                     }
 
-                                    // 创建新纹理匹配实际格式
+                                    // Create new texture to match actual format
                                     var newTexDesc = new Texture2DDescription
                                     {
                                         Width = (uint)_screenW,
@@ -1097,7 +1097,7 @@ namespace TbEinkSuperFlushTurbo
                                         _gpuTexPrev = _device.CreateTexture2D(newTexDesc);
                                     }
 
-                                    // 重新初始化为黑色
+                                    // Reinitialize to black
                                     if (_device != null && _gpuTexPrev != null)
                                     {
                                         using var clearView = _device.CreateRenderTargetView(_gpuTexPrev);
@@ -1105,14 +1105,14 @@ namespace TbEinkSuperFlushTurbo
                                     }
                                 }, token);
                                 
-                                // 重置纹理重新创建标志
+                                // Reset texture recreation flag
                                 _needsTextureRecreate = false;
                             }
                         }
 
                         _debugLogger?.Invoke($"DEBUG: Copying with format: {desktopTexDesc.Format}");
 
-                        // 验证目标纹理是否有效
+                        // Validate target texture is valid
                         if (_gpuTexCurr == null)
                         {
                             _debugLogger?.Invoke($"ERROR: _gpuTexCurr is null, cannot copy resource");
@@ -1124,10 +1124,10 @@ namespace TbEinkSuperFlushTurbo
                         {
                             _context!.CopyResource(_gpuTexCurr, tex);
 
-                            // 添加GPU同步点，确保复制操作完成
+                            // Add GPU synchronization point to ensure copy operation completes
                             _context.Flush();
 
-                            // 成功复制，更新统计信息
+                            // Successfully copied, updating statistics
                             _captureSuccessCount++;
                             _lastSuccessfulCapture = DateTime.Now;
                             _consecutiveFailures = 0;
@@ -1142,7 +1142,7 @@ namespace TbEinkSuperFlushTurbo
                             return (result, new float[_tilesX * _tilesY]);
                         }
 
-                        // 安全地释放帧
+                        // Safely release frame
                         try
                         {
                             _deskDup.ReleaseFrame();
@@ -1150,14 +1150,14 @@ namespace TbEinkSuperFlushTurbo
                         catch (Exception releaseEx)
                         {
                             _debugLogger?.Invoke($"WARNING: Failed to release frame: {releaseEx.Message}");
-                            // 释放帧失败不是致命错误，继续处理
+                            // Frame release failure is not a fatal error, continue processing
                         }
                     }
                 }
 
                 token.ThrowIfCancellationRequested();
 
-                // 打印鼠标、光标和输入法位置的调试信息
+                // Print debug information about mouse, cursor, and IME position
                 LogCursorPositionInfo();
 
                 // Handle the first frame to prevent initial full refresh
@@ -1170,15 +1170,15 @@ namespace TbEinkSuperFlushTurbo
                     return (result, new float[_tilesX * _tilesY]); // Return empty list with brightness data
                 }
 
-                // 1. GPU 计算
+                // 1. GPU Computation
                 _context?.ClearUnorderedAccessView(_refreshCounterUAV!, new Vortice.Mathematics.Int4(0));
                 // Re-enable scrolling detection
                 _context?.ClearUnorderedAccessView(_boundingAreaTileChangeCountUAV!, new Vortice.Mathematics.Int4(0));
 
                 _context?.CSSetShader(_computeShader);
 
-                // 确保传递给着色器的参数数量与 HLSL 中定义的匹配
-                uint[] cbData = new uint[20]; // 增加数组大小以容纳新参数
+                // Ensure the number of parameters passed to the shader matches what's defined in HLSL
+                uint[] cbData = new uint[20]; // Increase array size to accommodate new parameters
                 cbData[0] = (uint)_screenW;
                 cbData[1] = (uint)_screenH;
                 cbData[2] = (uint)TileSize;
@@ -1193,10 +1193,10 @@ namespace TbEinkSuperFlushTurbo
                 cbData[11] = (uint)BoundingArea.Height;
                 cbData[12] = (uint)BoundingArea.HistoryFrames;
                 cbData[13] = (uint)BoundingArea.ChangeThreshold;
-                cbData[14] = (uint)BoundingArea.RefreshBlockThreshold; // 新增参数
+                cbData[14] = (uint)BoundingArea.RefreshBlockThreshold; // New parameter added
                 cbData[15] = 0; // padding1
                 cbData[16] = 0; // padding2
-                                // 剩余位置自动初始化为0
+                                // Remaining positions automatically initialized to 0
                 _context?.UpdateSubresource(cbData, _paramBuffer!);
                 _context?.CSSetConstantBuffer(0, _paramBuffer);
 
@@ -1205,7 +1205,7 @@ namespace TbEinkSuperFlushTurbo
                 using var srvHistory = _device.CreateShaderResourceView(_boundingAreaHistoryBuffer);
                 _context?.CSSetShaderResource(0, srvPrev);
                 _context?.CSSetShaderResource(1, srvCurr);
-                _context?.CSSetShaderResource(2, srvHistory); // 作为只读资源绑定
+                _context?.CSSetShaderResource(2, srvHistory); // Bind as read-only resource
 
                 _context?.CSSetUnorderedAccessView(0, _tileStateInUAV);
                 _context?.CSSetUnorderedAccessView(1, _tileStateOutUAV);
@@ -1228,7 +1228,7 @@ namespace TbEinkSuperFlushTurbo
                     if (i != 7) _context?.CSSetUnorderedAccessView((uint)i, null);
                 }
 
-                // 3. CPU端处理滚动抑制逻辑
+                // 3. CPU-side scroll suppression logic processing
                 _context?.CopyResource(_boundingAreaTileChangeCountReadback!, _boundingAreaTileChangeCountBuffer!);
                 var map = _context!.Map(_boundingAreaTileChangeCountReadback!, 0, MapMode.Read);
                 var changeCounts = new uint[_boundingAreaCount];
@@ -1258,16 +1258,16 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                // 打印合围区域历史帧数和变化帧数信息
+                // Print bounding area history frame count and change frame count information
                 if (_debugLogger != null)
                 {
-                    // 打印所有合围区域的信息（不再限制前5个）
+                    // Print all bounding area information (no longer limited to first 5)
                     for (int i = 0; i < _boundingAreaCount; i++)
                     {
                         uint historyData = _boundingAreaHistory_cpu![i];
                         uint changeCount = 0;
 
-                        // 计算历史变化帧数
+                        // Calculate historical change frame count
                         uint maxTests = Math.Min((uint)BoundingArea.HistoryFrames, 32);
                         for (uint j = 0; j < maxTests; j++)
                         {
@@ -1277,27 +1277,27 @@ namespace TbEinkSuperFlushTurbo
                             }
                         }
 
-                        // 生成更友好的历史变化模式描述
+                        // Generate more friendly historical change pattern description
                         string patternDescription = "";
                         if (historyData == 0)
                         {
-                            patternDescription = "无变化";
+                            patternDescription = "No change";
                         }
                         else if (historyData == uint.MaxValue)
                         {
-                            patternDescription = "持续变化";
+                            patternDescription = "Continuous change";
                         }
                         else if ((historyData & 0x55555555) == historyData)
                         {
-                            patternDescription = "偶数帧变化";
+                            patternDescription = "Even frame change";
                         }
                         else if ((historyData & 0xAAAAAAAA) == historyData)
                         {
-                            patternDescription = "奇数帧变化";
+                            patternDescription = "Odd frame change";
                         }
                         else
                         {
-                            // 统计连续变化的帧数
+                            // Count consecutive changing frames
                             int maxConsecutive = 0;
                             int currentConsecutive = 0;
                             for (int bit = 0; bit < 32; bit++)
@@ -1315,25 +1315,25 @@ namespace TbEinkSuperFlushTurbo
 
                             if (maxConsecutive > 3)
                             {
-                                patternDescription = $"连续{maxConsecutive}帧变化";
+                                patternDescription = $"Continuous {maxConsecutive} frames change";
                             }
                             else
                             {
-                                patternDescription = "混合变化模式";
+                                patternDescription = "Mixed change pattern";
                             }
                         }
 
                         // _debugLogger.Invoke($"DEBUG: BoundingArea {i}: History=0x{historyData:X8}, ChangeCount={changeCount}/{BoundingArea.HistoryFrames}, Pattern={patternDescription}");
                     }
 
-                    // 打印总共有多少个合围区域
+                    // Print total bounding area count
                     _debugLogger.Invoke($"DEBUG: Total bounding areas: {_boundingAreaCount}");
                 }
 
-                // 将更新后的CPU历史数据写回到GPU缓冲区
+                // Write updated CPU history data back to GPU buffer
                 _context!.UpdateSubresource(_boundingAreaHistory_cpu!, _boundingAreaHistoryBuffer!);
 
-                // 4. 读回结果
+                // 4. Read back results
                 _context?.CopyResource(_refreshCounterReadback!, _refreshCounter!);
                 var counterMap = _context?.Map(_refreshCounterReadback!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
                 int refreshCount = counterMap.HasValue ? Marshal.ReadInt32(counterMap.Value.DataPointer) : 0;
@@ -1356,13 +1356,13 @@ namespace TbEinkSuperFlushTurbo
                     }
                 }
 
-                // 5. 状态迭代：将当前帧的输出状态复制到下一帧的输入状态
+                // 5. State iteration: Copy current frame output state to next frame input state
                 _context?.CopyResource(_tileStateIn!, _tileStateOut!);
 
-                // 6. 纹理迭代：将当前帧的纹理复制到下一帧的上一帧纹理
+                // 6. Texture iteration: Copy current frame texture to next frame's previous frame texture
                 _context?.CopyResource(_gpuTexPrev!, _gpuTexCurr!);
 
-                // 7. 读回亮度数据
+                // 7. Read back brightness data
                 float[] brightnessData = new float[_tilesX * _tilesY];
                 _context?.CopyResource(_tileBrightnessReadback!, _tileBrightness!);
                 var brightnessMap = _context?.Map(_tileBrightnessReadback!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
@@ -1379,13 +1379,13 @@ namespace TbEinkSuperFlushTurbo
                     _context?.Unmap(_tileBrightnessReadback!, 0);
                 }
 
-                // 添加最终同步点，确保所有GPU操作完成
+                // Add final sync point to ensure all GPU operations complete
                 _context?.Flush();
 
-                // 调试信息：记录图块状态统计
+                // Debug information: Record tile state statistics
                 if (_debugLogger != null && result.Count == 0)
                 {
-                    // 读取一些图块的状态来了解检测情况
+                    // Read some tile states to understand detection progress
                     _context?.CopyResource(_tileStateInReadback!, _tileStateIn!);
                     var stateMap = _context?.Map(_tileStateInReadback!, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
 
@@ -1394,7 +1394,7 @@ namespace TbEinkSuperFlushTurbo
                         const int historyElementSize = 16; // sizeof(uint4)
 
                         _debugLogger.Invoke($"DEBUG: Tile states (first 10 tiles):");
-                        for (int i = 0; i < Math.Min(10, _tilesX * _tilesY); i++) // 只检查前10个图块
+                        for (int i = 0; i < Math.Min(10, _tilesX * _tilesY); i++) // Only check first 10 tiles
                         {
                             // Read the uint4 for each tile
                             IntPtr dataPtr = stateMap.Value.DataPointer;
@@ -1412,14 +1412,14 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"捕获和计算过程中发生异常: {ex.Message}");
-                _debugLogger?.Invoke($"异常类型: {ex.GetType().Name}");
-                _debugLogger?.Invoke($"异常堆栈: {ex.StackTrace}");
+                _debugLogger?.Invoke($"Exception occurred during capture and compute: {ex.Message}");
+                _debugLogger?.Invoke($"Exception type: {ex.GetType().Name}");
+                _debugLogger?.Invoke($"Exception stack trace: {ex.StackTrace}");
                 return (result, new float[_tilesX * _tilesY]);
             }
             finally
             {
-                // 确保释放信号量和重置标志
+                // Ensure semaphore release and reset flag
                 _captureSemaphore.Release();
                 Interlocked.Exchange(ref _isCapturing, 0);
             }
@@ -1453,32 +1453,32 @@ namespace TbEinkSuperFlushTurbo
             return outputs;
         }
 
-        // DPI检测方法
+        // DPI detection method
         private void DetectSystemDpiSettings()
         {
             try
             {
-                // 尝试获取指定显示器的DPI设置
+                // Attempt to get DPI settings for the specified display
                 float dpiX = 96.0f, dpiY = 96.0f;
 
-                // 获取所有显示器信息
+                // Get all display information
                 var allScreens = System.Windows.Forms.Screen.AllScreens;
 
-                // 检查目标显示器索引是否有效
+                // Check if target display index is valid
                 if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
                 {
                     var targetScreen = allScreens[_targetScreenIndex];
 
-                    _debugLogger?.Invoke($"尝试获取显示器 {_targetScreenIndex} ({targetScreen.DeviceName}) 的DPI设置");
-                    _debugLogger?.Invoke($"显示器边界: {targetScreen.Bounds}");
+                    _debugLogger?.Invoke($"Attempting to get DPI settings for display {_targetScreenIndex} ({targetScreen.DeviceName})");
+                    _debugLogger?.Invoke($"Display bounds: {targetScreen.Bounds}");
 
-                    // 方法1: 使用GetDpiForMonitor API获取准确的显示器DPI（首选方法）
+                    // Method 1: Use GetDpiForMonitor API to get accurate display DPI (preferred method)
                     try
                     {
                         var bounds = targetScreen.Bounds;
                         var centerPoint = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
 
-                        // 获取显示器句柄
+                        // Get display handle
                         IntPtr hMonitor = NativeMethods.MonitorFromPoint(centerPoint, NativeMethods.MONITOR_DEFAULTTONEAREST);
 
                         if (hMonitor != IntPtr.Zero)
@@ -1490,24 +1490,24 @@ namespace TbEinkSuperFlushTurbo
                             {
                                 dpiX = monitorDpiX;
                                 dpiY = monitorDpiY;
-                                _debugLogger?.Invoke($"方法1成功: GetDpiForMonitor 返回 DPI {dpiX}x{dpiY}");
+                                _debugLogger?.Invoke($"Method 1 success: GetDpiForMonitor returned DPI {dpiX}x{dpiY}");
                             }
                             else
                             {
-                                _debugLogger?.Invoke($"方法1: GetDpiForMonitor 失败，错误码: 0x{result:X8}，将尝试备用方法");
+                                _debugLogger?.Invoke($"Method 1 failed: GetDpiForMonitor returned error code 0x{result:X8}, will try fallback method");
                             }
                         }
                         else
                         {
-                            _debugLogger?.Invoke($"方法1: 无法获取显示器句柄");
+                            _debugLogger?.Invoke($"Method 1: Unable to get display handle");
                         }
                     }
                     catch (Exception ex)
                     {
-                        _debugLogger?.Invoke($"方法1失败: {ex.Message}，将尝试备用方法");
+                        _debugLogger?.Invoke($"Method 1 failed: {ex.Message}, will try fallback method");
                     }
 
-                    // 方法2: 如果方法1失败，使用GetDpiForMonitor作为备用方法
+                    // Method 2: If method 1 fails, use GetDpiForMonitor as fallback method
                     if (dpiX == 96.0f && dpiY == 96.0f)
                     {
                         try
@@ -1515,7 +1515,7 @@ namespace TbEinkSuperFlushTurbo
                             var bounds = targetScreen.Bounds;
                             var centerPoint = new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
 
-                            // 获取显示器句柄
+                            // Get display handle
                             IntPtr hMonitor = NativeMethods.MonitorFromPoint(centerPoint, NativeMethods.MONITOR_DEFAULTTONEAREST);
 
                             if (hMonitor != IntPtr.Zero)
@@ -1527,34 +1527,34 @@ namespace TbEinkSuperFlushTurbo
                                 {
                                     dpiX = monitorDpiX;
                                     dpiY = monitorDpiY;
-                                    _debugLogger?.Invoke($"方法2成功: GetDpiForMonitor 返回 DPI {dpiX}x{dpiY}");
+                                    _debugLogger?.Invoke($"Method 2 success: GetDpiForMonitor returned DPI {dpiX}x{dpiY}");
                                 }
                                 else
                                 {
-                                    _debugLogger?.Invoke($"方法2: GetDpiForMonitor 失败，错误码: 0x{result:X8}");
+                                    _debugLogger?.Invoke($"Method 2 failed: GetDpiForMonitor returned error code 0x{result:X8}");
                                 }
                             }
                             else
                             {
-                                _debugLogger?.Invoke($"方法2: 无法获取显示器句柄");
+                                _debugLogger?.Invoke($"Method 2: Unable to get display handle");
                             }
                         }
                         catch (Exception ex)
                         {
-                            _debugLogger?.Invoke($"方法2失败: {ex.Message}");
+                            _debugLogger?.Invoke($"Method 2 failed: {ex.Message}");
                         }
                     }
 
                     /*
-                    // 方法3: 如果方法1和方法2失败，尝试为特定显示器创建Graphics对象以获取其DPI（已注释掉）
+                    // Method 3: If method 1 and method 2 fail, try creating Graphics object for specific display to get its DPI (commented out)
                     if (dpiX == 96.0f && dpiY == 96.0f)
                     {
                         try
                         {
-                            // 获取显示器的边界矩形
+                            // Get the bounds rectangle of the display
                             var bounds = targetScreen.Bounds;
                             
-                            // 创建临时窗口句柄来获取该显示器的DPI
+                            // Create temporary window handle to get display DPI
                             var tempHwnd = NativeMethods.CreateWindowEx(
                                 0, "STATIC", "", 0,
                                 bounds.Left, bounds.Top, 1, 1,
@@ -1568,7 +1568,7 @@ namespace TbEinkSuperFlushTurbo
                                     {
                                         dpiX = graphics.DpiX;
                                         dpiY = graphics.DpiY;
-                                        _debugLogger?.Invoke($"方法3成功: Graphics.FromHwnd 返回 DPI {dpiX}x{dpiY}");
+                                        _debugLogger?.Invoke($"Method 3 success: Graphics.FromHwnd returned DPI {dpiX}x{dpiY}");
                                     }
                                 }
                                 finally
@@ -1579,67 +1579,67 @@ namespace TbEinkSuperFlushTurbo
                         }
                         catch (Exception ex)
                         {
-                            _debugLogger?.Invoke($"方法3失败: {ex.Message}");
+                            _debugLogger?.Invoke($"Method 3 failed: {ex.Message}");
                         }
                     }
                     
-                    // 方法4: 如果所有方法都失败，尝试使用Screen.Bounds和EnumDisplaySettings计算DPI（已注释掉）
+                    // Method 4: If all methods fail, try calculating DPI using Screen.Bounds and EnumDisplaySettings (commented out)
                     if (dpiX == 96.0f && dpiY == 96.0f)
                     {
                         try
                         {
-                            // 获取设备名称
+                            // Get device name
                             string deviceName = targetScreen.DeviceName;
-                            
-                            _debugLogger?.Invoke($"方法4: 尝试通过EnumDisplaySettings获取显示器信息...");
-                            _debugLogger?.Invoke($"方法4: Screen.Bounds = {targetScreen.Bounds}");
-                            _debugLogger?.Invoke($"方法4: DeviceName = {deviceName}");
-                            
-                            // 使用EnumDisplaySettings获取真实的物理分辨率
+
+                            _debugLogger?.Invoke($"Method 4: Attempting to get display information via EnumDisplaySettings...");
+                            _debugLogger?.Invoke($"Method 4: Screen.Bounds = {targetScreen.Bounds}");
+                            _debugLogger?.Invoke($"Method 4: DeviceName = {deviceName}");
+
+                            // Use EnumDisplaySettings to get actual physical resolution
                             NativeMethods.DEVMODE devMode = new NativeMethods.DEVMODE();
                             devMode.dmSize = (short)Marshal.SizeOf(typeof(NativeMethods.DEVMODE));
-                            
+
                             if (NativeMethods.EnumDisplaySettings(deviceName, -1, ref devMode))
                             {
                                 int physicalWidth = devMode.dmPelsWidth;
                                 int physicalHeight = devMode.dmPelsHeight;
                                 int logicalWidth = targetScreen.Bounds.Width;
                                 int logicalHeight = targetScreen.Bounds.Height;
+
+                                _debugLogger?.Invoke($"Method 4: DEVMODE physical resolution = {physicalWidth}x{physicalHeight}");
+                                _debugLogger?.Invoke($"Method 4: Screen.Bounds logical resolution = {logicalWidth}x{logicalHeight}");
                                 
-                                _debugLogger?.Invoke($"方法4: DEVMODE 物理分辨率 = {physicalWidth}x{physicalHeight}");
-                                _debugLogger?.Invoke($"方法4: Screen.Bounds 逻辑分辨率 = {logicalWidth}x{logicalHeight}");
-                                
-                                // 计算DPI缩放比例
+                                // Calculate DPI scaling ratio
                                 float scaleX = (float)physicalWidth / logicalWidth;
                                 float scaleY = (float)physicalHeight / logicalHeight;
                                 
                                 dpiX = 96.0f * scaleX;
                                 dpiY = 96.0f * scaleY;
                                 
-                                _debugLogger?.Invoke($"方法4: 计算缩放比例 = {scaleX:F2}x{scaleY:F2}");
-                                _debugLogger?.Invoke($"方法4成功: 最终DPI = {dpiX}x{dpiY}");
+                                _debugLogger?.Invoke($"Method 4: Calculated scaling ratio = {scaleX:F2}x{scaleY:F2}");
+                                _debugLogger?.Invoke($"Method 4 success: Final DPI = {dpiX}x{dpiY}");
                             }
                             else
                             {
-                                _debugLogger?.Invoke($"方法4: EnumDisplaySettings 失败");
+                                _debugLogger?.Invoke($"Method 4: EnumDisplaySettings failed");
                             }
                         }
                         catch (Exception ex)
                         {
-                            _debugLogger?.Invoke($"方法4失败: {ex.Message}");
+                            _debugLogger?.Invoke($"Method 4 failed: {ex.Message}");
                         }
                     }
                     */
                 }
 
-                // 如果未能获取到特定显示器的DPI，则使用主显示器的DPI
+                // If unable to get specific display's DPI, use primary display's DPI
                 if (dpiX == 96.0f && dpiY == 96.0f)
                 {
                     using (var graphics = Graphics.FromHwnd(IntPtr.Zero))
                     {
                         dpiX = graphics.DpiX;
                         dpiY = graphics.DpiY;
-                        _debugLogger?.Invoke($"回退到主显示器DPI: {dpiX}x{dpiY}");
+                        _debugLogger?.Invoke($"Fallback to primary display DPI: {dpiX}x{dpiY}");
                     }
                 }
 
@@ -1648,14 +1648,14 @@ namespace TbEinkSuperFlushTurbo
                 _dpiScaleX = _dpiX / 96.0f;
                 _dpiScaleY = _dpiY / 96.0f;
 
-                _debugLogger?.Invoke($"最终DPI设置: {_dpiX}x{_dpiY}, 缩放比例: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
+                _debugLogger?.Invoke($"Final DPI settings: {_dpiX}x{_dpiY}, scaling ratio: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"DPI检测失败: {ex.Message}");
-                _debugLogger?.Invoke("将使用默认DPI设置 (96x96)");
+                _debugLogger?.Invoke($"DPI detection failed: {ex.Message}");
+                _debugLogger?.Invoke("Will use default DPI settings (96x96)");
 
-                // 使用默认值
+                // Use default values
                 _dpiX = 96.0f;
                 _dpiY = 96.0f;
                 _dpiScaleX = 1.0f;
@@ -1663,63 +1663,63 @@ namespace TbEinkSuperFlushTurbo
             }
         }
 
-        // 获取正确的屏幕边界（DXGI已经返回物理分辨率）
+        // Get correct screen bounds (DXGI already returns physical resolution)
         private Rectangle GetCorrectScreenBounds(Rectangle dxgiBounds)
         {
-            // DXGI的DesktopCoordinates返回的就是物理分辨率，不需要转换
-            // 之前错误地乘以了DPI缩放比例
+            // DXGI's DesktopCoordinates returns physical resolution, no conversion needed
+            // Previously incorrectly multiplied by DPI scaling ratio
 
-            _debugLogger?.Invoke($"DXGI返回的屏幕边界: {dxgiBounds}");
-            _debugLogger?.Invoke($"系统DPI: {_dpiX}x{_dpiY}, 缩放比例: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
-            _debugLogger?.Invoke($"物理分辨率: {dxgiBounds.Width}x{dxgiBounds.Height}");
+            _debugLogger?.Invoke($"DXGI returned screen bounds: {dxgiBounds}");
+            _debugLogger?.Invoke($"System DPI: {_dpiX}x{_dpiY}, scaling ratio: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
+            _debugLogger?.Invoke($"Physical resolution: {dxgiBounds.Width}x{dxgiBounds.Height}");
 
-            // 验证屏幕边界有效性 - 修正：允许负坐标（多显示器环境正常）
+            // Validate screen bounds - Fixed: Allow negative coordinates (normal in multi-monitor environment)
             if (dxgiBounds.Width <= 0 || dxgiBounds.Height <= 0 ||
-                dxgiBounds.Width > 16384 || dxgiBounds.Height > 16384) // 最大合理分辨率限制
+                dxgiBounds.Width > 16384 || dxgiBounds.Height > 16384) // Maximum reasonable resolution limit
             {
-                _debugLogger?.Invoke($"DEBUG: 无效的DXGI屏幕边界参数: {dxgiBounds}");
-                // 返回一个安全的默认边界
+                _debugLogger?.Invoke($"DEBUG: Invalid DXGI screen bounds parameters: {dxgiBounds}");
+                // Return a safe default bounds
                 return new Rectangle(0, 0, 1920, 1080);
             }
 
-            // 计算逻辑分辨率供参考
+            // Calculate logical resolution for reference
             int logicalWidth = (int)(dxgiBounds.Width / _dpiScaleX);
             int logicalHeight = (int)(dxgiBounds.Height / _dpiScaleY);
 
-            _debugLogger?.Invoke($"逻辑分辨率: {logicalWidth}x{logicalHeight}");
-            _debugLogger?.Invoke($"屏幕捕获将使用物理分辨率: {dxgiBounds.Width}x{dxgiBounds.Height}");
+            _debugLogger?.Invoke($"Logical resolution: {logicalWidth}x{logicalHeight}");
+            _debugLogger?.Invoke($"Screen capture will use physical resolution: {dxgiBounds.Width}x{dxgiBounds.Height}");
 
             return dxgiBounds;
         }
 
-        // Eink屏幕检测和GDI+捕获方法
+        // E-ink screen detection and GDI+ capture method
         private bool DetectEinkScreen(IDXGIOutput output)
         {
             try
             {
-                _debugLogger?.Invoke("开始检测eink屏幕特性...");
+                _debugLogger?.Invoke("Starting e-ink screen feature detection...");
 
                 var desc = output.Description;
                 string deviceName = desc.DeviceName.ToLower();
 
-                // 获取显示器友好名称
+                // Get display friendly name
                 string friendlyName = GetFriendlyDisplayName(desc.DeviceName);
                 if (!string.IsNullOrEmpty(friendlyName))
                 {
-                    _debugLogger?.Invoke($"显示器友好名称: '{friendlyName}'");
+                    _debugLogger?.Invoke($"Display friendly name: '{friendlyName}'");
                 }
 
-                // 检测设备名称中的eink关键词
+                // Detect eink keywords in device name
                 bool isEink = deviceName.Contains("eink") || deviceName.Contains("e-ink") ||
                              deviceName.Contains("epd") || deviceName.Contains("electronic paper");
 
                 if (isEink)
                 {
-                    _debugLogger?.Invoke($"检测到eink屏幕: {desc.DeviceName}");
+                    _debugLogger?.Invoke($"Detected eink screen: {desc.DeviceName}");
                     return true;
                 }
 
-                // 检测刷新率特性
+                // Detect refresh rate features
                 try
                 {
                     var displayModeList = output.GetDisplayModeList(Format.B8G8R8A8_UNorm, DisplayModeEnumerationFlags.Interlaced | DisplayModeEnumerationFlags.Scaling);
@@ -1729,33 +1729,33 @@ namespace TbEinkSuperFlushTurbo
                         double refreshRate = (double)primaryMode.RefreshRate.Numerator / primaryMode.RefreshRate.Denominator;
                         _detectedRefreshRate = refreshRate;
 
-                        _debugLogger?.Invoke($"检测到刷新率: {refreshRate:F2}Hz");
-                        _debugLogger?.Invoke($"物理分辨率: {desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left}x{desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top}");
+                        _debugLogger?.Invoke($"Detected refresh rate: {refreshRate:F2}Hz");
+                        _debugLogger?.Invoke($"Physical resolution: {desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left}x{desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top}");
 
-                        // eink屏幕通常有较低的刷新率（低于59Hz）
+                        // E-ink screens typically have lower refresh rates (below 59Hz)
                         if (refreshRate < 59.0)
                         {
-                            _debugLogger?.Invoke($"低刷新率({refreshRate:F2}Hz)可能为eink屏幕");
+                            _debugLogger?.Invoke($"Low refresh rate ({refreshRate:F2}Hz) may be e-ink screen");
                             return true;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _debugLogger?.Invoke($"刷新率检测失败: {ex.Message}");
+                    _debugLogger?.Invoke($"Refresh rate detection failed: {ex.Message}");
                 }
 
-                _debugLogger?.Invoke($"未检测到eink屏幕特性: {desc.DeviceName}");
+                _debugLogger?.Invoke($"No e-ink screen characteristics detected: {desc.DeviceName}");
                 return false;
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"eink屏幕检测失败: {ex.Message}");
+                _debugLogger?.Invoke($"E-ink screen detection failed: {ex.Message}");
                 return false;
             }
         }
 
-        // 获取显示器的友好名称
+        // Get display friendly name
         private string GetFriendlyDisplayName(string deviceName)
         {
             try
@@ -1763,19 +1763,19 @@ namespace TbEinkSuperFlushTurbo
                 NativeMethods.DISPLAY_DEVICE deviceInfo = new NativeMethods.DISPLAY_DEVICE();
                 deviceInfo.cb = Marshal.SizeOf(deviceInfo);
 
-                // 尝试获取显示器设备信息
+                // Try to get display device information
                 if (NativeMethods.EnumDisplayDevices(deviceName, 0, ref deviceInfo, 0))
                 {
-                    // 如果获取成功，返回设备字符串（通常是友好名称）
+                    // If successful, return device string (usually friendly name)
                     return deviceInfo.DeviceString;
                 }
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"获取显示器友好名称失败: {ex.Message}");
+                _debugLogger?.Invoke($"Failed to get display friendly name: {ex.Message}");
             }
 
-            // 如果无法获取友好名称，返回空字符串
+            // If unable to get friendly name, return empty string
             return string.Empty;
         }
 
@@ -1783,7 +1783,7 @@ namespace TbEinkSuperFlushTurbo
         {
             try
             {
-                _debugLogger?.Invoke("初始化GDI+屏幕捕获...");
+                _debugLogger?.Invoke("Initializing GDI+ screen capture...");
 
                 var desc = output.Description;
                 var dxgiBounds = new Rectangle(
@@ -1792,48 +1792,48 @@ namespace TbEinkSuperFlushTurbo
                     desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left,
                     desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top
                 );
-                // 使用正确的屏幕边界（DXGI已返回物理分辨率）
+                // Use correct screen bounds (DXGI has returned physical resolution)
                 _screenBounds = GetCorrectScreenBounds(dxgiBounds);
 
                 _screenW = _screenBounds.Width;
                 _screenH = _screenBounds.Height;
 
-                _debugLogger?.Invoke($"DXGI屏幕边界: {dxgiBounds}");
-                _debugLogger?.Invoke($"物理屏幕边界: {_screenBounds}");
-                _debugLogger?.Invoke($"DPI缩放比例: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
+                _debugLogger?.Invoke($"DXGI screen bounds: {dxgiBounds}");
+                _debugLogger?.Invoke($"Physical screen bounds: {_screenBounds}");
+                _debugLogger?.Invoke($"DPI scaling ratio: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
 
-                // 验证屏幕尺寸合理性，防止内存溢出
+                // Validate screen size reasonableness to prevent memory overflow
                 long totalPixels = (long)_screenW * _screenH;
                 long memoryRequired = totalPixels * 4; // 4 bytes per pixel for 32bpp
                 long maxMemory = 512 * 1024 * 1024; // 512MB limit
 
                 if (memoryRequired > maxMemory || _screenW > 16384 || _screenH > 16384)
                 {
-                    _debugLogger?.Invoke($"DEBUG: 屏幕尺寸过大或内存需求过高: {_screenW}x{_screenH}, 需要内存: {memoryRequired} bytes");
+                    _debugLogger?.Invoke($"DEBUG: Screen size too large or memory requirement too high: {_screenW}x{_screenH}, memory required: {memoryRequired} bytes");
                     return false;
                 }
 
-                // 创建GDI+位图 - 使用物理尺寸
+                // Create GDI+ bitmap - use physical size
                 try
                 {
-                    // RELEASE模式修复：添加更严格的参数验证
+                    // RELEASE mode fix: Add stricter parameter validation
                     if (_screenW <= 0 || _screenH <= 0 || _screenW > 16384 || _screenH > 16384)
                     {
-                        _debugLogger?.Invoke($"GDI+位图尺寸无效: {_screenW}x{_screenH}");
+                        _debugLogger?.Invoke($"GDI+ bitmap size invalid: {_screenW}x{_screenH}");
                         return false;
                     }
 
                     _gdiBitmap = new Bitmap(_screenW, _screenH, PixelFormat.Format32bppArgb);
                     if (_gdiBitmap == null)
                     {
-                        _debugLogger?.Invoke("GDI+位图创建失败：位图为null");
+                        _debugLogger?.Invoke("GDI+ bitmap creation failed: bitmap is null");
                         return false;
                     }
 
                     _gdiGraphics = Graphics.FromImage(_gdiBitmap);
                     if (_gdiGraphics == null)
                     {
-                        _debugLogger?.Invoke("GDI+图形对象创建失败：图形对象为null");
+                        _debugLogger?.Invoke("GDI+ graphics object creation failed: graphics object is null");
                         _gdiBitmap.Dispose();
                         _gdiBitmap = null;
                         return false;
@@ -1841,40 +1841,40 @@ namespace TbEinkSuperFlushTurbo
                 }
                 catch (OutOfMemoryException ex)
                 {
-                    _debugLogger?.Invoke($"GDI+位图创建失败 - 内存不足: {ex.Message}");
+                    _debugLogger?.Invoke($"GDI+ bitmap creation failed - insufficient memory: {ex.Message}");
                     return false;
                 }
                 catch (ArgumentException ex)
                 {
-                    _debugLogger?.Invoke($"GDI+位图创建失败 - 参数错误: {ex.Message}");
+                    _debugLogger?.Invoke($"GDI+ bitmap creation failed - invalid argument: {ex.Message}");
                     return false;
                 }
                 catch (Exception ex)
                 {
-                    _debugLogger?.Invoke($"GDI+位图创建失败 - 未知错误: {ex.Message}");
+                    _debugLogger?.Invoke($"GDI+ bitmap creation failed - unknown error: {ex.Message}");
                     return false;
                 }
 
-                // 设置GDI+的DPI以匹配系统设置
+                // Set GDI+ DPI to match system settings
                 try
                 {
                     _gdiGraphics.PageUnit = GraphicsUnit.Pixel;
-                    _debugLogger?.Invoke($"GDI+位图创建成功，物理尺寸: {_screenW}x{_screenH}");
+                    _debugLogger?.Invoke($"GDI+ bitmap created successfully, physical size: {_screenW}x{_screenH}");
                 }
                 catch (Exception ex)
                 {
-                    _debugLogger?.Invoke($"GDI+设置失败: {ex.Message}");
+                    _debugLogger?.Invoke($"GDI+ settings failed: {ex.Message}");
                     CleanupGdiObjects();
                     return false;
                 }
 
-                _debugLogger?.Invoke("GDI+捕获初始化成功");
+                _debugLogger?.Invoke("GDI+ capture initialization successful");
                 return true;
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"GDI+捕获初始化失败: {ex.Message}");
-                _debugLogger?.Invoke($"异常详情: {ex}");
+                _debugLogger?.Invoke($"GDI+ capture initialization failed: {ex.Message}");
+                _debugLogger?.Invoke($"Exception details: {ex}");
                 return false;
             }
         }
@@ -1888,78 +1888,78 @@ namespace TbEinkSuperFlushTurbo
             {
                 if (_gdiGraphics == null || _gdiBitmap == null)
                 {
-                    _debugLogger?.Invoke("GDI+捕获对象未初始化");
+                    _debugLogger?.Invoke("GDI+ capture object not initialized");
                     return false;
                 }
 
-                // 统一坐标系统：使用相对于目标显示器的本地坐标(0,0)
-                // GDI+捕获应该从显示器的左上角(0,0)开始，而不是使用虚拟屏幕的绝对坐标
+                // Unified coordinate system: use local coordinates relative to target display (0,0)
+                // GDI+ capture should start from the display's top-left corner (0,0), not virtual screen absolute coordinates
                 Rectangle localScreenBounds = new Rectangle(0, 0, _screenW, _screenH);
 
-                // 添加详细的调试信息，对比Screen.AllScreens和DXGI的信息
+                // Add detailed debugging information, compare Screen.AllScreens and DXGI information
                 try
                 {
                     var allScreens = System.Windows.Forms.Screen.AllScreens;
                     if (_targetScreenIndex >= 0 && _targetScreenIndex < allScreens.Length)
                     {
                         var targetScreen = allScreens[_targetScreenIndex];
-                        _debugLogger?.Invoke($"DEBUG: Screen.AllScreens[{_targetScreenIndex}] - 设备: {targetScreen.DeviceName}, 主显示器: {targetScreen.Primary}, 边界: {targetScreen.Bounds}");
+                        _debugLogger?.Invoke($"DEBUG: Screen.AllScreens[{_targetScreenIndex}] - Device: {targetScreen.DeviceName}, Primary: {targetScreen.Primary}, Bounds: {targetScreen.Bounds}");
                     }
                     else
                     {
-                        _debugLogger?.Invoke($"DEBUG: 目标显示器索引 {_targetScreenIndex} 超出 Screen.AllScreens 范围");
+                        _debugLogger?.Invoke($"DEBUG: Target display index {_targetScreenIndex} exceeds Screen.AllScreens range");
                     }
                 }
                 catch (Exception screenEx)
                 {
-                    _debugLogger?.Invoke($"DEBUG: 无法获取 Screen.AllScreens 信息: {screenEx.Message}");
+                    _debugLogger?.Invoke($"DEBUG: Unable to get Screen.AllScreens information: {screenEx.Message}");
                 }
 
-                _debugLogger?.Invoke($"开始GDI+屏幕捕获，本地坐标: {localScreenBounds}");
-                _debugLogger?.Invoke($"原始虚拟坐标: {_screenBounds}");
-                _debugLogger?.Invoke($"目标显示器索引: {_targetScreenIndex}");
-                _debugLogger?.Invoke($"DPI缩放: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
-                _debugLogger?.Invoke($"CopyFromScreen参数: 源({_screenBounds.X},{_screenBounds.Y}) -> 目标(0,0) 尺寸({localScreenBounds.Width}x{localScreenBounds.Height})");
+                _debugLogger?.Invoke($"Starting GDI+ screen capture, local coordinates: {localScreenBounds}");
+                _debugLogger?.Invoke($"Original virtual coordinates: {_screenBounds}");
+                _debugLogger?.Invoke($"Target display index: {_targetScreenIndex}");
+                _debugLogger?.Invoke($"DPI scaling: {_dpiScaleX:F2}x{_dpiScaleY:F2}");
+                _debugLogger?.Invoke($"CopyFromScreen parameters: Source({_screenBounds.X},{_screenBounds.Y}) -> Target(0,0) Size({localScreenBounds.Width}x{localScreenBounds.Height})");
 
-                // 验证捕获参数有效性
+                // Validate capture parameter validity
                 if (localScreenBounds.Width <= 0 || localScreenBounds.Height <= 0)
                 {
-                    _debugLogger?.Invoke($"DEBUG: 无效的屏幕分辨率: {localScreenBounds.Width}x{localScreenBounds.Height}");
+                    _debugLogger?.Invoke($"DEBUG: Invalid screen resolution: {localScreenBounds.Width}x{localScreenBounds.Height}");
                     return false;
                 }
 
-                // 验证屏幕边界参数 - 修正：允许负坐标（多显示器环境正常）
+                // Validate screen bounds parameters - Fixed: allow negative coordinates (normal in multi-monitor environment)
                 if (_screenBounds.Width != _screenW || _screenBounds.Height != _screenH ||
                     _screenBounds.Width <= 0 || _screenBounds.Height <= 0)
                 {
-                    _debugLogger?.Invoke($"DEBUG: 无效的屏幕边界参数: Bounds={_screenBounds}, W={_screenW}, H={_screenH}");
+                    _debugLogger?.Invoke($"DEBUG: Invalid screen bounds parameters: Bounds={_screenBounds}, W={_screenW}, H={_screenH}");
                     return false;
                 }
 
-                // 验证GDI+位图尺寸
+                // Validate GDI+ bitmap size
                 if (_gdiBitmap.Width != _screenW || _gdiBitmap.Height != _screenH)
                 {
-                    _debugLogger?.Invoke($"DEBUG: GDI+位图尺寸不匹配 - 实际: {_gdiBitmap.Width}x{_gdiBitmap.Height}, 期望: {_screenW}x{_screenH}");
+                    _debugLogger?.Invoke($"DEBUG: GDI+ bitmap size mismatch - Actual: {_gdiBitmap.Width}x{_gdiBitmap.Height}, Expected: {_screenW}x{_screenH}");
                     return false;
                 }
 
-                // 使用本地坐标进行捕获，避免坐标系统混乱
+                // Use local coordinates for capture to avoid coordinate system confusion
                 Rectangle safeCaptureBounds = localScreenBounds;
 
                 bool captureSuccess = false;
                 int retryCount = 0;
 
-                // 实现重试机制
+                // Implement retry mechanism
                 while (retryCount < MAX_RETRY_COUNT && !captureSuccess)
                 {
                     try
                     {
-                        // 使用GDI+捕获屏幕 - 统一使用目标显示器的本地坐标
-                        // 从目标显示器的绝对位置开始，捕获到Bitmap的(0,0)位置
-                        // RELEASE模式修复：添加额外的空值检查和异常处理
+                        // Use GDI+ to capture screen - unified use of target display's local coordinates
+                        // Start from target display's absolute position, capture to Bitmap's (0,0) position
+                        // RELEASE mode fix: add additional null checks and exception handling
                         if (_gdiGraphics == null || _gdiBitmap == null)
                         {
-                            _debugLogger?.Invoke("GDI+对象在捕获前被释放");
+                            _debugLogger?.Invoke("GDI+ object released before capture");
                             return false;
                         }
 
@@ -1967,32 +1967,32 @@ namespace TbEinkSuperFlushTurbo
                         {
                             try
                             {
-                                // 确保所有对象在使用时仍然有效
+                                // Ensure all objects are still valid when used
                                 if (_gdiGraphics != null && _gdiBitmap != null)
                                 {
                                     _gdiGraphics.CopyFromScreen(
-                                        _screenBounds.X,        // 源坐标：目标显示器在虚拟屏幕中的X位置
-                                        _screenBounds.Y,        // 源坐标：目标显示器在虚拟屏幕中的Y位置  
-                                        0, 0,                   // 目标坐标：Bitmap的左上角
-                                        safeCaptureBounds.Size, // 尺寸：显示器的完整尺寸
+                                        _screenBounds.X,        // Source coordinates: target display's X position in virtual screen
+                                        _screenBounds.Y,        // Source coordinates: target display's Y position in virtual screen  
+                                        0, 0,                   // Target coordinates: Bitmap's top-left corner
+                                        safeCaptureBounds.Size, // Size: complete display size
                                         CopyPixelOperation.SourceCopy);
                                 }
                             }
                             catch (Exception innerEx)
                             {
-                                // RELEASE模式：捕获所有异常，防止闪退
-                                _debugLogger?.Invoke($"GDI+捕获内部异常: {innerEx.Message}");
-                                throw; // 重新抛出以便重试机制处理
+                                // RELEASE mode: catch all exceptions to prevent crashes
+                                _debugLogger?.Invoke($"GDI+ capture internal exception: {innerEx.Message}");
+                                throw; // Re-throw for retry mechanism handling
                             }
                         });
 
                         captureSuccess = true;
-                        _debugLogger?.Invoke($"CopyFromScreen完成，捕获区域: {safeCaptureBounds.X},{safeCaptureBounds.Y} -> 0,0 大小: {safeCaptureBounds.Width}x{safeCaptureBounds.Height}");
+                        _debugLogger?.Invoke($"CopyFromScreen completed, capture area: {safeCaptureBounds.X},{safeCaptureBounds.Y} -> 0,0 Size: {safeCaptureBounds.Width}x{safeCaptureBounds.Height}");
                     }
-                    catch (Exception ex) // RELEASE模式：捕获所有异常类型
+                    catch (Exception ex) // RELEASE mode: catch all exception types
                     {
                         retryCount++;
-                        _debugLogger?.Invoke($"GDI+捕获失败，正在重试 ({retryCount}/{MAX_RETRY_COUNT}): {ex.Message}");
+                        _debugLogger?.Invoke($"GDI+ capture failed, retrying ({retryCount}/{MAX_RETRY_COUNT}): {ex.Message}");
 
                         if (retryCount < MAX_RETRY_COUNT)
                         {
@@ -2003,24 +2003,24 @@ namespace TbEinkSuperFlushTurbo
 
                 if (!captureSuccess)
                 {
-                    _debugLogger?.Invoke("DEBUG: GDI+捕获多次失败，放弃本次捕获");
+                    _debugLogger?.Invoke("DEBUG: GDI+ capture failed multiple times, aborting this capture");
                     return false;
                 }
 
-                // 验证捕获的位图尺寸
+                // Validate captured bitmap size
                 if (_gdiBitmap.Width != _screenW || _gdiBitmap.Height != _screenH)
                 {
-                    _debugLogger?.Invoke($"警告: 位图尺寸不匹配 - 实际: {_gdiBitmap.Width}x{_gdiBitmap.Height}, 期望: {_screenW}x{_screenH}");
+                    _debugLogger?.Invoke($"Warning: Bitmap size mismatch - Actual: {_gdiBitmap.Width}x{_gdiBitmap.Height}, Expected: {_screenW}x{_screenH}");
                 }
 
-                // RELEASE模式修复：添加额外的位图锁定安全检查
+                // RELEASE mode fix: add additional bitmap lock safety check
                 if (_gdiBitmap == null)
                 {
-                    _debugLogger?.Invoke("GDI+位图对象为空，无法锁定");
+                    _debugLogger?.Invoke("GDI+ bitmap object is null, cannot lock");
                     return false;
                 }
 
-                // 将GDI+位图数据复制到D3D纹理
+                // Copy GDI+ bitmap data to D3D texture
                 BitmapData? bitmapData = null;
                 try
                 {
@@ -2029,20 +2029,20 @@ namespace TbEinkSuperFlushTurbo
 
                     if (bitmapData == null || bitmapData.Scan0 == IntPtr.Zero)
                     {
-                        _debugLogger?.Invoke("位图数据锁定失败或扫描指针为空");
+                        _debugLogger?.Invoke("Bitmap data lock failed or scan pointer is null");
                         return false;
                     }
 
-                    _debugLogger?.Invoke($"位图数据锁定成功，Stride: {bitmapData.Stride}, 扫描线大小: {bitmapData.Stride * _screenH}");
+                    _debugLogger?.Invoke($"Bitmap data lock successful, Stride: {bitmapData.Stride}, scan line size: {bitmapData.Stride * _screenH}");
 
-                    // RELEASE模式修复：添加D3D对象空值检查
+                    // RELEASE mode fix: add D3D object null check
                     if (_device == null || _context == null)
                     {
-                        _debugLogger?.Invoke("D3D设备或上下文为空，无法更新纹理");
+                        _debugLogger?.Invoke("D3D device or context is null, cannot update texture");
                         return false;
                     }
 
-                    // 更新D3D纹理
+                    // Update D3D texture
                     var texDesc = new Texture2DDescription
                     {
                         Width = (uint)_screenW,
@@ -2056,33 +2056,33 @@ namespace TbEinkSuperFlushTurbo
                         CPUAccessFlags = CpuAccessFlags.None
                     };
 
-                    // 如果纹理不存在或尺寸不匹配，创建新的
+                    // Create new texture if it doesn't exist or size doesn't match
                     if (_gpuTexCurr == null || _gpuTexCurr.Description.Width != texDesc.Width || _gpuTexCurr.Description.Height != texDesc.Height)
                     {
-                        // 线程安全地释放旧纹理
+                        // Thread-safe release of old texture
                         var oldTex = _gpuTexCurr;
                         _gpuTexCurr = null;
 
                         if (oldTex != null)
                         {
-                            _debugLogger?.Invoke("释放旧纹理，创建新纹理");
-                            // 延迟释放以避免立即内存压力 - 修复async警告
+                            _debugLogger?.Invoke("Releasing old texture, creating new texture");
+                            // Delayed release to avoid immediate memory pressure - fix async warning
                             var _ = Task.Delay(50).ContinueWith(t => oldTex.Dispose());
                         }
 
                         try
                         {
                             _gpuTexCurr = _device.CreateTexture2D(texDesc);
-                            _debugLogger?.Invoke($"D3D纹理创建成功: {_screenW}x{_screenH}");
+                            _debugLogger?.Invoke($"D3D texture created successfully: {_screenW}x{_screenH}");
                         }
                         catch (Exception texEx)
                         {
-                            _debugLogger?.Invoke($"D3D纹理创建失败: {texEx.Message}");
+                            _debugLogger?.Invoke($"D3D texture creation failed: {texEx.Message}");
                             return false;
                         }
                     }
 
-                    // RELEASE模式修复：安全的纹理数据更新
+                    // RELEASE mode fix: safe texture data update
                     try
                     {
                         var box = new MappedSubresource
@@ -2095,17 +2095,17 @@ namespace TbEinkSuperFlushTurbo
                         if (box.DataPointer != IntPtr.Zero && _gpuTexCurr != null)
                         {
                             _context.UpdateSubresource(_gpuTexCurr, 0, null, box.DataPointer, box.RowPitch, box.DepthPitch);
-                            _debugLogger?.Invoke($"D3D纹理更新成功，RowPitch: {box.RowPitch}");
+                            _debugLogger?.Invoke($"D3D texture updated successfully, RowPitch: {box.RowPitch}");
                         }
                         else
                         {
-                            _debugLogger?.Invoke("纹理数据指针为空或纹理对象为空");
+                            _debugLogger?.Invoke("Texture data pointer is null or texture object is null");
                             return false;
                         }
                     }
                     catch (Exception updateEx)
                     {
-                        _debugLogger?.Invoke($"D3D纹理更新失败: {updateEx.Message}");
+                        _debugLogger?.Invoke($"D3D texture update failed: {updateEx.Message}");
                         return false;
                     }
 
@@ -2113,7 +2113,7 @@ namespace TbEinkSuperFlushTurbo
                 }
                 finally
                 {
-                    // RELEASE模式修复：安全的位图解锁
+                    // RELEASE mode fix: safe bitmap unlock
                     if (bitmapData != null)
                     {
                         try
@@ -2122,99 +2122,99 @@ namespace TbEinkSuperFlushTurbo
                         }
                         catch (Exception unlockEx)
                         {
-                            _debugLogger?.Invoke($"位图解锁失败: {unlockEx.Message}");
+                            _debugLogger?.Invoke($"Bitmap unlock failed: {unlockEx.Message}");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"GDI+屏幕捕获失败: {ex.Message}");
-                _debugLogger?.Invoke($"异常详情: {ex}");
+                _debugLogger?.Invoke($"GDI+ screen capture failed: {ex.Message}");
+                _debugLogger?.Invoke($"Exception details: {ex}");
                 return false;
             }
         }
 
         private bool TryAlternativeCaptureMethods(IDXGIOutput? output)
         {
-            _debugLogger?.Invoke("尝试替代捕获方法...");
+            _debugLogger?.Invoke("Attempting alternative capture methods...");
 
-            // 检查输出是否为空
+            // Check if output is null
             if (output == null)
             {
-                _debugLogger?.Invoke("输出对象为空，无法尝试替代捕获方法");
+                _debugLogger?.Invoke("Output is null, cannot attempt alternative capture methods");
                 return false;
             }
 
-            // 方法1: 尝试使用不同的显示模式
+            // Method 1: Try using different display modes
             try
             {
-                _debugLogger?.Invoke("尝试使用不同的显示模式...");
+                _debugLogger?.Invoke("Attempting different display modes...");
                 var displayModeList = output.GetDisplayModeList(Format.B8G8R8A8_UNorm, DisplayModeEnumerationFlags.Interlaced | DisplayModeEnumerationFlags.Scaling);
 
                 if (displayModeList.Any())
                 {
-                    // 尝试使用第一个支持的显示模式
+                    // Try using the first supported display mode
                     var mode = displayModeList[0];
                     double refreshRate = (double)mode.RefreshRate.Numerator / mode.RefreshRate.Denominator;
-                    _debugLogger?.Invoke($"尝试显示模式: {mode.Width}x{mode.Height}@{refreshRate:F2}Hz");
+                    _debugLogger?.Invoke($"Attempting display mode: {mode.Width}x{mode.Height}@{refreshRate:F2}Hz");
 
-                    // 这里可以添加更多显示模式尝试逻辑
-                    return false; // 暂时返回false，继续尝试其他方法
+                    // Additional display mode attempt logic can be added here
+                    return false; // Temporarily return false, continue trying other methods
                 }
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"显示模式尝试失败: {ex.Message}");
+                _debugLogger?.Invoke($"Display mode attempt failed: {ex.Message}");
             }
 
-            // 方法2: 尝试GDI+捕获
+            // Method 2: Try GDI+ capture
             if (InitializeGdiCapture(output))
             {
                 _useGdiCapture = true;
-                _debugLogger?.Invoke("切换到GDI+捕获模式");
+                _debugLogger?.Invoke("Switching to GDI+ capture mode");
                 return true;
             }
 
             return false;
         }
 
-        // 获取当前鼠标位置
+        // Get current mouse position
         private Point GetMousePosition()
         {
             Point point = new Point(-1, -1);
             try
             {
                 bool result = NativeMethods.GetCursorPos(out point);
-                _debugLogger?.Invoke($"获取鼠标位置: ({point.X}, {point.Y}), 调用结果: {result}");
+                _debugLogger?.Invoke($"Get mouse position: ({point.X}, {point.Y}), call result: {result}");
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"获取鼠标位置失败: {ex.Message}");
+                _debugLogger?.Invoke($"Failed to get mouse position: {ex.Message}");
             }
             return point;
         }
 
-        // 获取文本光标位置
+        // Get text caret position
         private Point GetCaretPosition()
         {
             try
             {
-                // 每CaretCheckInterval毫秒检查一次文本光标位置，避免频繁调用API
+                // Check text caret position every CaretCheckInterval milliseconds to avoid frequent API calls
                 if (DateTime.Now - _lastCaretCheck > TimeSpan.FromMilliseconds(CaretCheckInterval))
                 {
 
                     _lastCaretCheck = DateTime.Now;
 
-                    // 获取当前焦点窗口
+                    // Get current focus window
                     IntPtr focusWindow = NativeMethods.GetFocus();
-                    _debugLogger?.Invoke($"[Caret] 获取焦点窗口句柄: {focusWindow}");
+                    _debugLogger?.Invoke($"[Caret] Focus window handle: {focusWindow}");
 
-                    // 尝试使用GetGUIThreadInfo获取更全面的信息
+                    // Try to use GetGUIThreadInfo for more comprehensive information
                     uint guiThread = 0;
                     Point guiCaretPos = new Point(-1, -1);
                     bool guiInfoAvailable = false;
-                    IntPtr foregroundWindow = IntPtr.Zero; // 移到try块外部
+                    IntPtr foregroundWindow = IntPtr.Zero; // Moved outside try block
 
                     try
                     {
@@ -2222,42 +2222,42 @@ namespace TbEinkSuperFlushTurbo
                         guiThreadInfo.cbSize = (uint)Marshal.SizeOf(typeof(NativeMethods.GUITHREADINFO));
 
                         foregroundWindow = NativeMethods.GetForegroundWindow();
-                        _debugLogger?.Invoke($"[Caret] 前台窗口句柄: {foregroundWindow}");
+                        _debugLogger?.Invoke($"[Caret] Foreground window handle: {foregroundWindow}");
 
                         uint processId; uint foregroundThread = NativeMethods.GetWindowThreadProcessId(foregroundWindow, out processId);
-                        _debugLogger?.Invoke($"[Caret] 前台窗口线程ID: {foregroundThread}");
+                        _debugLogger?.Invoke($"[Caret] Foreground window thread ID: {foregroundThread}");
 
                         if (NativeMethods.GetGUIThreadInfo(foregroundThread, ref guiThreadInfo))
                         {
                             guiThread = foregroundThread;
-                            _debugLogger?.Invoke($"[Caret] GetGUIThreadInfo成功: hwndCaret={guiThreadInfo.hwndCaret}, rcCaret=({guiThreadInfo.rcCaret.Left},{guiThreadInfo.rcCaret.Top},{guiThreadInfo.rcCaret.Right},{guiThreadInfo.rcCaret.Bottom})");
+                            _debugLogger?.Invoke($"[Caret] GetGUIThreadInfo success: hwndCaret={guiThreadInfo.hwndCaret}, rcCaret=({guiThreadInfo.rcCaret.Left},{guiThreadInfo.rcCaret.Top},{guiThreadInfo.rcCaret.Right},{guiThreadInfo.rcCaret.Bottom})");
 
                             if (guiThreadInfo.hwndCaret != IntPtr.Zero)
                             {
-                                // 使用GUI线程信息中的光标位置
+                                // Use caret position from GUI thread info
                                 guiCaretPos = new Point(guiThreadInfo.rcCaret.Left, guiThreadInfo.rcCaret.Bottom);
                                 bool convertResult = NativeMethods.ClientToScreen(guiThreadInfo.hwndCaret, ref guiCaretPos);
-                                _debugLogger?.Invoke($"[Caret] GUI线程光标位置转换结果: ({guiCaretPos.X}, {guiCaretPos.Y}), 转换结果: {convertResult}");
+                                _debugLogger?.Invoke($"[Caret] GUI thread caret position conversion result: ({guiCaretPos.X}, {guiCaretPos.Y}), conversion result: {convertResult}");
                                 guiInfoAvailable = true;
                                 _lastGuiCaretCheck = DateTime.Now;
                             }
                             else
                             {
-                                _debugLogger?.Invoke($"[Caret] GUI线程信息中无有效光标窗口句柄");
+                                _debugLogger?.Invoke($"[Caret] No valid caret window handle in GUI thread info");
                             }
                         }
                         else
                         {
-                            _debugLogger?.Invoke($"[Caret] GetGUIThreadInfo失败");
+                            _debugLogger?.Invoke($"[Caret] GetGUIThreadInfo failed");
                         }
                     }
                     catch (Exception ex)
                     {
-                        _debugLogger?.Invoke($"[Caret] 获取GUI线程信息失败: {ex.Message}");
-                        _debugLogger?.Invoke($"[Caret] 异常详情: {ex}");
+                        _debugLogger?.Invoke($"[Caret] Failed to get GUI thread info: {ex.Message}");
+                        _debugLogger?.Invoke($"[Caret] Exception details: {ex}");
                     }
 
-                    // 更新最后记录的光标位置
+                    // Update last recorded caret position
                     _lastFocusWindow = focusWindow;
                     _lastGuiThread = guiThread;
                     _lastGuiCaretPosition = guiCaretPos;
@@ -2266,64 +2266,64 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"[Caret] 获取文本光标位置失败: {ex.Message}");
-                _debugLogger?.Invoke($"[Caret] 异常详情: {ex}");
+                _debugLogger?.Invoke($"[Caret] Failed to get text caret position: {ex.Message}");
+                _debugLogger?.Invoke($"[Caret] Exception details: {ex}");
                 _lastCaretPosition = new Point(-1, -1);
             }
             return _lastCaretPosition;
         }
 
-        // 日志记录光标、鼠标和输入法位置信息
+        // Log cursor, mouse and IME position information
         private void LogCursorPositionInfo()
         {
             try
             {
-                // 获取鼠标位置
+                // Get mouse position
                 Point mousePos = GetMousePosition();
                 _lastMousePosition = mousePos;
 
-                // 获取文本光标位置
+                // Get text cursor position
                 Point caretPos = GetCaretPosition();
                 _lastCaretPosition = caretPos;
 
-                // 每ImeCheckInterval毫秒检查一次输入法位置，避免频繁调用API
+                // Check IME position every ImeCheckInterval milliseconds to avoid frequent API calls
                 if (DateTime.Now - _lastImeCheck > TimeSpan.FromMilliseconds(ImeCheckInterval))
                 {
                     _lastImeCheck = DateTime.Now;
-                    // 获取输入法窗口位置
+                    // Get IME window position
                     Rectangle imeRect = GetImeWindowRect();
                     _lastImeRect = imeRect;
                 }
 
-                // 仅在调试模式下输出详细信息
+                // Only output detailed information in debug mode
                 _debugLogger?.Invoke($"[CursorInfo] Mouse: ({mousePos.X}, {mousePos.Y}), Caret: ({caretPos.X}, {caretPos.Y}), ImeRect: {_lastImeRect}");
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"[CursorInfo] 记录光标信息失败: {ex.Message}");
+                _debugLogger?.Invoke($"[CursorInfo] Failed to record cursor info: {ex.Message}");
             }
         }
 
-        // 获取输入法窗口位置
+        // Get IME window position
         private Rectangle GetImeWindowRect()
         {
             try
             {
-                // 获取当前焦点窗口
+                // Get current focus window
                 IntPtr focusWindow = NativeMethods.GetFocus();
                 if (focusWindow == IntPtr.Zero)
                 {
                     return Rectangle.Empty;
                 }
 
-                // 获取输入法窗口句柄
+                // Get IME window handle
                 IntPtr imeWindow = NativeMethods.ImmGetDefaultIMEWnd(focusWindow);
                 if (imeWindow == IntPtr.Zero)
                 {
                     return Rectangle.Empty;
                 }
 
-                // 获取候选词窗口位置
+                // Get candidate window position
                 NativeMethods.RECT imeRect;
                 int result = NativeMethods.SendMessage(imeWindow, NativeMethods.WM_IME_CONTROL, NativeMethods.IMC_GETCANDIDATEPOS, out imeRect);
                 if (result != 0)
@@ -2333,12 +2333,12 @@ namespace TbEinkSuperFlushTurbo
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"[IME] 获取输入法窗口位置失败: {ex.Message}");
+                _debugLogger?.Invoke($"[IME] Failed to get IME window position: {ex.Message}");
             }
             return Rectangle.Empty;
         }
 
-        // 清理旧的D3D日志文件，保留最新的一个
+        // Clean up old D3D log files, keeping the latest one
         private void CleanupOldD3DLogFiles(string logDirectory)
         {
             try
@@ -2346,14 +2346,14 @@ namespace TbEinkSuperFlushTurbo
                 var logFiles = Directory.GetFiles(logDirectory, "d3d_debug_*.log");
                 if (logFiles.Length > 1)
                 {
-                    // 按创建时间排序，获取除最新文件外的所有文件
+                    // Sort by creation time, get all files except the latest
                     var filesToDelete = logFiles
                         .Select(f => new { Path = f, Info = new FileInfo(f) })
                         .OrderByDescending(f => f.Info.CreationTime)
-                        .Skip(1) // 跳过最新的文件
+                        .Skip(1) // Skip the latest file
                         .Select(f => f.Path);
 
-                    // 删除旧文件
+                    // Delete old files
                     foreach (var file in filesToDelete)
                     {
                         try
@@ -2362,21 +2362,21 @@ namespace TbEinkSuperFlushTurbo
                         }
                         catch
                         {
-                            // 忽略删除失败的情况
+                            // Ignore delete failures
                         }
                     }
                 }
             }
             catch
             {
-                // 忽略清理失败的情况
+                // Ignore cleanup failures
             }
         }
 
         /// <summary>
-        /// 获取当前主显示器的刷新率。
+        /// Get the refresh rate of the current primary display.
         /// </summary>
-        /// <returns>主显示器的刷新率，如果获取失败则返回0.0。</returns>
+        /// <returns>Refresh rate of the primary display, returns 0.0 if failed to get.</returns>
         public double GetCurrentPrimaryDisplayRefreshRate()
         {
             try
@@ -2390,7 +2390,7 @@ namespace TbEinkSuperFlushTurbo
 
                 using (factory)
                 {
-                    // 检查factory是否为null以避免CS8602警告
+                    // Check if factory is null to avoid CS8602 warning
                     if (factory == null)
                     {
                         _debugLogger?.Invoke("ERROR: GetCurrentPrimaryDisplayRefreshRate - Factory is null.");
@@ -2424,7 +2424,7 @@ namespace TbEinkSuperFlushTurbo
                             if (displayModeList != null && displayModeList.Any())
                             {
                                 var currentMode = displayModeList[0];
-                                // 添加空值检查以消除CS8602警告
+                                // Add null check to eliminate CS8602 warning
                                 if (currentMode.RefreshRate.Denominator != 0 && currentMode.RefreshRate.Numerator != 0)
                                 {
                                     double refreshRate = (double)currentMode.RefreshRate.Numerator / currentMode.RefreshRate.Denominator;
@@ -2445,12 +2445,12 @@ namespace TbEinkSuperFlushTurbo
             return 0.0;
         }
 
-        // RELEASE模式修复：添加专门的GDI+对象清理方法
+        // RELEASE mode fix: Add dedicated GDI+ object cleanup method
         private void CleanupGdiObjects()
         {
             try
             {
-                // 安全地清理GDI+图形对象
+                // Safely cleanup GDI+ graphics objects
                 if (_gdiGraphics != null)
                 {
                     try
@@ -2459,12 +2459,12 @@ namespace TbEinkSuperFlushTurbo
                     }
                     catch (Exception ex)
                     {
-                        _debugLogger?.Invoke($"GDI+图形对象清理失败: {ex.Message}");
+                        _debugLogger?.Invoke($"GDI+ graphics object cleanup failed: {ex.Message}");
                     }
                     _gdiGraphics = null;
                 }
 
-                // 安全地清理GDI+位图对象
+                // Safely cleanup GDI+ bitmap objects
                 if (_gdiBitmap != null)
                 {
                     try
@@ -2473,45 +2473,45 @@ namespace TbEinkSuperFlushTurbo
                     }
                     catch (Exception ex)
                     {
-                        _debugLogger?.Invoke($"GDI+位图对象清理失败: {ex.Message}");
+                        _debugLogger?.Invoke($"GDI+ bitmap object cleanup failed: {ex.Message}");
                     }
                     _gdiBitmap = null;
                 }
             }
             catch (Exception ex)
             {
-                _debugLogger?.Invoke($"GDI+对象清理时发生异常: {ex.Message}");
+                _debugLogger?.Invoke($"Exception during GDI+ object cleanup: {ex.Message}");
             }
         }
 
-        // DXGI格式验证方法 - 检查桌面格式是否受支持
+        // DXGI format validation method - Check if desktop format is supported
         private bool IsValidDesktopFormat(Format format)
         {
-            // 定义支持的桌面格式列表
+            // Define list of supported desktop formats
             var supportedFormats = new[]
             {
-                Format.B8G8R8A8_UNorm,     // 最常见的桌面格式
-                Format.B8G8R8A8_UNorm_SRgb, // sRGB版本
-                Format.R8G8B8A8_UNorm,     // RGBA格式
-                Format.R8G8B8A8_UNorm_SRgb, // sRGB版本
-                Format.B8G8R8X8_UNorm,     // 无alpha通道格式
-                Format.B8G8R8X8_UNorm_SRgb, // sRGB版本
-                Format.R10G10B10A2_UNorm,  // 10位色深格式
-                Format.R16G16B16A16_UNorm  // 16位色深格式（较少见）
+                Format.B8G8R8A8_UNorm,     // Most common desktop format
+                Format.B8G8R8A8_UNorm_SRgb, // sRGB version
+                Format.R8G8B8A8_UNorm,     // RGBA format
+                Format.R8G8B8A8_UNorm_SRgb, // sRGB version
+                Format.B8G8R8X8_UNorm,     // No alpha channel format
+                Format.B8G8R8X8_UNorm_SRgb, // sRGB version
+                Format.R10G10B10A2_UNorm,  // 10-bit color depth format
+                Format.R16G16B16A16_UNorm  // 16-bit color depth format (less common)
             };
 
             return supportedFormats.Contains(format);
         }
 
-        // 动态超时优化 - 根据捕获历史调整超时时间
+        // Dynamic timeout optimization - Adjust timeout based on capture history
         private int GetOptimizedTimeout()
         {
             _captureAttemptCount++;
 
-            // 计算成功率
+            // Calculate success rate
             double successRate = _captureAttemptCount > 0 ? (double)_captureSuccessCount / _captureAttemptCount : 1.0;
 
-            // 如果最近有成功捕获，使用基础超时
+            // If recent successful capture exists, use base timeout
             if ((DateTime.Now - _lastSuccessfulCapture).TotalSeconds < 5.0 && successRate > 0.8)
             {
                 _consecutiveTimeouts = 0;
@@ -2519,7 +2519,7 @@ namespace TbEinkSuperFlushTurbo
                 return _baseTimeoutMs;
             }
 
-            // 如果连续失败，逐步增加超时时间
+            // If consecutive failures, gradually increase timeout
             if (_consecutiveFailures > 3)
             {
                 int increasedTimeout = Math.Min(_baseTimeoutMs + (_consecutiveFailures - 3) * 50, _maxTimeoutMs);
@@ -2527,7 +2527,7 @@ namespace TbEinkSuperFlushTurbo
                 return increasedTimeout;
             }
 
-            // 如果连续超时，增加超时时间
+            // If consecutive timeouts, increase timeout
             if (_consecutiveTimeouts > 2)
             {
                 int increasedTimeout = Math.Min(_baseTimeoutMs + _consecutiveTimeouts * 25, _maxTimeoutMs);
@@ -2543,13 +2543,13 @@ namespace TbEinkSuperFlushTurbo
             _computeShader?.Dispose();
             _paramBuffer?.Dispose();
 
-            // 释放状态缓冲区
+            // Release state buffers
             _tileStateInUAV?.Dispose();
             _tileStateIn?.Dispose();
             _tileStateOutUAV?.Dispose();
             _tileStateOut?.Dispose();
 
-            // 释放刷新列表缓冲区
+            // Release refresh list buffers
             _refreshListUAV?.Dispose();
             _refreshList?.Dispose();
             _refreshCounterUAV?.Dispose();
@@ -2558,12 +2558,12 @@ namespace TbEinkSuperFlushTurbo
             _refreshCounterReadback?.Dispose();
             _tileStateInReadback?.Dispose();
 
-            // 释放亮度缓冲区
+            // Release brightness buffers
             _tileBrightnessUAV?.Dispose();
             _tileBrightness?.Dispose();
             _tileBrightnessReadback?.Dispose();
 
-            // 释放GPU端状态管理缓冲区
+            // Release GPU-side state management buffers
             _tileStableCountersUAV?.Dispose();
             _tileStableCountersBuffer?.Dispose();
             _tileProtectionExpiryUAV?.Dispose();
@@ -2575,7 +2575,7 @@ namespace TbEinkSuperFlushTurbo
             _context?.Dispose();
             _device?.Dispose();
 
-            // 释放GDI+资源
+            // Release GDI+ resources
             CleanupGdiObjects();
         }
     }
