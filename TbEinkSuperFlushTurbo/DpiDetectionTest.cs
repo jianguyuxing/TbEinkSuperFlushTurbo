@@ -9,11 +9,11 @@ namespace TbEinkSuperFlushTurbo
     {
         public static void TestDpiDetection()
         {
-            Console.WriteLine("=== DPI检测测试开始 ===");
+            Console.WriteLine("=== DPI Detection Test Started ===");
             
             try
             {
-                // 读取配置文件设置
+                // Read configuration file settings
                 string dpiMode = ConfigurationManager.AppSettings["DpiDetectionMode"] ?? "Auto";
                 int selectedOutput = 0;
                 float forceDpiScale = 0f;
@@ -28,74 +28,74 @@ namespace TbEinkSuperFlushTurbo
                 }
                 catch { }
                 
-                Console.WriteLine($"DPI检测模式: {dpiMode}");
-                Console.WriteLine($"选择的显示器索引: {selectedOutput}");
-                Console.WriteLine($"强制DPI缩放: {forceDpiScale}");
+                Console.WriteLine($"DPI Detection Mode: {dpiMode}");
+                Console.WriteLine($"Selected Display Index: {selectedOutput}");
+                Console.WriteLine($"Forced DPI Scale: {forceDpiScale}");
                 Console.WriteLine();
                 
-                // 获取所有显示器信息
+                // Get all display information
                 var allScreens = Screen.AllScreens;
-                Console.WriteLine($"检测到 {allScreens.Length} 个显示器:");
+                Console.WriteLine($"Detected {allScreens.Length} displays:");
                 
                 for (int i = 0; i < allScreens.Length; i++)
                 {
                     var screen = allScreens[i];
-                    Console.WriteLine($"\n显示器 {i}:");
-                    Console.WriteLine($"  设备名称: {screen.DeviceName}");
-                    Console.WriteLine($"  主显示器: {screen.Primary}");
-                    Console.WriteLine($"  边界: {screen.Bounds}");
-                    Console.WriteLine($"  工作区: {screen.WorkingArea}");
+                    Console.WriteLine($"\nDisplay {i}:");
+                    Console.WriteLine($"  Device Name: {screen.DeviceName}");
+                    Console.WriteLine($"  Primary: {screen.Primary}");
+                    Console.WriteLine($"  Bounds: {screen.Bounds}");
+                    Console.WriteLine($"  Working Area: {screen.WorkingArea}");
                     
-                    // 尝试获取该显示器的DPI
+                    // Try to get DPI for this display
                     try
                     {
                         var dpi = GetMonitorDpiByIndex(i);
-                        Console.WriteLine($"  DPI: {dpi.dpiX}x{dpi.dpiY} (缩放: {dpi.dpiX/96:F2})");
+                        Console.WriteLine($"  DPI: {dpi.dpiX}x{dpi.dpiY} (Scale: {dpi.dpiX/96:F2})");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"  DPI检测失败: {ex.Message}");
+                        Console.WriteLine($"  DPI Detection Failed: {ex.Message}");
                     }
                 }
                 
-                Console.WriteLine($"\n系统DPI (主显示器):");
+                Console.WriteLine($"\nSystem DPI (Primary Display):");
                 using (var graphics = Graphics.FromHwnd(IntPtr.Zero))
                 {
-                    Console.WriteLine($"  DPI: {graphics.DpiX}x{graphics.DpiY} (缩放: {graphics.DpiX/96:F2})");
+                    Console.WriteLine($"  DPI: {graphics.DpiX}x{graphics.DpiY} (Scale: {graphics.DpiX/96:F2})");
                 }
                 
-                // 根据配置模式显示信息
-                Console.WriteLine($"\n当前配置模式分析:");
+                // Show information based on configuration mode
+                Console.WriteLine($"\nCurrent Configuration Mode Analysis:");
                 switch (dpiMode)
                 {
                     case "All":
-                        Console.WriteLine("- 将检测所有显示器的DPI");
-                        Console.WriteLine("- 但仍使用主显示器的DPI作为系统DPI");
-                        Console.WriteLine("- 适用于多显示器环境调试");
+                        Console.WriteLine("- Will detect DPI for all displays");
+                        Console.WriteLine("- But still use primary display DPI as system DPI");
+                        Console.WriteLine("- Suitable for multi-display environment debugging");
                         break;
                     case "Primary":
-                        Console.WriteLine("- 只检测主显示器的DPI");
-                        Console.WriteLine("- 适用于单显示器或主显示器优先的场景");
+                        Console.WriteLine("- Only detect primary display DPI");
+                        Console.WriteLine("- Suitable for single display or primary display priority scenarios");
                         break;
                     case "Auto":
                     default:
-                        Console.WriteLine("- 自动检测模式");
-                        Console.WriteLine("- 使用主显示器的DPI作为系统DPI");
-                        Console.WriteLine("- 适用于大多数场景");
+                        Console.WriteLine("- Auto detection mode");
+                        Console.WriteLine("- Use primary display DPI as system DPI");
+                        Console.WriteLine("- Suitable for most scenarios");
                         break;
                 }
                 
                 if (forceDpiScale > 0)
                 {
-                    Console.WriteLine($"\n注意: 强制DPI缩放已设置为 {forceDpiScale}，将覆盖系统检测值");
+                    Console.WriteLine($"\nNote: Forced DPI Scale is set to {forceDpiScale}, will override system detected value");
                 }
                 
-                Console.WriteLine("\n=== DPI检测测试完成 ===");
+                Console.WriteLine("\n=== DPI Detection Test Completed ===");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"DPI检测测试失败: {ex.Message}");
-                Console.WriteLine($"错误详情: {ex}");
+                Console.WriteLine($"DPI Detection Test Failed: {ex.Message}");
+                Console.WriteLine($"Error Details: {ex}");
             }
         }
         
@@ -108,13 +108,13 @@ namespace TbEinkSuperFlushTurbo
                 {
                     var targetScreen = allScreens[monitorIndex];
                     
-                    // 尝试为特定显示器创建Graphics对象以获取其DPI
+                    // Try to create Graphics object for specific display to get its DPI
                     try
                     {
-                        // 获取显示器的边界矩形
+                        // Get display bounds rectangle
                         var bounds = targetScreen.Bounds;
                         
-                        // 创建临时窗口句柄来获取该显示器的DPI
+                        // Create temporary window handle to get display DPI
                         var tempHwnd = NativeMethods.CreateWindowEx(
                             0, "STATIC", "", 0,
                             bounds.Left, bounds.Top, 1, 1,
@@ -139,21 +139,21 @@ namespace TbEinkSuperFlushTurbo
                     }
                     catch
                     {
-                        // 如果无法获取特定DPI，使用系统DPI
+                        // If cannot get specific DPI, use system DPI
                     }
                     
-                    // 使用系统DPI作为后备
+                    // Use system DPI as fallback
                     using (var graphics = Graphics.FromHwnd(IntPtr.Zero))
                     {
                         return (graphics.DpiX, graphics.DpiY);
                     }
                 }
                 
-                return (96f, 96f); // 默认值
+                return (96f, 96f); // Default value
             }
             catch
             {
-                return (96f, 96f); // 默认值
+                return (96f, 96f); // Default value
             }
         }
     }

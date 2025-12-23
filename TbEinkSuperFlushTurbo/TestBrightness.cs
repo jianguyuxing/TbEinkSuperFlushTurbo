@@ -9,9 +9,9 @@ namespace TbEinkSuperFlushTurbo
     {
         public static void TestBrightnessCalculation()
         {
-            Console.WriteLine("=== 测试亮度计算功能 ===");
+            Console.WriteLine("=== Brightness Calculation Test ===");
             
-            // 创建测试图像 - 纯白色
+            // Create test image - pure white
             using (var whiteImage = new Bitmap(100, 100))
             {
                 using (var g = Graphics.FromImage(whiteImage))
@@ -20,10 +20,10 @@ namespace TbEinkSuperFlushTurbo
                 }
                 
                 float whiteBrightness = CalculateAverageBrightness(whiteImage);
-                Console.WriteLine($"白色图像平均亮度: {whiteBrightness:F3} (期望接近1.0)");
+                Console.WriteLine($"White Image Average Brightness: {whiteBrightness:F3} (Expected ~1.0)");
             }
             
-            // 创建测试图像 - 纯黑色
+            // Create test image - pure black
             using (var blackImage = new Bitmap(100, 100))
             {
                 using (var g = Graphics.FromImage(blackImage))
@@ -32,10 +32,10 @@ namespace TbEinkSuperFlushTurbo
                 }
                 
                 float blackBrightness = CalculateAverageBrightness(blackImage);
-                Console.WriteLine($"黑色图像平均亮度: {blackBrightness:F3} (期望接近0.0)");
+                Console.WriteLine($"Black Image Average Brightness: {blackBrightness:F3} (Expected ~0.0)");
             }
             
-            // 创建测试图像 - 50%灰色
+            // Create test image - 50% gray
             using (var grayImage = new Bitmap(100, 100))
             {
                 using (var g = Graphics.FromImage(grayImage))
@@ -44,10 +44,10 @@ namespace TbEinkSuperFlushTurbo
                 }
                 
                 float grayBrightness = CalculateAverageBrightness(grayImage);
-                Console.WriteLine($"灰色图像平均亮度: {grayBrightness:F3} (期望接近0.5)");
+                Console.WriteLine($"Gray Image Average Brightness: {grayBrightness:F3} (Expected ~0.5)");
             }
             
-            // 创建测试图像 - 红色
+            // Create test image - red
             using (var redImage = new Bitmap(100, 100))
             {
                 using (var g = Graphics.FromImage(redImage))
@@ -56,10 +56,10 @@ namespace TbEinkSuperFlushTurbo
                 }
                 
                 float redBrightness = CalculateAverageBrightness(redImage);
-                Console.WriteLine($"红色图像平均亮度: {redBrightness:F3} (期望接近0.299)");
+                Console.WriteLine($"Red Image Average Brightness: {redBrightness:F3} (Expected ~0.299)");
             }
             
-            // 创建测试图像 - 绿色
+            // Create test image - green
             using (var greenImage = new Bitmap(100, 100))
             {
                 using (var g = Graphics.FromImage(greenImage))
@@ -68,10 +68,10 @@ namespace TbEinkSuperFlushTurbo
                 }
                 
                 float greenBrightness = CalculateAverageBrightness(greenImage);
-                Console.WriteLine($"绿色图像平均亮度: {greenBrightness:F3} (期望接近0.587)");
+                Console.WriteLine($"Green Image Average Brightness: {greenBrightness:F3} (Expected ~0.587)");
             }
             
-            // 创建测试图像 - 蓝色
+            // Create test image - blue
             using (var blueImage = new Bitmap(100, 100))
             {
                 using (var g = Graphics.FromImage(blueImage))
@@ -80,13 +80,13 @@ namespace TbEinkSuperFlushTurbo
                 }
                 
                 float blueBrightness = CalculateAverageBrightness(blueImage);
-                Console.WriteLine($"蓝色图像平均亮度: {blueBrightness:F3} (期望接近0.114)");
+                Console.WriteLine($"Blue Image Average Brightness: {blueBrightness:F3} (Expected ~0.114)");
             }
             
-            Console.WriteLine("=== 亮度计算测试完成 ===");
+            Console.WriteLine("=== Brightness Calculation Test Completed ===");
         }
         
-        // 使用与compute.hlsl中相同的亮度计算公式
+        // Use the same brightness calculation formula as compute.hlsl
         private static float CalculateAverageBrightness(Bitmap image)
         {
             float totalBrightness = 0;
@@ -106,18 +106,18 @@ namespace TbEinkSuperFlushTurbo
                     {
                         for (int x = 0; x < image.Width; x++)
                         {
-                            // BGRA格式 (Format32bppArgb)
+                            // BGRA format (Format32bppArgb)
                             byte b = ptr[y * stride + x * 4 + 0];
                             byte g = ptr[y * stride + x * 4 + 1];
                             byte r = ptr[y * stride + x * 4 + 2];
-                            // byte a = ptr[y * stride + x * 4 + 3]; // 忽略alpha通道
+                            // byte a = ptr[y * stride + x * 4 + 3]; // Ignore alpha channel
                             
-                            // 转换为0-1范围
+                            // Convert to 0-1 range
                             float rNorm = r / 255.0f;
                             float gNorm = g / 255.0f;
                             float bNorm = b / 255.0f;
                             
-                            // 使用标准亮度公式：0.299*R + 0.587*G + 0.114*B
+                            // Use standard luminance formula: 0.299*R + 0.587*G + 0.114*B
                             float luminance = 0.299f * rNorm + 0.587f * gNorm + 0.114f * bNorm;
                             
                             totalBrightness += luminance;
