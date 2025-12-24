@@ -1,69 +1,93 @@
-# TbEinkSuperFlushTurbo - 电子墨水屏残影自动清除工具
+# TbEinkSuperFlushTurbo - E-Ink Screen Ghosting Auto Reduction Tool
 
 <div align="right">
-  <strong>语言:</strong> 中文 | <a href="README_EN.md">English</a>
+  <strong>Language:</strong> <a href="README_CN.md">中文</a> | English
 </div>
 
-## 项目简介
+## Project Overview
 
-TbEinkSuperFlushTurbo 是一款专为电子墨水屏设备设计的智能残影清除工具。通过DirectX GPU加速和智能区域检测算法，有效减少屏幕残影和闪烁，提供更佳的视觉体验。
+TbEinkSuperFlushTurbo is an intelligent ghosting reduction tool specifically designed for e-ink display devices. Through
+DirectX GPU acceleration and smart area detection algorithms, it effectively reduces screen ghosting and flickering,
+providing a better visual experience.
 
-📌 **快速导航**: [使用方法](#使用方法)
+📌 **Quick Navigation**: [Usage](#usage)
 
-### 🖥️ 主要目标设备
-**本工具主要针对 ThinkBook Plus Gen4 (Twist) 的 Kaleido 彩色电子墨水屏开发和优化测试**，同时兼容其他电子墨水屏设备。
+### 🖥️ Primary Target Device
 
-## 核心功能
+**This tool is specifically developed and optimized for the Kaleido color e-ink display on ThinkBook Plus Gen4 (Twist)
+**, while maintaining compatibility with other e-ink display devices.
 
-### 🎯 智能残影清除
-- **GPU加速处理**：利用DirectX 11和计算着色器进行高性能图像处理
-- **图块化检测**：将屏幕划分为8x8像素图块，精确检测变化区域
-- **智能刷新算法**：基于多帧稳定性检测，避免过度刷新
+## Core Features
 
-### 💡 工作原理
-- **非波形驱动技术**：采用当前稳定区域的反向半透明亮度颜色（黑色/白色）作为刷新色，短暂停留100ms，驱动电子墨水屏快速扰动墨水粒子，实现残影清除效果
-- **局部刷新优势**：使用局部刷新而非全屏刷新，减少屏幕闪烁
-- **单次反色刷新**：反色刷新仅闪烁一次，相比系统驱动的4次闪动（黑→白→黑→白）大幅减少干扰
+### 🎯 Intelligent Ghosting Reduction
 
-### 🚀 Turbo功能
-- **GPU并行计算**：每个区块的像素差异对比以及对区块的遍历操作均放到GPU中进行，极大减少全屏计算数百万像素带来的性能影响
-- **滚动区域抑制刷新**：在小区块的基础上，增加固定划分相邻区块的合围区域。对于合围区域内m帧中有n帧需要刷新的区域（认为是发生了滚动），区域内的区块不进行刷新。滚动停止后会进行刷新，极大减少了滚动时文字上短暂显示反色带来的干扰
+- **GPU Acceleration**: Utilizes DirectX 11 and compute shaders for high-performance image processing
+- **Tiled Detection**: Divides screen into 8x8 pixel tiles for precise change detection
+- **Smart Refresh Algorithm**: Multi-frame stability detection to avoid over-refreshing
 
-### 🚫 智能区域过滤
-- **光标区域排除**：自动排除鼠标和文本光标周围区域（3个图块半径）
-  - ⚠️ **限制说明**：仅支持标准Windows文本光标API，对于使用非标准光标API绘制的第三方应用光标可能无法检测
+### 💡 Working Principle
 
-### ⚡ 性能优化
-- **首次刷新延迟机制**：为了避免启动时因大量区域变化导致的全屏刷新，首次触发刷新会有适当延迟，确保只对真正需要刷新的区域进行处理
-- **冷却期机制**：已刷新的区块会在短时间内进入冷却期，防止重复刷新，进一步降低屏幕闪烁和提高用户体验
-- **用户全刷智能识别**：95%区域变化时视为用户手动/自动使用电脑原有EINK驱动进行了全刷，此时重置变化统计，避免引起重复全屏刷新
-- **最小化干扰**：仅刷新必要区域，减少屏幕闪烁
+- **Non-Waveform Driving Technology**: Uses the inverse semi-transparent brightness color (black/white) of the current
+  stable area as the refresh color, briefly displayed for 100ms to drive the e-ink screen to quickly disturb ink
+  particles, achieving ghosting reduction effect
+- **Local Refresh Advantage**: Employs local refresh instead of full-screen refresh, reducing screen flickering
+- **Single Inverse Color Refresh**: Inverse color refresh flashes only once, significantly reducing interference
+  compared to the system driver's 4 flashes (black→white→black→white)
 
-### 🎨 可视化反馈
-- **实时覆盖层**：刷新区域显示短暂的颜色覆盖（100ms）
-- **托盘图标**：支持最小化到系统托盘
-- **详细日志**：完整的操作日志和性能统计
+### 🚀 Turbo Features
 
-## 使用方法
+- **GPU Parallel Computing**: Pixel difference comparison of each block and traversal operations on blocks are all
+  performed in GPU, greatly reducing the performance impact of calculating millions of pixels across the full screen
+- **Scrolling Area Suppression Refresh**: Based on small blocks, it adds fixed partitioned adjacent blocks to form an
+  enclosing area. For areas where n frames out of m frames need to be refreshed within the enclosing area (considered as
+  scrolling), the blocks within the area are not refreshed. After scrolling stops, refreshing will occur, greatly
+  reducing the interference caused by temporarily displaying inverse colors on text during scrolling
 
-### 基本操作
-1. 运行 `TbEinkSuperFlushTurbo.exe`
-2. （可选但推荐）点击开始前先进行一次全屏刷新
-3. 点击 **Start** 按钮开始监控
-4. 点击 **Stop** 按钮停止监控
-5. 使用托盘图标控制显示/隐藏
+### 🚫 Smart Area Filtering
 
-> 注意：建议在点击开始前先手动进行一次全屏刷新以清除已有的残影。本程序只计算点击开始后新产生的残影。
+- **Cursor Area Exclusion**: Automatically excludes areas around mouse and text cursor (3-tile radius)
+    - ⚠️ **Limitation**: Only supports standard Windows text cursor APIs. Third-party applications using non-standard
+      cursor APIs may not be detectable
 
-### 高级设置
-- 可自定义检测参数（图块大小、阈值等）
-- 支持日志级别调整
+### ⚡ Performance Optimization
 
-### 配置文件说明
+- **First Refresh Delay Mechanism**: To avoid full-screen refresh caused by massive area changes at startup, the first
+  refresh trigger has an appropriate delay to ensure that only areas that truly need refresh are processed
+- **Cooldown Period Mechanism**: Refreshed blocks enter a short-term cooldown period to prevent repeated refreshing,
+  further reducing screen flickering and improving user experience
+- **User Full Refresh Smart Recognition**: Considers 95% area change as user manually/automatically using the computer's
+  original E-ink driver for full refresh, resets change statistics at this time to avoid repeated full-screen refreshes
+- **Minimal Interference**: Only refreshes necessary areas to reduce screen flickering
 
-应用程序使用一个配置文件，存储在应用程序目录中：
+### 🎨 Visual Feedback
 
-1. `config.json` - 包含所有应用程序设置：
+- **Real-time Overlay**: Refreshed areas show brief color overlay (100ms)
+- **System Tray Icon**: Supports minimizing to system tray
+- **Detailed Logging**: Complete operation logs and performance statistics
+
+## Usage
+
+### Basic Operation
+
+1. Run `TbEinkSuperFlushTurbo.exe`
+2. (Optional but recommended) Perform a full screen refresh manually before starting
+3. Click **Start** button to begin monitoring
+4. Click **Stop** button to stop monitoring
+5. Use tray icon to control show/hide
+
+> Note: It is recommended to perform a manual full-screen refresh before clicking Start to clear existing ghosting. This
+> program only calculates ghosting that occurs after clicking Start.
+
+### Advanced Settings
+
+- Customizable detection parameters (tile size, thresholds, etc.)
+- Adjustable log levels
+
+### Configuration Files
+
+The application uses a configuration file stored in the application directory:
+
+1. `config.json` - Contains all application settings:
    ```json
    {
      "PixelDelta": 10,
@@ -73,156 +97,194 @@ TbEinkSuperFlushTurbo 是一款专为电子墨水屏设备设计的智能残影�
      "ToggleHotkey": 117
    }
    ```
-   参数说明：
-   - `PixelDelta`：像素颜色差异敏感度阈值（2-25）
-   - `PollInterval`：屏幕捕获间隔（毫秒）（200-5000）
-   - `TileSize`：检测区块大小的像素边长，代表n*n像素区域（8-64）
-   - `ToggleHotkey`：切换快捷键的虚拟键码（117 = F6）
+   Where:
+    - `PixelDelta`: Sensitivity threshold for pixel color differences (2-25)
+    - `PollInterval`: Screen capture interval in milliseconds (200-5000)
+    - `TileSize`: Size of detection blocks, pixel edge length, representing an n*n pixel area (8-64)
+    - `ToggleHotkey`: Virtual key code for the toggle hotkey (117 = F6)
 
-> 💡 **提示**：如果您希望减少刷新频率并增大刷新区域，可以增大检测区块的像素边长。但请注意，增大区块像素边长时，需要相应减小每像素差异阈值（PixelDelta），否则可能较难触发残影变化判定。较大的检测区块可能会忽略一些较小残影的判定，您可以根据实际体验进行权衡调整。
+> 💡 **Tip**: If you want to reduce refresh frequency and increase refresh area size, you can increase the pixel edge
+> length of detection blocks. However, please note that when increasing the block pixel edge length, you need to decrease
+> the pixel difference threshold (PixelDelta) accordingly, otherwise it may be difficult to trigger ghosting change
+> detection. Larger detection blocks may overlook some smaller ghosting detections, so you can make trade-offs based on
+> your actual experience.
 
-如果此文件不存在，应用程序会在首次运行时创建带有默认值的配置文件。
+If this file doesn't exist, the application will create it with default values on first run.
 
-## 技术特点
+## Technical Features
 
-### 亮度差异检测算法
-本项目采用了基于GPU的亮度差异检测算法，通过DirectX 11计算着色器进行高效的屏幕内容分析：
+### Brightness Difference Detection Algorithm
 
-1. **图块化处理**：将整个屏幕划分为8x8像素的图块，便于并行处理和局部刷新
-2. **像素级比较**：对每个图块内的像素进行前后帧对比，计算RGB三通道差值
-3. **亮度计算**：使用标准亮度公式 Y = 0.299×R + 0.587×G + 0.114×B 计算每个像素的亮度
-4. **平均差异阈值**：设定像素差异阈值，超过阈值的变化才会被认为是显著变化
-5. **滑动窗口平均**：采用4帧滑动窗口平均算法，平滑瞬时变化，提高检测稳定性
-6. **多帧稳定性检测**：只有连续3帧以上稳定的区域才会触发刷新操作
-7. **动态冷却期**：根据覆盖层显示时间动态计算冷却期，确保刷新过的区块在冷却期内不会重复刷新
-8. **噪声过滤**：智能识别和过滤屏幕噪声
+This project employs a GPU-based brightness difference detection algorithm that efficiently analyzes screen content
+through DirectX 11 compute shaders:
 
-该算法充分利用GPU并行计算能力，在保证检测精度的同时实现了极高的处理效率。
+1. **Tiled Processing**: The entire screen is divided into 8x8 pixel tiles for parallel processing and localized refresh
+2. **Pixel-level Comparison**: Compare pixels between consecutive frames for each tile, calculating RGB channel
+   differences
+3. **Luminance Calculation**: Use the standard luminance formula Y = 0.299×R + 0.587×G + 0.114×B to calculate the
+   brightness of each pixel
+4. **Average Difference Threshold**: Set pixel difference threshold, changes exceeding the threshold are considered
+   significant
+5. **Sliding Window Average**: Employ a 4-frame sliding window average algorithm to smooth instantaneous changes and
+   improve detection stability
+6. **Multi-frame Stability Detection**: Only areas that remain stable for 3 or more consecutive frames will trigger a
+   refresh operation
+7. **Dynamic Cooldown Period**: Dynamically calculates cooldown period based on overlay display time, ensuring refreshed
+   blocks won't be refreshed again during the cooldown period
+8. **Noise Filtering**: Intelligent identification and filtering of screen noise
 
-### DirectX集成
-- **Vortice.DirectX**：使用现代.NET DirectX包装器
-- **计算着色器**：GPU并行处理图像数据
-- **高性能捕获**：低延迟屏幕捕获和处理
+This algorithm fully leverages GPU parallel computing power to achieve high processing efficiency while ensuring
+detection accuracy.
 
-### 系统兼容性
-- **高DPI支持**：自动适配不同DPI缩放设置
-- **多架构支持**：支持x64架构
-- **Windows 10/11**：专为现代Windows系统优化
-- **智能屏幕识别**：自动检测屏幕刷新率、DPI缩放比例，支持多显示器环境
-- **E-ink屏自动识别**：通过刷新率特征（小于59Hz）智能识别电子墨水屏设备
+### DirectX Integration
 
-## 系统要求
+- **Vortice.DirectX**: Uses modern .NET DirectX wrappers
+- **Compute Shaders**: GPU parallel processing of image data
+- **High-performance Capture**: Low-latency screen capture and processing
 
-- **操作系统**：Windows 10 或更高版本
-- **.NET版本**：.NET 8.0 或更高版本
-- **显卡**：支持DirectX 11的显卡
-- **权限**：建议以管理员权限运行以获得最佳效果
-- **推荐设备**：ThinkBook Plus Gen4 (Twist) 或其他配备Kaleido电子墨水屏的设备
+### System Compatibility
 
-## 构建说明
+- **High DPI Support**: Automatically adapts to different DPI scaling settings
+- **Multi-architecture Support**: Supports x64 architecture
+- **Windows 10/11**: Optimized for modern Windows systems
+- **Smart Screen Detection**: Automatically detects screen refresh rates, DPI scaling factors, and supports
+  multi-monitor environments
+- **E-ink Screen Auto-Recognition**: Intelligently identifies e-ink display devices through refresh rate
+  characteristics (less than 59Hz)
+- **Smart Screen Detection**: Automatically detects screen refresh rates, DPI scaling factors, and supports
+  multi-monitor environments
+- **E-ink Screen Auto-Recognition**: Intelligently identifies e-ink display devices through refresh rate
+  characteristics (less than 59Hz)
 
-### 开发环境
-- Visual Studio 2022 或更高版本
+## System Requirements
+
+- **Operating System**: Windows 10 or higher
+- **.NET Version**: .NET 8.0 or higher
+- **Graphics Card**: DirectX 11 compatible graphics card
+- **Permissions**: Administrator privileges recommended for best results
+- **Recommended Device**: ThinkBook Plus Gen4 (Twist) or other devices equipped with Kaleido e-ink displays
+
+## Build Instructions
+
+### Development Environment
+
+- Visual Studio 2022 or higher
 - .NET 8.0 SDK
 - Windows 10 SDK
 
-### 依赖库
+### Dependencies
 - Vortice.Direct3D11 (3.6.2)
 - Vortice.DXGI (3.6.2)
 - Vortice.D3DCompiler (3.6.2)
 
-### 编译步骤
+### Build Steps
 ```bash
-# 克隆项目
-git clone [项目地址]
+# Clone project
+git clone [project address]
 
-# 进入项目目录
+# Enter project directory
 cd TbEinkSuperFlushTurbo
 
-# 还原依赖
+# Restore dependencies
 dotnet restore
 
-# 编译项目
+# Build project
 dotnet build
 
-# 运行项目
+# Run project
 dotnet run
 ```
 
-## 性能表现
+## Performance
 
-### 检测性能
-- **检测周期**：515ms（可配置）
-- **处理延迟**：< 50ms
+### Detection Performance
 
-### 刷新优化
-- **减少全刷次数**：相比传统方法减少60-80%
-- **降低闪烁**：智能保护期机制
-- **延长屏幕寿命**：最小化不必要的刷新操作
+- **Detection Cycle**: 515ms (configurable)
+- **Processing Latency**: < 50ms
 
-## 故障排除
+### Refresh Optimization
 
-### ⚙️ 自动检测功能
+- **Reduced Full Refresh Count**: 60-80% reduction compared to traditional methods
+- **Reduced Flickering**: Smart protection period mechanism
+- **Extended Screen Life**: Minimizes unnecessary refresh operations
 
-#### 屏幕检测机制
+## Troubleshooting
 
-- **刷新率检测**：自动扫描所有连接的显示器，识别刷新率特征
-- **E-ink屏识别**：通过低刷新率（小于59Hz）智能识别电子墨水屏设备
-- **多显示器支持**：在多屏环境中自动选择E-ink屏进行处理
-- **DPI自适应**：自动检测并适配不同DPI缩放设置
+### ⚙️ Automatic Detection Features
 
-#### 检测逻辑
+#### Screen Detection Mechanism
 
-1. **系统枚举**：通过Windows API枚举所有显示器信息
-2. **特征识别**：基于刷新率、分辨率等特征识别E-ink屏
-3. **优先级处理**：优先处理识别到的E-ink屏，支持多E-ink屏环境
-4. **动态适应**：显示器连接状态变化时自动重新检测
+- **Refresh Rate Detection**: Automatically scans all connected displays to identify refresh rate characteristics
+- **E-ink Screen Recognition**: Intelligently identifies e-ink display devices through low refresh rate
+  characteristics (less than 59Hz)
+- **Multi-monitor Support**: Automatically selects E-ink screens for processing in multi-monitor environments
+- **DPI Adaptation**: Automatically detects and adapts to different DPI scaling settings
 
-### 故障排除
-1. **程序无法启动**：检查是否安装.NET 8.0运行时
-2. **DirectX初始化失败**：更新显卡驱动程序
-3. **检测不准确**：调整DPI设置或检测参数
-4. **光标检测失败**：某些第三方应用使用非标准光标API，无法被检测
-5. **显示效果不佳**：使用浅色主题+英特尔显卡中心调节过对比度增强使得界面为纯白色时效果最好，或者是使用白底高对比度主题
-6. **显示器配置变更**：如果切换或修改了显示器（例如更改主显示器、调整分辨率、插拔显示器）后发现检测或刷新区域不准确，建议从托盘退出并重启程序，以确保正确的显示器检测。
+#### Detection Logic
 
-### ⚠️ 特别提示
-- **系统功能干扰**：省电模式、夜间模式以及以下两个系统亮度选项（默认开启，对电子墨水屏同样生效）可能会影响显示效果：
-  - "根据内容自动调节亮度"
-  - "根据光线自动调节亮度"
-- **显示效果说明**：上述功能会在浅色界面上产生灰色小波浪线，程序清除残影后显示的纯白色可能会与这些灰色界面形成对比，看起来像是白色残影
+1. **System Enumeration**: Enumerates all display information through Windows API
+2. **Feature Recognition**: Identifies E-ink screens based on refresh rate, resolution, and other characteristics
+3. **Priority Processing**: Prioritizes processing of identified E-ink screens, supports multiple E-ink screen
+   environments
+4. **Dynamic Adaptation**: Automatically re-detects when display connection status changes
 
-### 调试信息
-- 查看 `Logs` 目录下的详细日志文件
-- 检查 `debug_output.txt` 获取调试信息
-- 使用Visual Studio调试器进行深度分析
+### Common Issues
 
-## 更新日志
+1. **Program Won't Start**: Check if .NET 8.0 runtime is installed
+2. **DirectX Initialization Failed**: Update graphics card drivers
+3. **Inaccurate Detection**: Adjust DPI settings or detection parameters
+4. **Cursor Detection Failed**: Some third-party applications use non-standard cursor APIs that cannot be detected
+5. **Poor Display Effect**: Works best with light themes + Intel Graphics Control Center adjusted contrast enhancement
+   to make the interface pure white, or using a white background high contrast theme
+6. **Display Configuration Changes**: If you switch or modify displays (e.g. change primary display, adjust resolution,
+   plug/unplug monitors) and find that detection or refresh areas are inaccurate, it is recommended to exit the program
+   from the system tray and restart it to ensure proper display detection.
 
-### 最新版本
-- ✅ GPU加速图像处理
-- ✅ 智能区域过滤
-- ✅ 高DPI支持
-- ✅ 托盘图标功能
-- ✅ 详细日志系统
+### ⚠️ Special Tips
 
-## 贡献指南
+- **System Feature Interference**: Power saving mode, night mode, and the following two system brightness options (
+  enabled by default, which also affect E-ink screens) may impact display quality:
+    - "Adjust brightness according to content"
+    - "Adjust brightness according to ambient light"
+- **Display Effect Explanation**: These features create numerous gray wavy lines on light-colored interfaces. The pure
+  white displayed after ghosting clearance may contrast with these gray interfaces, appearing like white ghosting.
 
-欢迎提交Issue和Pull Request来改进项目。在贡献前请：
-1. 阅读项目文档和代码注释
-2. 在本地测试所有更改
-3. 遵循现有代码风格
+### Debug Information
 
-## 许可证
+- Check detailed log files in the `Logs` directory
+- Review `debug_output.txt` for debug information
+- Use Visual Studio debugger for in-depth analysis
 
-本项目采用开源许可证，详见LICENSE文件。
+## Changelog
 
-## 联系方式
+### Latest Version
 
-如有问题或建议，请通过以下方式联系：
-- 提交GitHub Issue
-- 发送详细的问题描述和日志文件
+- ✅ GPU-accelerated image processing
+- ✅ Smart area filtering
+- ✅ High DPI support
+- ✅ System tray icon functionality
+- ✅ Detailed logging system
+
+## Contributing
+
+Feel free to submit Issues and Pull Requests to improve the project. Before contributing:
+
+1. Read project documentation and code comments
+2. Test all changes locally
+3. Follow existing code style
+
+## License
+
+This project uses an open-source license. See LICENSE file for details.
+
+## Contact
+
+For questions or suggestions, please contact via:
+
+- Submit GitHub Issue
+- Send detailed problem descriptions and log files
 
 ---
 
-**注意**：本工具专为电子墨水屏设备优化，在普通LCD/LED屏幕上可能看不到明显效果。建议在使用前关闭其他屏幕刷新工具以避免冲突。
+**Note**: This tool is specifically optimized for e-ink display devices. Effects may not be noticeable on regular
+LCD/LED screens. It is recommended to disable other screen refresh tools before use to avoid conflicts.
