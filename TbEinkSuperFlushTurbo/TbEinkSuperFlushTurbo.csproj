@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Platforms>AnyCPU;x64</Platforms>
-		<!-- 若使用 unsafe 可在此打开 -->
+		<!-- Enable unsafe code if needed -->
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<!-- Reference: https://github.com/dotnet/winforms/blob/main/docs/designer/designer-high-dpi-mode.md -->
 		<ForceDesignerDpiUnaware>true</ForceDesignerDpiUnaware>
@@ -18,7 +18,7 @@
 		<PackageReference Include="Vortice.D3DCompiler" Version="3.6.2" />
 	</ItemGroup>
 
-	<!-- 把 ComputeShader.hlsl 作为内容复制到输出目录 -->
+	<!-- Copy ComputeShader.hlsl as content to output directory -->
 	<ItemGroup>
 		<None Include="ComputeShader.hlsl">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -35,7 +35,7 @@
 		<None Include="..\README.md">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
-		<None Include="..\README_EN.md">
+		<None Include="..\README_CN.md">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>

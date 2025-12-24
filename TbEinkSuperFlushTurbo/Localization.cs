@@ -360,6 +360,27 @@ namespace TbEinkSuperFlushTurbo
                 [Language.English] = "Resolution:",
                 [Language.ChineseSimplified] = "分辨率:",
                 [Language.ChineseTraditional] = "解析度:"
+            },
+            
+            ["DisplaySettingsChange"] = new()
+            {
+                [Language.English] = "Display settings change",
+                [Language.ChineseSimplified] = "显示设置更改",
+                [Language.ChineseTraditional] = "顯示設定更改"
+            },
+            
+            ["DisplayConfigurationChange"] = new()
+            {
+                [Language.English] = "Display configuration change",
+                [Language.ChineseSimplified] = "显示配置更改",
+                [Language.ChineseTraditional] = "顯示配置更改"
+            },
+            
+            ["DisplayCountChange"] = new()
+            {
+                [Language.English] = "Display count change",
+                [Language.ChineseSimplified] = "显示器数量变化",
+                [Language.ChineseTraditional] = "顯示器數量變化"
             }
         };
 

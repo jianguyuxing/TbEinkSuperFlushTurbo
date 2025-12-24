@@ -525,7 +525,7 @@ namespace TbEinkSuperFlushTurbo
         private void OnDisplaySettingsChanged(object? sender, EventArgs e)
         {
             Log("Detected display settings change event (SystemEvents.DisplaySettingsChanged)");
-            AutoStopDueToDisplayChange("Display settings change");
+            AutoStopDueToDisplayChange(Localization.GetText("DisplaySettingsChange"));
         }
 
         private void StopCapture()
@@ -551,7 +551,7 @@ namespace TbEinkSuperFlushTurbo
             if (m.Msg == WM_DISPLAYCHANGE || m.Msg == WM_DPICHANGED)
             {
                 Log("Detected display change message (WM_DISPLAYCHANGE or WM_DPICHANGED)");
-                AutoStopDueToDisplayChange("Display configuration change");
+                AutoStopDueToDisplayChange(Localization.GetText("DisplayConfigurationChange"));
             }
             else if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == TOGGLE_HOTKEY_ID)
             {
@@ -1032,7 +1032,7 @@ namespace TbEinkSuperFlushTurbo
                 if (currentScreens.Length != _lastDisplaySignatures.Length)
                 {
                     Log($"Detected display count change: {_lastDisplaySignatures.Length} -> {currentScreens.Length}");
-                    AutoStopDueToDisplayChange("Display count change");
+                    AutoStopDueToDisplayChange(Localization.GetText("DisplayCountChange"));
                     return;
                 }
 
