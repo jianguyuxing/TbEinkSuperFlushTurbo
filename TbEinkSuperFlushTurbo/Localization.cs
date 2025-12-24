@@ -365,8 +365,8 @@ namespace TbEinkSuperFlushTurbo
             ["DisplaySettingsChange"] = new()
             {
                 [Language.English] = "Display settings change",
-                [Language.ChineseSimplified] = "显示设置更改",
-                [Language.ChineseTraditional] = "顯示設定更改"
+                [Language.ChineseSimplified] = "显示器设置更改",
+                [Language.ChineseTraditional] = "顯示器設定更改"
             },
             
             ["DisplayConfigurationChange"] = new()
