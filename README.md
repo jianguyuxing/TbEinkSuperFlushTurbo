@@ -122,7 +122,7 @@ through DirectX 11 compute shaders:
 2. **Pixel-level Comparison**: Compare pixels between consecutive frames for each tile, calculating RGB channel
    differences
 3. **Luminance Calculation**: Use the standard luminance formula Y = 0.299×R + 0.587×G + 0.114×B to calculate the
-   brightness of each pixel
+   average brightness of each block (tile)
 4. **Average Difference Threshold**: Set pixel difference threshold, changes exceeding the threshold are considered
    significant
 5. **Sliding Window Average**: Employ a 4-frame sliding window average algorithm to smooth instantaneous changes and
